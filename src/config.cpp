@@ -214,15 +214,15 @@ void read_config(
 	string s = "function func_fields(D, t, x, y, z)\n";
 	s += "    -- Injecting external variables\n";
 	for (bo::unordered_map<string,int>::iterator	entry = laser_field_param_map_int.begin(); entry != laser_field_param_map_int.end(); ++entry) 
-		s += (bo::format("    %s = %d\n") 		% entry->first % entry->second).str();
+		s += (bo::format("    %s\t= %d\n") 		% entry->first % entry->second).str();
 	for (bo::unordered_map<string,long>::iterator	entry = laser_field_param_map_int64.begin(); entry != laser_field_param_map_int64.end(); ++entry) 
-		s += (bo::format("    %s = %l\n") 		% entry->first % entry->second).str();
+		s += (bo::format("    %s\t= %l\n") 		% entry->first % entry->second).str();
 	for (bo::unordered_map<string,double>::iterator	entry = laser_field_param_map_float.begin(); entry != laser_field_param_map_float.end(); ++entry) 
-		s += (bo::format("    %s = %.16E\n") 	% entry->first % entry->second).str();
+		s += (bo::format("    %s\t= %.16E\n") 	% entry->first % entry->second).str();
 	for (bo::unordered_map<string,string>::iterator	entry = laser_field_param_map_string.begin(); entry != laser_field_param_map_string.end(); ++entry) 
-		s += (bo::format("    %s = %s\n") 		% entry->first %  bo::io::quoted(entry->second)).str();
+		s += (bo::format("    %s\t= %s\n") 		% entry->first %  bo::io::quoted(entry->second)).str();
 	for (bo::unordered_map<string,bool>::iterator	entry = laser_field_param_map_boolean.begin(); entry != laser_field_param_map_boolean.end(); ++entry) 
-		s += (bo::format("    %s = %s\n") 		% entry->first % (entry->second ? "true" : "false")).str();
+		s += (bo::format("    %s\t= %s\n") 		% entry->first % (entry->second ? "true" : "false")).str();
 	s += "    -- completed\n\n";
 	
 	s += parameters.func_fields + "\n";

@@ -140,7 +140,7 @@ void open_field_map_xz_files(fs::path output_dir, unsigned int interaction, int 
 
 void open_field_map_yz_files(fs::path output_dir, unsigned int interaction, int node, unsigned int t)
 {
-	stream_map_yz.open ((output_dir / fs::path((bo::format("field_map_yz_i%un%d%u.csv") %  interaction % node % t).str())).c_str());
+	stream_map_yz.open ((output_dir / fs::path((bo::format("field_map_yz_i%un%dt%u.csv") %  interaction % node % t).str())).c_str());
 	stream_map_yz.setf(ios::scientific);
 	stream_map_yz.precision(16);
 	stream_map_yz

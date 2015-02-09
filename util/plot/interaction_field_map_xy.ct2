@@ -1,4 +1,4 @@
-title 'Electric field'
+title 'Electric field $|\vec{E}|$'
 text-separator ;
 xyz-map
 new-zaxis zvalues /location right /bar_size=4mm

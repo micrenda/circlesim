@@ -440,6 +440,7 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 		}
 	}
 	
+	printf("\n");
 }
 
 

@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
 	fs::remove(fs::path(cfg_file_si_tmp));
 	
 	// Append to README.txt the conversion units used
-	string units_txt_cmd = (bo::format("java -jar '%s/util/unit/ConfigUnitConvertor.jar' --print-units SI '%s/util/unit/conversions.csv' >> %s/README.txt") %  exe_path % output_dir % exe_path).str();
+	string units_txt_cmd = (bo::format("java -jar '%s/util/unit/ConfigUnitConvertor.jar' --print-units SI '%s/util/unit/conversions.csv' >> %s/README.txt") %  exe_path % output_dir.string() % output_dir.string()).str();
 	system(units_txt_cmd.c_str());
 	
 	
