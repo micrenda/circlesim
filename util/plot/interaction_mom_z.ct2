@@ -1,0 +1,4 @@
+title 'Local momentum'
+plot @1:7
+xlabel '$t$ [$s$]'
+ylabel '$p_z$ [$N*m/s$]'

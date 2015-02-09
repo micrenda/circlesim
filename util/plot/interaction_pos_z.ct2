@@ -1,0 +1,4 @@
+title 'Local position'
+plot @1:4
+xlabel '$t$ [$s$]'
+ylabel '$z$ [$m$]'

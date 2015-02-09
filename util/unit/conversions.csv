@@ -1,0 +1,81 @@
+# Class				Symbol		Value in SI			  Name					  System  Note (do not add commas here)
+
+MASS				, kg,		1E0					, kilogram				, SI	,
+MASS				, g,		1E-3				, gram					, 		,
+MASS				, au,		9.109382616E-31		, atomic unit			, AU	, electron rest mass
+MASS				, t,		1E3					, tonne					, 		,
+MASS				, eV,		1.782661845E-36 	, electron volt			, 		, 
+MASS				, Da,		1.660538921E-27 	, Dalton				, 		, 1/12 of the mass of a carbon-12 atom
+MASS				, m_e,		9.109382156E-31		, electron mass			, 		, electron rest mass
+MASS				, m_p,		1.672621777E-27		, proton mass			, 		,
+MASS				, m_n,		1.674927351E-27		, neutron mass			, 		,
+				
+LENGTH				, m,		1E0					, meter					, SI	, 
+LENGTH				, Å,		1E-10				, Ångström				, 		, 
+LENGTH				, xu_cu,	1.00207699E-13		, xu(Cu) 				, 		, X Unit (Cu Kα1)
+LENGTH				, xu_mo,	1.00209955E-13		, xu(Mo)				, 		, X Unit (Mo Kα1)
+LENGTH				, au,		5.2917721092E-11	, atomic unit			, AU	, Bohr radius
+LENGTH				, lp,		1.61619997E-35		, Planck length			, 		, 
+				
+CHARGE				, C,		1E0					, Columb				, SI	, 
+CHARGE				, Fr,		3.335646048E-10		, Franklin				, 		, 
+CHARGE				, au,		-1.602765314E-19	, atomic unit			, AU	, charge of an electron
+CHARGE				, e,		-1.602765314E-19	, electron charge		, 		, charge of an electron
+CHARGE				, p,		+1.602765314E-19	, proton charge			, 		, charge of proton
+				
+				
+ENERGY				, J,		1E0					, Joule					, SI	,
+ENERGY				, eV,		1.602176565E-19 	, electron volt			,		, 
+ENERGY				, au,		4.3597439422E-18  	, atomic unit			, AU	, 
+ENERGY				, Ha,		4.3597439422E-18  	, Hartree				, 		, 
+ENERGY				, Wh,		3.6E3			  	, Watt hour				, 		, 
+ENERGY				, me,		8.1871043841E-14	, electron rest mass	, 		, 
+				
+TIME				, s,		1E0					, second				, SI	,
+TIME				, m,		6E1					, minute				, 		, 
+TIME				, h,		3.6E3				, hour					, 		, 
+TIME				, tp,		5.3910632E-44		, Plank time			, 		, 
+TIME				, au,		2.41888431721E-17	, atomic unit			, AU	, 
+
+FREQUENCY			, Hz,		1E0					, Herz					, SI	, 
+FREQUENCY			, au,		4.13413734954E+16	, atomic unit			, AU	, 
+FREQUENCY			, rad/s,	1.59154943092E-1	, radiant / second		, 		, ω = 2π f
+
+PULSATION			, rad/s,	1E0					, radiant / second		, SI	,
+PULSATION			, au,		4.13413734954e+16	, atomic unit			, AU	, 
+PULSATION			, Hz,		6.28318530718E0		, Herz					, 		, f = ω / 2π
+				
+SPEED				, m/s,		1E0					, meter/second			, SI	, 
+SPEED				, c,		2.99792458E8		, light speed			, 		, 
+SPEED				, au,		2.18769127177E6		, atomic unit			, AU	, 
+				
+FORCE				, N,		1E0					, Newton				, SI	,
+FORCE				, au,		8.23872247023E-08	, atomic unit			, AU	, 	
+
+ELECTRIC_FIELD		, V/m,		1E0					, volt/meter			, SI	,
+ELECTRIC_FIELD		, au,		-5.1403174240581E11 , atomic unit			, AU	, 
+	
+ELECTRIC_POTENTIAL	, V,		1E0					, Volt					, SI 	,
+ELECTRIC_POTENTIAL	, au,		-2.72013883718225E1	, atomic unit			, AU	,
+
+
+MOMENTUM			, Nm/s,		1E0					, Newton meter / second	, SI	,
+MOMENTUM			, au,		1.99285168402348E-24, atomic unit			, AU	,
+MOMENTUM			, eV,		1.60217733000000E-19, electron volt			, 		,
+
+	
+MAGNETIC_FIELD		, T,		1E0					, Tesla					, SI	,
+MAGNETIC_FIELD		, G,		1E-4				, Gauss					, 		,
+MAGNETIC_FIELD		, au,		-2.34965394358396E5	, atomic unit			, AU	,
+
+ANGLE				, rad,		1E0					, radiant				, SI|AU ,
+ANGLE				, τ,		6.28318530718E0		, tau radiant			, 		, 
+ANGLE				, π,		3.14159265359E0		, pi radiant			, 		, 
+ANGLE				, °,		1.745329252E-2		, degree				, 		, 
+
+PERCENTUAL			, p,		1E0					, p						, SI|AU	, 
+PERCENTUAL			, %,		0.01				, percent				, 		, 
+PERCENTUAL			, ‰,		0.001				, per thousand			, 		, 
+PERCENTUAL			, ‱,		0.0001				, per ten thousand		, 		, 
+
+

@@ -1,0 +1,5 @@
+title 'Local position'
+plot @1:14
+plot @1:17
+xlabel '$t$ [$s$]'
+ylabel '$E_x$ [$V/m$], $B_x$ [$T$]'

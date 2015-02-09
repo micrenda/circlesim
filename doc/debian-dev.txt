@@ -1,0 +1,22 @@
+# Packages to be installed to use circlesim
+
+BUILD:
+	build-essentials
+	libgsl0-dev
+	libconfig++-dev
+	libboost1.55-dev
+	libboost-filesystem1.55-dev
+	libboost-regex1.55-dev
+	libarmadillo-dev
+	libluabind-dev
+
+
+EXECUTION:
+	java >= 6
+
+
+PLOTTING:
+	ctioga2
+	libav-tools / ffmpeg
+	pdftoppm
+	
