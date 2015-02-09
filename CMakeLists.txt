@@ -13,8 +13,7 @@ find_package(GSL     												REQUIRED)
 find_package(LibConfig 												REQUIRED)
 find_package(Armadillo 												REQUIRED)
 find_package(Lua52     												REQUIRED)
-find_package(Luabind   												REQUIRED)
 
-set(CMAKE_CXX_FLAGS "-Wall -std=c++03")
+set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -I${CMAKE_SOURCE_DIR}/util/LuaState/include/")
 
 add_subdirectory(src)

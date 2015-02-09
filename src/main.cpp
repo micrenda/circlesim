@@ -2,15 +2,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <libgen.h>
-// This section resolve a problem when loading the luabind libraries and gives the right path
-extern "C"
-{
-    #include <lua5.2/lua.h>
-    #include <lua5.2/lualib.h>
-	#include <lua5.2/lauxlib.h>
-}
-#define LUA_INCLUDE_HPP_INCLUDED
-#include <luabind/luabind.hpp>
+#include <LuaState.h>
 #include "main.hpp"
 #include "type.hpp"
 #include "config.hpp"
@@ -117,13 +109,13 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 	
+	// If we does not specify the output path, then we out our output in a subdirectory
+	if (base_dir == fs::path(exe_path))
+		base_dir /= fs::path("output");
 	
 	
-	// Create a new lua state and connecting to LuaBind
-	lua_State *lua_state = luaL_newstate();
-	luabind::open(lua_state);
-	luabind::set_pcall_callback(&lua_error_handler);
-	luaL_openlibs(lua_state);
+	// Create a new lua state
+	lua::State		lua_state;
 
 	
 	Simulation		simulation;
@@ -151,7 +143,7 @@ int main(int argc, char *argv[])
 		// Please don't use the parameters variable outside this block
 		Parameters parameters;
 	
-		read_config(cfg_file_si_tmp, parameters, simulation, output_setting, laser, particle, particle_state, accellerator, nodes, lua_state);
+		read_config(cfg_file_si_tmp, parameters, simulation, output_setting, laser, particle, particle_state, accellerator, nodes, &lua_state);
 		
 		nodes = new Node[accellerator.nodes];
 		init_nodes(accellerator, nodes);
@@ -172,7 +164,7 @@ int main(int argc, char *argv[])
 	
 
 	printf("Creating directory '%s'\n", output_dir.c_str());
-	fs::create_directory(output_dir);
+	fs::create_directories(output_dir);
 	fs::copy_file(cfg_file_orig,   output_dir / fs::path("parameters_orig.cfg"));
 	
 	fs::path cfg_file_si = output_dir / fs::path("parameters_si.cfg");
@@ -193,10 +185,8 @@ int main(int argc, char *argv[])
 	
 	
 	// Executing simulation
-	simulate(simulation, output_setting, laser, particle, particle_state, accellerator, nodes, lua_state, output_dir);
+	simulate(simulation, output_setting, laser, particle, particle_state, accellerator, nodes, &lua_state, output_dir);
 	
-	// Closing lua
-	lua_close(lua_state);
 	// Close output files
 	close_global_files();
 }

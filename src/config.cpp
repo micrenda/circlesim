@@ -1,14 +1,6 @@
 #include <libconfig.h++>
 #include <math.h>
-// This section resolve a problem when loading the luabind libraries and gives the right path
-extern "C"
-{
-    #include <lua5.2/lua.h>
-    #include <lua5.2/lualib.h>
-	#include <lua5.2/lauxlib.h>
-}
-#define LUA_INCLUDE_HPP_INCLUDED
-#include <luabind/luabind.hpp>
+#include <LuaState.h>
 #include <boost/regex.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/io/detail/quoted_manip.hpp>
@@ -18,27 +10,22 @@ extern "C"
 #include "le.h"
 
 using namespace libconfig;
-using namespace luabind;
 
 void err_config()
 {
     exit(-1);
 }
 
-void check_lua_error(lua_State* lua_state, int err, string section_name, string fullcode)
+void check_lua_error(lua::LoadError& e, string section_name, string fullcode)
 {
-	if (err)
-	{
-		char *pmsg = strdup(lua_tostring(lua_state,-1));
-		lua_pop(lua_state,1);
-		printf("Error while parsing '%s': %s\n", section_name.c_str(), pmsg);
-			
-		printf("--------------------------------------------------------\n");
-		printf("%s\n", fullcode.c_str());
-		printf("--------------------------------------------------------\n");
-		
-		exit(-3);
-    }
+	
+	printf("Error while parsing '%s': %s\n", section_name.c_str(), e.what());
+	printf("--------------------------------------------------------\n");
+	printf("%s\n", fullcode.c_str());
+	printf("--------------------------------------------------------\n");
+	
+	exit(-3);
+
 }
 
 bool missing_param(string param)
@@ -65,7 +52,7 @@ void read_config(
 	ParticleState& particle_state,
 	Accellerator& accellerator,
 	Node nodes[], 
-	lua_State* lua_state)
+	lua::State* lua_state)
 {
 	Config* config = new Config;
 	
@@ -218,10 +205,10 @@ void read_config(
 	
 	laser.duration						= parameters.pulse_duration 		/ AU_TIME;
 	
-	int err = 0;
+	
 	// Loading the common functins. Loading and evaluating so remain availabe to the other LUA scripts
-	err = luaL_dostring(lua_state, parameters.func_commons.c_str());
-	check_lua_error(lua_state, err, "func_commons", parameters.func_commons);
+	lua_state->doString(parameters.func_commons);
+	//check_lua_error(lua_state, err, "func_commons", parameters.func_commons);
 	// Loading other lua scripts
 	
 	string s = "function func_fields(D, t, x, y, z)\n";
@@ -241,9 +228,14 @@ void read_config(
 	s += parameters.func_fields + "\n";
 	s += "end\n";
 	
-
-	err = luaL_dostring(lua_state, s.c_str());
-	check_lua_error(lua_state, err, "func_fields", s);
+	try
+	{
+		lua_state->doString(s.c_str());
+	}
+	catch (lua::LoadError& e)
+	{
+		check_lua_error(e, "func_fields", s);
+	}
 	
 	printf("Generated fields LUA function:\n");
 	printf("--------------------------------------------------------\n");

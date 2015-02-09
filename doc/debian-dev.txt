@@ -8,8 +8,6 @@ BUILD:
 	libboost-filesystem1.55-dev
 	libboost-regex1.55-dev
 	libarmadillo-dev
-	libluabind-dev
-
 
 EXECUTION:
 	java >= 6

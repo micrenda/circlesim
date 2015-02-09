@@ -2,24 +2,11 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_odeiv.h>
-// This section resolve a problem when loading the luabind libraries and gives the right path
-extern "C"
-{
-    #include <lua5.2/lua.h>
-    #include <lua5.2/lualib.h>
-	#include <lua5.2/lauxlib.h>
-}
-#define LUA_INCLUDE_HPP_INCLUDED
-#include <luabind/luabind.hpp>
 #include "simulator.hpp"
 #include "type.hpp"
 #include "util.hpp"
 #include "output.hpp"
 #include "plot.hpp"
-
-using namespace luabind;
-
-
 
 
 bool is_in_influence_radius(ParticleState& state, Node& node, double laser_influence_radius)
@@ -49,19 +36,11 @@ typedef struct gsl_odeiv_custom_params
 {
 	Pulse* 		laser;
 	Particle*	particle;
-	lua_State*	lua_state;
+	lua::State*	lua_state;
 } gsl_odeiv_custom_params;
 
-void handle_lua_error(error& e, string section_name)
-{
-		char *pmsg = strdup(lua_tostring(e.state(),-1));
-		lua_pop(e.state(),1);
-		printf("Error while parsing '%s': %s\n", section_name.c_str(), pmsg);
-		
-		exit(-3);
-}
       
-void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, Pulse& laser, FieldEB& field, lua_State* lua_state)
+void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, Pulse& laser, FieldEB& field, lua::State* lua_state)
 {
 	//TODO: These values must be cached because does not change between the execution of calculate fiels (or neither in all simulation)
 	
@@ -72,37 +51,17 @@ void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, Pu
 	double param_y				=	pos_y 			* AU_LENGTH;
 	double param_z				=	pos_z 			* AU_LENGTH;
   
-
-	
-
-
-	double* fields;
-	try
-	{
-		fields = call_function<double*>(lua_state, "func_fields", param_duration, param_time, param_x, param_y, param_z);
-
-    }
-    catch (error& e)
-    {
-		handle_lua_error(e, "func_fields");
-		exit(-3);
-	}
-	
-	
-	//for(luabind::iterator i = fields.begin(); i != fields.end(); i++)
-	//{
-	//	printf("%d -> %E\n", i.first, i.second);
-	//}
-	
-	
-	
-	field.e_x = fields[0] / AU_ELECTRIC_FIELD; 
-	//field.e_y = ((double) fields[1]) / AU_ELECTRIC_FIELD;
-	//field.e_z = ((double) fields[2]) / AU_ELECTRIC_FIELD;
   
-    //field.b_x = ((double) fields[3]) / AU_MAGNETIC_FIELD;
-	//field.b_y = ((double) fields[4]) / AU_MAGNETIC_FIELD;
-	//field.b_z = ((double) fields[5]) / AU_MAGNETIC_FIELD; 
+	double e1, e2, e3, b1, b2, b3;
+	lua::tie(e1, e2, e3, b1, b2, b3) = (*lua_state)["func_fields"](param_duration, param_time, param_x, param_y, param_z);
+	
+	field.e_x = e1 / AU_ELECTRIC_FIELD; 
+	field.e_y = e2 / AU_ELECTRIC_FIELD;
+	field.e_z = e3 / AU_ELECTRIC_FIELD;
+  
+    field.b_x = b1 / AU_MAGNETIC_FIELD;
+	field.b_y = b2 / AU_MAGNETIC_FIELD;
+	field.b_z = b3 / AU_MAGNETIC_FIELD; 
 
 }
       
@@ -115,9 +74,9 @@ int gsl_odeiv_jac (double t, const double y[], double *dfdy, double dfdt[], void
 
 int gsl_odeiv_func_laser(double t, const double y[], double f[], void *params)
 {
-	Pulse 	 laser 	  		= *((gsl_odeiv_custom_params*)params)->laser;
-	Particle particle 		= *((gsl_odeiv_custom_params*)params)->particle;
-	lua_State* lua_state	= ((gsl_odeiv_custom_params*)params)->lua_state;
+	Pulse 	 	laser 	  		= *((gsl_odeiv_custom_params*)params)->laser;
+	Particle 	particle 		= *((gsl_odeiv_custom_params*)params)->particle;
+	lua::State*	lua_state	    =  ((gsl_odeiv_custom_params*)params)->lua_state;
 
 	double pos_t = C0*t;
 	double pos_x = y[0];
@@ -179,7 +138,7 @@ int gsl_odeiv_func_free(double t, const double y[], double f[], void *params)
 }
 
 
-void simulate_laser(Simulation& simulation, Pulse& laser, Node& node, Particle& particle, ParticleState& state, long double& time_current, unsigned int interaction, lua_State* lua_state)
+void simulate_laser(Simulation& simulation, Pulse& laser, Node& node, Particle& particle, ParticleState& state, long double& time_current, unsigned int interaction, lua::State* lua_state)
 {
 	// Trasforming global coordinates to local coordinates
 	
@@ -264,7 +223,7 @@ void simulate_laser(Simulation& simulation, Pulse& laser, Node& node, Particle& 
 }
 
 
-void simulate_free(Simulation& simulation, Particle& particle, ParticleState& state, long double& time_current_p, int nodes_count, Node nodes[], lua_State* lua_state)
+void simulate_free(Simulation& simulation, Particle& particle, ParticleState& state, long double& time_current_p, int nodes_count, Node nodes[], lua::State* lua_state)
 {
 	
 	
@@ -288,8 +247,8 @@ void simulate_free(Simulation& simulation, Particle& particle, ParticleState& st
 	double local_mom_z = state.momentum_z;
 	
 	gsl_odeiv_custom_params params;
-	params.laser 	= NULL;
-	params.particle	= &particle;
+	params.laser 	 = NULL;
+	params.particle	 = &particle;
 	params.lua_state = lua_state;
 
 	const gsl_odeiv_step_type* 	step_type 	= gsl_odeiv_step_rk8pd;
@@ -345,7 +304,7 @@ void simulate_free(Simulation& simulation, Particle& particle, ParticleState& st
 
 }
 
-void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction, int node, double start_t, double end_t,  double radius, Pulse& laser, lua_State* lua_state, fs::path output_dir)
+void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction, int node, double start_t, double end_t,  double radius, Pulse& laser, lua::State* lua_state, fs::path output_dir)
 {
 	double dt = output_setting.field_map_resolution_time;
 	double dr = output_setting.field_map_resolution_space;
@@ -418,7 +377,7 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 }	
 
 
-void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& laser, Particle& particle, ParticleState& particle_state, Accellerator& accellerator, Node nodes[], lua_State* lua_state, fs::path& output_dir)
+void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& laser, Particle& particle, ParticleState& particle_state, Accellerator& accellerator, Node nodes[], lua::State* lua_state, fs::path& output_dir)
 {
 	
 	printf("Simulation duration: %f s\n", simulation.duration * AU_TIME);
@@ -437,7 +396,7 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 	long double time_current = 0;
 	while (time_current < simulation.duration)
 	{
-		printf("\rFSimulating: %3.4f%%\n", (double)time_current / simulation.duration * 100);
+		printf("\rSimulating: %3.4f%%", (double)time_current / simulation.duration * 100);
 		
 		// Identifing if our particle is inside the laser action range or outside.
 		// If outside we use the free motion laws, if inside we calculate the integration between the laser and the particle	
