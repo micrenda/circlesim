@@ -6,8 +6,9 @@
 
 extern string exe_path;
 extern string exe_name;
+extern string ffmpeg_name;
 
-void execute_plot_cmd(string cmd)
+int execute_plot_cmd(string cmd)
 {
 
 	int status = system(cmd.c_str());
@@ -20,6 +21,8 @@ void execute_plot_cmd(string cmd)
 		printf("Plot command returned status %d. Executed command: %s\n", status, cmd.c_str());
 		printf("------------------------------------------------------------\n");
 	}
+	
+	return status;
 }
 
 void plot_interaction_files(fs::path output_dir, unsigned int interaction, int node)
@@ -29,23 +32,23 @@ void plot_interaction_files(fs::path output_dir, unsigned int interaction, int n
 	// Creating plot directory, if does not exists
 	create_directory(plot_dir);
 	
-	fs::path interaction_file 	= output_dir / fs::path((bo::format("interaction_i%un%d.csv") % interaction % node).str());
-	fs::path field_file			= output_dir / fs::path((bo::format("field_i%un%d.csv")       % interaction % node).str());
+	fs::path interaction_file   = output_dir / fs::path((bo::format("interaction_i%un%d.csv") % interaction % node).str());
+	fs::path field_file         = output_dir / fs::path((bo::format("field_i%un%d.csv")       % interaction % node).str());
 	
 	// Plotting position
-	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_pos_x.ct2'    --output-directory '%s' --name 'position_x_i%un%d'") 	% interaction_file.string() % plot_dir.string() % interaction % node).str());
-	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_pos_y.ct2'    --output-directory '%s' --name 'position_y_i%un%d'") 	% interaction_file.string() % plot_dir.string() % interaction % node).str());
-	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_pos_z.ct2'    --output-directory '%s' --name 'position_z_i%un%d'") 	% interaction_file.string() % plot_dir.string() % interaction % node).str());
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_pos_x.ct2'    --output-directory '%s' --name 'position_x_i%un%d'")     % interaction_file.string() % plot_dir.string() % interaction % node).str());
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_pos_y.ct2'    --output-directory '%s' --name 'position_y_i%un%d'")     % interaction_file.string() % plot_dir.string() % interaction % node).str());
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_pos_z.ct2'    --output-directory '%s' --name 'position_z_i%un%d'")     % interaction_file.string() % plot_dir.string() % interaction % node).str());
 
 	// Plotting momentum
-	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_mom_x.ct2'    --output-directory '%s' --name 'momentum_x_i%un%d'") 	% interaction_file.string() % plot_dir.string() % interaction % node).str());
-	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_mom_y.ct2'    --output-directory '%s' --name 'momentum_y_i%un%d'") 	% interaction_file.string() % plot_dir.string() % interaction % node).str());
-	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_mom_z.ct2'    --output-directory '%s' --name 'momentum_z_i%un%d'") 	% interaction_file.string() % plot_dir.string() % interaction % node).str());
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_mom_x.ct2'    --output-directory '%s' --name 'momentum_x_i%un%d'")     % interaction_file.string() % plot_dir.string() % interaction % node).str());
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_mom_y.ct2'    --output-directory '%s' --name 'momentum_y_i%un%d'")     % interaction_file.string() % plot_dir.string() % interaction % node).str());
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_mom_z.ct2'    --output-directory '%s' --name 'momentum_z_i%un%d'")     % interaction_file.string() % plot_dir.string() % interaction % node).str());
 	
-	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_mom.ct2'      --output-directory '%s' --name 'momentum_i%un%d'")			% interaction_file.string() % plot_dir.string() % interaction % node).str());
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_mom.ct2'      --output-directory '%s' --name 'momentum_i%un%d'")       % interaction_file.string() % plot_dir.string() % interaction % node).str());
 
 	// Plotting field on particle
-	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_field_x.ct2'  --output-directory '%s' --name 'field_x_i%un%d'") 		% interaction_file.string() % plot_dir.string() % interaction % node).str());
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_field_x.ct2'  --output-directory '%s' --name 'field_x_i%un%d'")        % interaction_file.string() % plot_dir.string() % interaction % node).str());
 	
 }
 
@@ -74,7 +77,8 @@ void make_field_map_video(fs::path output_dir, string plane, unsigned int intera
 		
 	}
 	
-	execute_plot_cmd(((bo::format("ffmpeg -framerate 4 -i '%s/field_map_%s_i%un%it%%d.ppm' -vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2\" -c:v libx264 -r 30 '%s/field_map_%s_i%un%i.mp4'")
+	int ffmpeg_status = execute_plot_cmd((bo::format("%s -framerate 4 -i '%s/field_map_%s_i%un%it%%d.ppm' -vf \"scale=trunc(iw/2)*2:trunc(ih/2)*2\" -c:v libx264 -r 30 '%s/field_map_%s_i%un%i.mp4'")
+		% ffmpeg_name
 		% plot_dir.string() 
 		% plane
 		% interaction 
@@ -82,22 +86,21 @@ void make_field_map_video(fs::path output_dir, string plane, unsigned int intera
 		% plot_dir.string() 
 		% plane
 		% interaction 
-		% node)).str());
+		% node).str());
 	
-	for (unsigned int t = 0; t <= max_t; t++)
+	if (ffmpeg_status == 0)
 	{
-		fs::remove(plot_dir / fs::path((bo::format("field_map_%s_i%un%it%u.ppm") % plane % interaction % node % t).str()));
-		fs::remove(plot_dir / fs::path((bo::format("field_map_%s_i%un%it%u.pdf") % plane % interaction % node % t).str()));
+		for (unsigned int t = 0; t <= max_t; t++)
+		{
+			fs::remove(plot_dir / fs::path((bo::format("field_map_%s_i%un%it%u.ppm") % plane % interaction % node % t).str()));
+			fs::remove(plot_dir / fs::path((bo::format("field_map_%s_i%un%it%u.pdf") % plane % interaction % node % t).str()));
+		}
 	}
 }
 
 
 void plot_field_maps(fs::path output_dir, unsigned int interaction, int node)
 {
-
-	
-	//execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot/interaction_pos_x.ct2'    --output-directory '%s' --name 'position_x_i%un%d'") % interaction_file.string() % plot_dir.string() % interaction % node).str());
-	
 	
 	fs::directory_iterator end_iter;
 
@@ -121,12 +124,12 @@ void plot_field_maps(fs::path output_dir, unsigned int interaction, int node)
 				if (bo::regex_match(current_iter->path().filename().string(), what, e))
 				{
 					string filename = what[0];
-					string plane 	= what[1];
+					string plane    = what[1];
 					
 					char* bufc;
-					unsigned int i	= strtol(what[2].str().c_str(), &bufc, 10); // In C++11 replace with stol
-					int n			= strtol(what[3].str().c_str(), &bufc, 10);
-					unsigned int t	= strtol(what[4].str().c_str(), &bufc, 10);
+					unsigned int i  = strtol(what[2].str().c_str(), &bufc, 10); // In C++11 replace with stol
+					int n           = strtol(what[3].str().c_str(), &bufc, 10);
+					unsigned int t  = strtol(what[4].str().c_str(), &bufc, 10);
 					
 					if (interaction == i && node == n)
 					{

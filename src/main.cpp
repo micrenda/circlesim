@@ -11,6 +11,7 @@
 
 extern string exe_path;
 extern string exe_name;
+extern string ffmpeg_name;
 
 void print_help()
 {
@@ -114,6 +115,21 @@ int main(int argc, char *argv[])
 		base_dir /= fs::path("output");
 	
 	
+	// Checking which ffmpeg command is available (Debian uses avconv while other distros use ffmpeg)
+	if (system("avconv -h") == 0)
+	{
+		ffmpeg_name = "avconv";
+	}
+	else if (system("ffmpeg -h") == 0)
+	{
+		ffmpeg_name = "ffmpeg";
+	}
+	else
+	{
+		ffmpeg_name = "ffmpeg";
+		printf("WARNING: Unable to find 'ffmpeg' command. The video creation will be disabled.\n");	
+	}
+	
 	// Create a new lua state
 	lua::State		lua_state;
 
@@ -172,7 +188,7 @@ int main(int argc, char *argv[])
 	fs::remove(fs::path(cfg_file_si_tmp));
 	
 	// Append to README.txt the conversion units used
-	string units_txt_cmd = (bo::format("java -jar '%s/util/unit/ConfigUnitConvertor.jar' --print-units SI '%s/util/unit/conversions.csv' >> %s/README.txt") %  exe_path % output_dir.string() % output_dir.string()).str();
+	string units_txt_cmd = (bo::format("java -jar '%s/util/unit/ConfigUnitConvertor.jar' --print-units SI '%s/util/unit/conversions.csv' >> %s/README.txt") %  exe_path % exe_path % output_dir.string()).str();
 	system(units_txt_cmd.c_str());
 	
 	
