@@ -11,6 +11,7 @@
 
 extern string exe_path;
 extern string exe_name;
+extern string ffmpeg_name;
 
 void print_help()
 {
@@ -113,6 +114,21 @@ int main(int argc, char *argv[])
 	if (base_dir == fs::path(exe_path))
 		base_dir /= fs::path("output");
 	
+	
+	// Checking which ffmpeg command is available (Debian uses avconv while other distros use ffmpeg)
+	if (system("avconv -h > /dev/null 2> /dev/null") == 0)
+	{
+		ffmpeg_name = "avconv";
+	}
+	else if (system("ffmpeg -h > /dev/null 2> /dev/null") == 0)
+	{
+		ffmpeg_name = "ffmpeg";
+	}
+	else
+	{
+		ffmpeg_name = "ffmpeg";
+		printf("WARNING: Unable to find 'ffmpeg' command. The video creation will be disabled.\n");	
+	}
 	
 	// Create a new lua state
 	lua::State		lua_state;

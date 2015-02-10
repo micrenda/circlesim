@@ -670,7 +670,7 @@ public class ConfigUnitConvertor
 	{
 		for (ValueType value: ValueType.values())
 		{
-			if (value != null && value != ValueType.PURE_FLOAT && value != ValueType.PURE_INT && value != ValueType.IGNORE)
+			if (value != null && value != ValueType.PURE_FLOAT && value != ValueType.PURE_INT && !value.name().startsWith("IGNORE"))
 			{	
 				List<UnitType> possibleTypes = conversion.get(value);
 				
