@@ -1,0 +1,8 @@
+title 'Electric field $E_x$'
+text-separator ;
+xyz-map
+new-zaxis zvalues /location right /bar_size=4mm
+plot @'$3:$4:$5'  /color-map '#dd1c77--#c994c7--#e7e1ef--#ffffff(0)--#deebf7--#9ecae1--#3182bd' /zaxis zvalues
+
+xlabel '$x$ [$m$]'
+ylabel '$z$ [$m$]'

@@ -116,11 +116,11 @@ int main(int argc, char *argv[])
 	
 	
 	// Checking which ffmpeg command is available (Debian uses avconv while other distros use ffmpeg)
-	if (system("avconv -h") == 0)
+	if (system("avconv -h > /dev/null 2> /dev/null") == 0)
 	{
 		ffmpeg_name = "avconv";
 	}
-	else if (system("ffmpeg -h") == 0)
+	else if (system("ffmpeg -h > /dev/null 2> /dev/null") == 0)
 	{
 		ffmpeg_name = "ffmpeg";
 	}

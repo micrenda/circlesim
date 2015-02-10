@@ -1,4 +1,4 @@
-title 'Local position'
+title 'Fields on particle'
 plot @1:14
 plot @1:17
 xlabel '$t$ [$s$]'
