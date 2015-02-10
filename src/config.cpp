@@ -189,8 +189,6 @@ void read_config(
 		config_output.lookupValue			("field_map_size_x",		parameters.field_map_size_x)		|| missing_param("field_map_size_x");
 		config_output.lookupValue			("field_map_size_y",		parameters.field_map_size_y)		|| missing_param("field_map_size_y");
 		config_output.lookupValue			("field_map_size_z",		parameters.field_map_size_z)		|| missing_param("field_map_size_z");
-		
-		config_output.lookupValue			("field_map_stretch",		parameters.field_map_stretch)		|| missing_param("field_map_stretch");
 	  
 	}
 	catch (ParseException& e)  
@@ -292,9 +290,7 @@ void read_config(
 	output.field_map_size_x	= parameters.field_map_size_x / AU_LENGTH;
 	output.field_map_size_y	= parameters.field_map_size_y / AU_LENGTH;
 	output.field_map_size_z	= parameters.field_map_size_z / AU_LENGTH;
-	
-	output.field_map_stretch	= parameters.field_map_stretch;
-	 
+
 	delete config;
 }
 

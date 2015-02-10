@@ -111,11 +111,6 @@ typedef struct ParametersStruct
 	double field_map_size_x;
 	double field_map_size_y;
 	double field_map_size_z;
-	
-	bool field_map_stretch;
-
-
-	
 } Parameters;
 
 typedef struct SimulationStruct
@@ -229,8 +224,6 @@ typedef struct OutputSettingStruct
 	double field_map_size_x;
 	double field_map_size_y;
 	double field_map_size_z;
-
-	bool field_map_stretch;
 
 } OutputSetting;
 

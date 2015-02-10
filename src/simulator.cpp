@@ -311,68 +311,69 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 	double dy = output_setting.field_map_resolution_y;
 	double dz = output_setting.field_map_resolution_z;
 	
-	unsigned int i;
+	int t_count = round((end_t - start_t) / dt);
+	
 	
 	if (output_setting.field_map_enable_xy)
 	{
-		i = 0;
-		for (double current_t = start_t; current_t < end_t; current_t += dt)
+		#pragma omp parallel for default(shared)
+		for (int t = 0; t < t_count; t++)
 		{
-			open_field_map_xy_files(output_dir, interaction, node, i);
+			double current_t = t * dt;
+			open_field_map_xy_files(output_dir, interaction, node, t);
 				
 			for (double x = -output_setting.field_map_size_x/2; x < output_setting.field_map_size_x/2; x += dx)
 			{
 				for (double y = -output_setting.field_map_size_y/2; y < output_setting.field_map_size_y/2; y += dy)
 				{
 					FieldEB field;
-					calculate_fields(C0*current_t, x, y, 0, laser, field, lua_state);
+					calculate_fields(C0*(current_t - trigger_t), x, y, 0, laser, field, lua_state);
 					write_field_maps_xy(current_t, x, y, 0, field);
 				}
 			}
 			close_field_map_xy_files();
-			i++;
 		}
 	}
-	
+
 	if (output_setting.field_map_enable_xz)
 	{
-		i = 0;
-		for (double current_t = start_t; current_t < end_t; current_t += dt)
+		#pragma omp parallel for default(shared)
+		for (int t = 0; t < t_count; t++)
 		{	
-			open_field_map_xz_files(output_dir, interaction, node, i);
+			double current_t = t * dt;
+			open_field_map_xz_files(output_dir, interaction, node, t);
 			
 			for (double x = -output_setting.field_map_size_x/2; x < output_setting.field_map_size_x/2; x += dx)
 			{
 				for (double z = -output_setting.field_map_size_z/2; z < output_setting.field_map_size_z/2; z += dz)
 				{
 					FieldEB field;
-					calculate_fields(C0*current_t, x, 0, z, laser, field, lua_state);
+					calculate_fields(C0*(current_t - trigger_t), x, 0, z, laser, field, lua_state);
 					write_field_maps_xz(current_t, x, 0, z, field);
 				}
 			}
 			close_field_map_xz_files();
-			i++;
 		}
 	}
-	
+
 	if (output_setting.field_map_enable_yz)
 	{
-		i = 0;
-		for (double current_t = start_t; current_t < end_t; current_t += dt)
+		#pragma omp parallel for default(shared)
+		for (int t = 0; t < t_count; t++)
 		{
-			open_field_map_yz_files(output_dir, interaction, node, i);
+			double current_t = t * dt;
+			open_field_map_yz_files(output_dir, interaction, node, t);
 			
 			for (double y = -output_setting.field_map_size_y/2; y < output_setting.field_map_size_y/2; y += dy)
 			{
 				for (double z = -output_setting.field_map_size_z/2; z < output_setting.field_map_size_z/2; z += dz)
 				{
 					FieldEB field;
-					calculate_fields(C0*current_t, 0, y, z, laser, field, lua_state);
+					calculate_fields(C0*(current_t - trigger_t), 0, y, z, laser, field, lua_state);
 					write_field_maps_yz(current_t, 0, y, z, field);
 				}
 			}
 			close_field_map_yz_files();
-			i++;
 		}
 	}
 }	
@@ -408,7 +409,9 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 			close_interaction_files();
 			last_laser_exit_time = time_current;
 			
-			simulate_field_maps(output_setting, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser, lua_state, output_dir);
+			double laser_trigger_time = (last_laser_exit_time - last_laser_enter_time) / 2;
+			
+			simulate_field_maps(output_setting, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, output_dir);
 			
 			
 			plot_interaction_files(output_dir, current_interaction, current_node);

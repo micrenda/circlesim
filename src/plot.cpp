@@ -62,6 +62,7 @@ void make_field_map_video(fs::path output_dir, fs::path file_ct, string plane, u
 	fs::path plot_dir = output_dir / fs::path("plot_field_maps");
 	fs::create_directory(plot_dir);
 	
+	#pragma omp parallel for
 	for (unsigned int t = 0; t <= max_t; t++)
 	{
 		string basename_in  = (bo::format("field_map_%s_i%un%it%u") % plane 	  % interaction % node % t).str();

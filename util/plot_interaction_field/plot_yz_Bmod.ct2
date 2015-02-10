@@ -2,7 +2,7 @@ title 'Magnetic field $|\vec{B}|$'
 text-separator ;
 xyz-map
 new-zaxis zvalues /location right /bar_size=4mm
-plot @'$3:$4:($8*$8 + $9*$9 + $10*$10)**0.5'  /color-map '#edf8e9--#bae4b3--#74c476--#31a354--#006d2c' /zaxis zvalues
+plot @'$3:$4:($8*$8 + $9*$9 + $10*$10)**0.5'  /color-map '#ffffff--#bae4b3--#74c476--#31a354--#006d2c' /zaxis zvalues
 
 xlabel '$x$ [$m$]'
 ylabel '$z$ [$m$]'
