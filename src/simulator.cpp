@@ -304,10 +304,12 @@ void simulate_free(Simulation& simulation, Particle& particle, ParticleState& st
 
 }
 
-void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction, int node, double start_t, double end_t,  double radius, Pulse& laser, lua::State* lua_state, fs::path output_dir)
+void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction, int node, double start_t, double end_t, double trigger_t, Pulse& laser, lua::State* lua_state, fs::path output_dir)
 {
-	double dt = output_setting.field_map_resolution_time;
-	double dr = output_setting.field_map_resolution_space;
+	double dt = output_setting.field_map_resolution_t;
+	double dx = output_setting.field_map_resolution_x;
+	double dy = output_setting.field_map_resolution_y;
+	double dz = output_setting.field_map_resolution_z;
 	
 	unsigned int i;
 	
@@ -318,16 +320,15 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 		{
 			open_field_map_xy_files(output_dir, interaction, node, i);
 				
-			for (double x = -radius; x < 2*radius; x += dr)
+			for (double x = -output_setting.field_map_size_x/2; x < output_setting.field_map_size_x/2; x += dx)
 			{
-				for (double y = -radius; y < 2*radius; y += dr)
+				for (double y = -output_setting.field_map_size_y/2; y < output_setting.field_map_size_y/2; y += dy)
 				{
 					FieldEB field;
 					calculate_fields(C0*current_t, x, y, 0, laser, field, lua_state);
 					write_field_maps_xy(current_t, x, y, 0, field);
 				}
 			}
-			
 			close_field_map_xy_files();
 			i++;
 		}
@@ -340,9 +341,9 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 		{	
 			open_field_map_xz_files(output_dir, interaction, node, i);
 			
-			for (double x = -radius; x < 2*radius; x += dr)
+			for (double x = -output_setting.field_map_size_x/2; x < output_setting.field_map_size_x/2; x += dx)
 			{
-				for (double z = -radius; z < 2*radius; z += dr)
+				for (double z = -output_setting.field_map_size_z/2; z < output_setting.field_map_size_z/2; z += dz)
 				{
 					FieldEB field;
 					calculate_fields(C0*current_t, x, 0, z, laser, field, lua_state);
@@ -361,9 +362,9 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 		{
 			open_field_map_yz_files(output_dir, interaction, node, i);
 			
-			for (double y = -radius; y < 2*radius; y += dr)
+			for (double y = -output_setting.field_map_size_y/2; y < output_setting.field_map_size_y/2; y += dy)
 			{
-				for (double z = -radius; z < 2*radius; z += dr)
+				for (double z = -output_setting.field_map_size_z/2; z < output_setting.field_map_size_z/2; z += dz)
 				{
 					FieldEB field;
 					calculate_fields(C0*current_t, 0, y, z, laser, field, lua_state);
@@ -407,11 +408,11 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 			close_interaction_files();
 			last_laser_exit_time = time_current;
 			
-			simulate_field_maps(output_setting, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time,  simulation.laser_influence_radius, laser, lua_state, output_dir);
+			simulate_field_maps(output_setting, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser, lua_state, output_dir);
 			
 			
 			plot_interaction_files(output_dir, current_interaction, current_node);
-			plot_field_maps(output_dir, current_interaction, current_node);
+			plot_field_maps(output_dir, output_setting, current_interaction, current_node);
 			
 			
 			current_range = FREE;

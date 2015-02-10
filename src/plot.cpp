@@ -101,7 +101,7 @@ void make_field_map_video(fs::path output_dir, fs::path file_ct, string plane, u
 }
 
 
-void plot_field_maps(fs::path output_dir, unsigned int interaction, int node)
+void plot_field_maps(fs::path output_dir, OutputSetting output_setting, unsigned int interaction, int node)
 {
 	
 	fs::path plot_dir = fs::path(exe_path) / fs::path("/util/plot_interaction_field/");

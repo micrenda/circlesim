@@ -102,9 +102,17 @@ typedef struct ParametersStruct
 	bool field_map_enable_xy; 
 	bool field_map_enable_xz;
 	bool field_map_enable_yz;
-
-	double field_map_resolution_time;
-	double field_map_resolution_space;
+	
+	double field_map_resolution_t;
+	double field_map_resolution_x;
+	double field_map_resolution_y;
+	double field_map_resolution_z;
+	
+	double field_map_size_x;
+	double field_map_size_y;
+	double field_map_size_z;
+	
+	bool field_map_stretch;
 
 
 	
@@ -213,8 +221,16 @@ typedef struct OutputSettingStruct
 	bool field_map_enable_xz;
 	bool field_map_enable_yz;
 
-	double field_map_resolution_time;
-	double field_map_resolution_space;
+	double field_map_resolution_t;
+	double field_map_resolution_x;
+	double field_map_resolution_y;
+	double field_map_resolution_z;
+	
+	double field_map_size_x;
+	double field_map_size_y;
+	double field_map_size_z;
+
+	bool field_map_stretch;
 
 } OutputSetting;
 

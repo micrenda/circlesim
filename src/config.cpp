@@ -181,8 +181,16 @@ void read_config(
 		config_output.lookupValue			("field_map_enable_xz",		parameters.field_map_enable_xz)		|| missing_param("field_map_enable_xz");
 		config_output.lookupValue			("field_map_enable_yz",		parameters.field_map_enable_yz)		|| missing_param("field_map_enable_yz");
 		
-		config_output.lookupValue			("field_map_resolution_time",		parameters.field_map_resolution_time)		|| missing_param("field_map_resolution_time");
-		config_output.lookupValue			("field_map_resolution_space",		parameters.field_map_resolution_space)		|| missing_param("field_map_resolution_space");
+		config_output.lookupValue			("field_map_resolution_t",	parameters.field_map_resolution_t)	|| missing_param("field_map_resolution_t");
+		config_output.lookupValue			("field_map_resolution_x",	parameters.field_map_resolution_x)	|| missing_param("field_map_resolution_x");
+		config_output.lookupValue			("field_map_resolution_y",	parameters.field_map_resolution_y)	|| missing_param("field_map_resolution_y");
+		config_output.lookupValue			("field_map_resolution_z",	parameters.field_map_resolution_z)	|| missing_param("field_map_resolution_z");
+		
+		config_output.lookupValue			("field_map_size_x",		parameters.field_map_size_x)		|| missing_param("field_map_size_x");
+		config_output.lookupValue			("field_map_size_y",		parameters.field_map_size_y)		|| missing_param("field_map_size_y");
+		config_output.lookupValue			("field_map_size_z",		parameters.field_map_size_z)		|| missing_param("field_map_size_z");
+		
+		config_output.lookupValue			("field_map_stretch",		parameters.field_map_stretch)		|| missing_param("field_map_stretch");
 	  
 	}
 	catch (ParseException& e)  
@@ -276,8 +284,16 @@ void read_config(
 	output.field_map_enable_xz			= parameters.field_map_enable_xz;
 	output.field_map_enable_yz			= parameters.field_map_enable_yz;
 	
-	output.field_map_resolution_time	= parameters.field_map_resolution_time  / AU_TIME;
-	output.field_map_resolution_space	= parameters.field_map_resolution_space / AU_LENGTH;
+	output.field_map_resolution_t	= parameters.field_map_resolution_t  / AU_TIME;
+	output.field_map_resolution_x	= parameters.field_map_resolution_x  / AU_LENGTH;
+	output.field_map_resolution_y	= parameters.field_map_resolution_y  / AU_LENGTH;
+	output.field_map_resolution_z	= parameters.field_map_resolution_z  / AU_LENGTH;
+	
+	output.field_map_size_x	= parameters.field_map_size_x / AU_LENGTH;
+	output.field_map_size_y	= parameters.field_map_size_y / AU_LENGTH;
+	output.field_map_size_z	= parameters.field_map_size_z / AU_LENGTH;
+	
+	output.field_map_stretch	= parameters.field_map_stretch;
 	 
 	delete config;
 }
