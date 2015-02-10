@@ -53,7 +53,12 @@ void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, Pu
   
   
 	double e1, e2, e3, b1, b2, b3;
-	lua::tie(e1, e2, e3, b1, b2, b3) = (*lua_state)["func_fields"](param_duration, param_time, param_x, param_y, param_z);
+	
+	#pragma omp critical
+	{
+		// Unfortunately LuaState is not thread save, so we must not parallel execute this section of code
+		lua::tie(e1, e2, e3, b1, b2, b3) = (*lua_state)["func_fields"](param_duration, param_time, param_x, param_y, param_z);
+	}
 	
 	field.e_x = e1 / AU_ELECTRIC_FIELD; 
 	field.e_y = e2 / AU_ELECTRIC_FIELD;

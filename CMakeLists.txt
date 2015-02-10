@@ -15,7 +15,7 @@ find_package(Armadillo 												REQUIRED)
 find_package(Lua52     												REQUIRED)
 find_package(OpenMP)
 
-set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -I${CMAKE_SOURCE_DIR}/util/LuaState/include/")
+set(CMAKE_CXX_FLAGS "-O3 -Wall -std=c++11 -I${CMAKE_SOURCE_DIR}/util/LuaState/include/")
 
 if (OPENMP_FOUND)
     set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${OpenMP_C_FLAGS}")
