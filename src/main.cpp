@@ -68,6 +68,7 @@ int main(int argc, char *argv[])
 	static struct option long_options[] = {
 		{"help", 	0, 0, 'h'},
 		{"output", 	1, 0, 'o'},
+		{"threads", 1, 0, 'j'},
 		{"config", 	1, 0, 'c'},
 		{NULL, 0, NULL, 0}
 	};
@@ -104,7 +105,7 @@ int main(int argc, char *argv[])
 	
 	if (cfg_file_orig == fs::path(""))
 	{
-		printf("Please specify the configuration filename using the -c flag\n\n");
+		printf("Please specify the configuration filename using the -c flag\n");
 		exit(-1);
 	}
 
@@ -136,7 +137,13 @@ int main(int argc, char *argv[])
 		printf("WARNING: Unable to find 'ffmpeg' command. The video creation will be disabled.\n");	
 	}
 	
-	omp_set_num_threads(num_threads);
+	if (num_threads >= 1)
+		omp_set_num_threads(num_threads);
+	else
+	{
+		printf("The <num_threads> parameters specified with option -j must be not smaller than 1.\n");
+		exit(-1);
+	}
 	
 	// Create a new lua state
 	lua::State		lua_state;
@@ -146,7 +153,6 @@ int main(int argc, char *argv[])
 	Pulse			laser;
 	Particle		particle;
 	Accellerator 	accellerator;
-	Node*			nodes = NULL; // Array of nodes
 	ParticleState	particle_state;
 	OutputSetting   output_setting;
 	
@@ -162,17 +168,14 @@ int main(int argc, char *argv[])
 		exit(-2);
 	}
 	
-	if(true)
-	{
+	//if(true)
+	//{
 		// Please don't use the parameters variable outside this block
-		Parameters parameters;
+	//	Parameters parameters;
 	
-		read_config(cfg_file_si_tmp, parameters, simulation, output_setting, laser, particle, particle_state, accellerator, nodes, &lua_state);
+		read_config(cfg_file_si_tmp, simulation, output_setting, laser, particle, particle_state, accellerator, &lua_state);
 		
-		nodes = new Node[accellerator.nodes];
-		init_nodes(accellerator, nodes);
-		init_position_and_momentum(parameters, accellerator, particle_state, nodes);
-	}
+	//}
 	
 	
 	// Creating output directory
@@ -202,12 +205,13 @@ int main(int argc, char *argv[])
 	
 	ofstream stream_node;
 	stream_node.open(get_filename_node(output_dir));
-	for (unsigned int n = 0; n < accellerator.nodes; n++)
-		write_node(stream_node, nodes[n]);
+	setup_node(stream_node);
+	for (Node& node: accellerator.nodes)
+		write_node(stream_node, node);
 	stream_node.close();
 	
 	// Executing simulation
-	simulate(simulation, output_setting, laser, particle, particle_state, accellerator, nodes, &lua_state, output_dir);
+	simulate(simulation, output_setting, laser, particle, particle_state, accellerator, &lua_state, output_dir);
 	
 
 }

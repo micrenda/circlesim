@@ -12,7 +12,7 @@ find_package(Boost 		1.55.0 COMPONENTS filesystem system regex	REQUIRED)
 find_package(GSL     												REQUIRED)
 find_package(LibConfig 												REQUIRED)
 find_package(Armadillo 												REQUIRED)
-find_package(Lua52     												REQUIRED)
+find_package(Lua51     												REQUIRED)
 find_package(OpenMP)
 
 set(CMAKE_CXX_FLAGS "-O3 -Wall -std=c++11 -I${CMAKE_SOURCE_DIR}/util/LuaState/include/")

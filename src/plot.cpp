@@ -167,17 +167,36 @@ void plot_field_maps(fs::path output_dir, OutputSetting output_setting, unsigned
 		{		
 			if (fs::is_regular_file(current_iter->status()) )
 			{
-				if (has_xy && bo::regex_match(current_iter->path().filename().string(), e_xy))
+				string filename = current_iter->path().filename().string();
+				if (has_xy && bo::regex_match(filename, e_xy))
 				{
-					make_field_map_video(output_dir, current_iter->path(), "xy", interaction, node, max_t_xy);
+					bool skip = false;
+					
+					for (bo::regex e_skip: output_setting.field_map_xy_skip)
+						skip |= bo::regex_match(filename, e_skip);
+					
+					if (!skip)
+						make_field_map_video(output_dir, current_iter->path(), "xy", interaction, node, max_t_xy);
 				}
 				if (has_xz && bo::regex_match(current_iter->path().filename().string(), e_xz))
 				{
-					make_field_map_video(output_dir, current_iter->path(), "xz", interaction, node, max_t_xz);
+					bool skip = false;
+					
+					for (bo::regex e_skip: output_setting.field_map_xz_skip)
+						skip |= bo::regex_match(filename, e_skip);
+					
+					if (!skip)
+						make_field_map_video(output_dir, current_iter->path(), "xz", interaction, node, max_t_xz);
 				}
 				if (has_yz && bo::regex_match(current_iter->path().filename().string(), e_yz)) 
 				{
-					make_field_map_video(output_dir, current_iter->path(), "yz", interaction, node, max_t_yz);
+					bool skip = false;
+					
+					for (bo::regex e_skip: output_setting.field_map_yz_skip)
+						skip |= bo::regex_match(filename, e_skip);
+					
+					if (!skip)
+						make_field_map_video(output_dir, current_iter->path(), "yz", interaction, node, max_t_yz);
 				}
 			}
 		}

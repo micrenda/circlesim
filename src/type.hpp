@@ -3,6 +3,7 @@
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/regex.hpp>
 #include <LuaState.h>
 #include <armadillo>
 
@@ -68,7 +69,7 @@ typedef struct ParametersStruct
 	double rest_mass;
 	double charge;
 
-	int initial_reference_node;
+	unsigned int initial_reference_node;
 
 	bool has_position_cart;
 	bool has_position_sphe;
@@ -102,6 +103,10 @@ typedef struct ParametersStruct
 	bool field_map_enable_xy; 
 	bool field_map_enable_xz;
 	bool field_map_enable_yz;
+
+	vector<string> field_map_xy_skip;
+	vector<string> field_map_xz_skip;
+	vector<string> field_map_yz_skip;
 	
 	double field_map_resolution_t;
 	double field_map_resolution_x;
@@ -136,13 +141,13 @@ typedef struct PulseStruct
 
 typedef struct FieldEBStruct
 {
-  double e_x;
-  double e_y;
-  double e_z;
-  
-  double b_x;
-  double b_y;
-  double b_z;
+	double e_x;
+	double e_y;
+	double e_z;
+
+	double b_x;
+	double b_y;
+	double b_z;
 } FieldEB;
 
 typedef struct ParticleStruct
@@ -186,9 +191,18 @@ typedef struct ParticleStateStruct
 	double momentum_z;
 } ParticleState;
 
+typedef struct NodeStruct
+{
+	unsigned int	id;
+	long double 	position_x;
+	long double 	position_y;
+	long double 	position_z;
+	mat				axis; 				// Axis rotation 3x3 matrix
+} Node;
+
 typedef struct AccelleratorStruct
 {  
-	unsigned int 	nodes;
+	vector<Node> 	nodes;
 	double 			radius;
 
 	NodeAxisMode	node_axis_mode;
@@ -199,22 +213,17 @@ typedef struct AccelleratorStruct
 	double          timing_value;
 } Accellerator;
 
-typedef struct NodeStruct
-{
-	unsigned int	id;
-	long double 	position_x;
-	long double 	position_y;
-	long double 	position_z;
-	mat				axis; // Axis rotation 3x3 matrix
-	
-	 
-} Node;
+
 
 typedef struct OutputSettingStruct
 {
 	bool field_map_enable_xy; 
 	bool field_map_enable_xz;
 	bool field_map_enable_yz;
+	
+	vector<bo::regex> field_map_xy_skip;
+	vector<bo::regex> field_map_xz_skip;
+	vector<bo::regex> field_map_yz_skip;
 
 	double field_map_resolution_t;
 	double field_map_resolution_x;
