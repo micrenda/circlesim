@@ -143,7 +143,18 @@ int gsl_odeiv_func_free(double t, const double y[], double f[], void *params)
 }
 
 
-void simulate_laser(Simulation& simulation, Pulse& laser, Node& node, Particle& particle, ParticleState& state, long double& time_current, unsigned int interaction, lua::State* lua_state)
+void simulate_laser(
+	Simulation& simulation, 
+	Pulse& laser,
+	Node& node,
+	Particle& particle,
+	ParticleState& state,
+	long double& time_current,
+	unsigned int interaction,
+	lua::State* lua_state,
+	ofstream& stream_particle,
+	ofstream& stream_interaction, 
+	ofstream& stream_particle_field)
 {
 	// Trasforming global coordinates to local coordinates
 	
@@ -202,16 +213,16 @@ void simulate_laser(Simulation& simulation, Pulse& laser, Node& node, Particle& 
 		
 		
 		// Print the particle state (global position)
-		write_particle(time_current, state);
+		write_particle(stream_particle, time_current, state);
 		
 		FieldEB field;
 		// Print the particle interaction (local position, fields, etc)
 		calculate_fields(time_current*C0, y[0], y[1], y[2], laser, field, lua_state);
-		write_interaction(time_current, y[0], y[1], y[2], y[3], y[4], y[5], field);
+		write_interaction(stream_interaction, time_current, y[0], y[1], y[2], y[3], y[4], y[5], field);
 		
 		// print the field in several points
 		calculate_fields(time_current*C0, 0, 0, 0, laser, field, lua_state);
-		write_field(time_current, 0, 0, 0, field);
+		write_particle_field(stream_particle_field, time_current, 0, 0, 0, field);
 		
 		
 		// Checking if we are outside the laser influence radius.
@@ -228,7 +239,7 @@ void simulate_laser(Simulation& simulation, Pulse& laser, Node& node, Particle& 
 }
 
 
-void simulate_free(Simulation& simulation, Particle& particle, ParticleState& state, long double& time_current_p, int nodes_count, Node nodes[], lua::State* lua_state)
+void simulate_free(Simulation& simulation, Particle& particle, ParticleState& state, long double& time_current_p, int nodes_count, Node nodes[], lua::State* lua_state, ofstream& stream_particle)
 {
 	
 	
@@ -292,7 +303,7 @@ void simulate_free(Simulation& simulation, Particle& particle, ParticleState& st
 		state.momentum_z = local_mom_z;
 		
 		// Print the state
-		write_particle(time_current, state);
+		write_particle(stream_particle, time_current, state);
 		
 		// Checking if we are in a range of a laser.
 		if (get_near_node_id(state, nodes_count, nodes, simulation.laser_influence_radius) > 0)
@@ -321,11 +332,14 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 	
 	if (output_setting.field_map_enable_xy)
 	{
-		#pragma omp parallel for default(shared)
+		#pragma omp parallel for
 		for (int t = 0; t < t_count; t++)
 		{
 			double current_t = t * dt;
-			open_field_map_xy_files(output_dir, interaction, node, t);
+			
+			ofstream stream;
+			stream.open(get_filename_field_map_xy(output_dir, interaction, node, t));
+			setup_field_map_xy(stream);
 				
 			for (double x = -output_setting.field_map_size_x/2; x < output_setting.field_map_size_x/2; x += dx)
 			{
@@ -333,20 +347,24 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 				{
 					FieldEB field;
 					calculate_fields(C0*(current_t - trigger_t), x, y, 0, laser, field, lua_state);
-					write_field_maps_xy(current_t, x, y, 0, field);
+					write_field_maps_xy(stream, current_t, x, y, 0, field);
 				}
 			}
-			close_field_map_xy_files();
+			
+			stream.close();
 		}
 	}
 
 	if (output_setting.field_map_enable_xz)
 	{
-		#pragma omp parallel for default(shared)
+		#pragma omp parallel for
 		for (int t = 0; t < t_count; t++)
 		{	
 			double current_t = t * dt;
-			open_field_map_xz_files(output_dir, interaction, node, t);
+			
+			ofstream stream;
+			stream.open(get_filename_field_map_xz(output_dir, interaction, node, t));
+			setup_field_map_xz(stream);
 			
 			for (double x = -output_setting.field_map_size_x/2; x < output_setting.field_map_size_x/2; x += dx)
 			{
@@ -354,20 +372,24 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 				{
 					FieldEB field;
 					calculate_fields(C0*(current_t - trigger_t), x, 0, z, laser, field, lua_state);
-					write_field_maps_xz(current_t, x, 0, z, field);
+					write_field_maps_xz(stream, current_t, x, 0, z, field);
 				}
 			}
-			close_field_map_xz_files();
+			
+			stream.close();
 		}
 	}
 
 	if (output_setting.field_map_enable_yz)
 	{
-		#pragma omp parallel for default(shared)
+		#pragma omp parallel for
 		for (int t = 0; t < t_count; t++)
 		{
 			double current_t = t * dt;
-			open_field_map_yz_files(output_dir, interaction, node, t);
+			
+			ofstream stream;
+			stream.open(get_filename_field_map_yz(output_dir, interaction, node, t));
+			setup_field_map_yz(stream);
 			
 			for (double y = -output_setting.field_map_size_y/2; y < output_setting.field_map_size_y/2; y += dy)
 			{
@@ -375,10 +397,11 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 				{
 					FieldEB field;
 					calculate_fields(C0*(current_t - trigger_t), 0, y, z, laser, field, lua_state);
-					write_field_maps_yz(current_t, 0, y, z, field);
+					write_field_maps_yz(stream, current_t, 0, y, z, field);
 				}
 			}
-			close_field_map_yz_files();
+			
+			stream.close();
 		}
 	}
 }	
@@ -400,6 +423,13 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 	double		  last_laser_enter_time = 0;
 	double		  last_laser_exit_time  = 0;
 	
+	ofstream stream_particle;
+	ofstream stream_interaction;
+	ofstream stream_particle_field;
+	
+	stream_particle.open(get_filename_particle(output_dir));
+	setup_particle(stream_particle);
+	
 	long double time_current = 0;
 	while (time_current < simulation.duration)
 	{
@@ -411,7 +441,9 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 		
 		if (current_range == LASER && new_node < 0 )
 		{
-			close_interaction_files();
+			stream_interaction.close();
+			stream_particle_field.close();
+			
 			last_laser_exit_time = time_current;
 			
 			double laser_trigger_time = (last_laser_exit_time - last_laser_enter_time) / 2;
@@ -419,8 +451,8 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 			simulate_field_maps(output_setting, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, output_dir);
 			
 			
-			plot_interaction_files(output_dir, current_interaction, current_node);
-			plot_field_maps(output_dir, output_setting, current_interaction, current_node);
+			plot_interaction_files	(output_dir, current_interaction, current_node);
+			plot_field_maps			(output_dir, output_setting, current_interaction, current_node);
 			
 			
 			current_range = FREE;
@@ -433,19 +465,41 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 			current_node = new_node; 
 			last_laser_enter_time = time_current;
 			
+			stream_interaction.open   (get_filename_interaction		(output_dir, current_interaction,  current_node));
+			stream_particle_field.open(get_filename_particle_field	(output_dir, current_interaction,  current_node));
 			
-			open_interaction_files(output_dir, current_interaction,  current_node);
+			setup_interaction(stream_interaction);
+			setup_interaction(stream_particle_field);
 		}
 		
 		
 		if (current_range == LASER)
 		{
 			Node& node = nodes[current_node];
-			simulate_laser(simulation, laser, node, particle, particle_state, time_current, current_interaction, lua_state);	
+			simulate_laser(
+				simulation,
+				laser,
+				node,
+				particle,
+				particle_state,
+				time_current,
+				current_interaction,
+				lua_state,
+				stream_particle,
+				stream_interaction, 
+				stream_particle_field);	
 		}
 		else
 		{
-			simulate_free (simulation,         	    particle, particle_state, time_current, accellerator.nodes, nodes,  lua_state);
+			simulate_free(
+				simulation,
+				particle,
+				particle_state,
+				time_current,
+				accellerator.nodes,
+				nodes,
+				lua_state, 
+				stream_particle);
 		}
 	}
 	

@@ -2,6 +2,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <omp.h>
 #include <LuaState.h>
 #include "main.hpp"
 #include "type.hpp"
@@ -18,12 +19,13 @@ void print_help()
 	string exe_name = "circlesim";
 	
     printf("Usage:\n\n");
-    printf("  %s -c <config_file.cfg> [-o <output_dir>]\n", exe_name.c_str());
+    printf("  %s -c <config_file.cfg> [-o <output_dir>] [-j <num_threads>]\n", exe_name.c_str());
     printf("  %s -h\n", exe_name.c_str());
     printf("\n");
-    printf("  -o  --output <output_dir>                Set output directory (default /tmp)\n");
-    printf("  -c  --config <config_file>               Set configuration file\n");
-    printf("  -h  --help                               Print this help menu\n");
+    printf("  -o  --output  <output_dir>                Set output directory (default /tmp)\n");
+    printf("  -c  --config  <config_file>               Set configuration file\n");
+    printf("  -j  --threads <num_threads>               Set how many threads to use (default 1)\n");
+    printf("  -h  --help                                Print this help menu\n");
     printf("\n");
 }
 
@@ -60,6 +62,7 @@ int main(int argc, char *argv[])
 	
 	fs::path cfg_file_orig = fs::path("");
 	fs::path base_dir = fs::current_path();
+	int num_threads = 1;
 
 	int flag;
 	static struct option long_options[] = {
@@ -70,7 +73,7 @@ int main(int argc, char *argv[])
 	};
 	
 	int option_index = 0;
-	while ((flag = getopt_long(argc, argv, "ho:c:", long_options, &option_index)) != -1)
+	while ((flag = getopt_long(argc, argv, "ho:c:j:", long_options, &option_index)) != -1)
 	{
 		switch (flag)
 		{
@@ -79,6 +82,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'c':
 			cfg_file_orig = fs::path(optarg);
+			break;
+		case 'j':
+			num_threads = stoi(optarg);
 			break;
 		case 'h':
 			print_help();
@@ -129,6 +135,8 @@ int main(int argc, char *argv[])
 		ffmpeg_name = "ffmpeg";
 		printf("WARNING: Unable to find 'ffmpeg' command. The video creation will be disabled.\n");	
 	}
+	
+	omp_set_num_threads(num_threads);
 	
 	// Create a new lua state
 	lua::State		lua_state;
@@ -192,17 +200,14 @@ int main(int argc, char *argv[])
 	system(units_txt_cmd.c_str());
 	
 	
-	// Opening output files
-	open_global_files(output_dir);
-	
-	// Writing nodes
+	ofstream stream_node;
+	stream_node.open(get_filename_node(output_dir));
 	for (unsigned int n = 0; n < accellerator.nodes; n++)
-		write_node(nodes[n]);
-	
+		write_node(stream_node, nodes[n]);
+	stream_node.close();
 	
 	// Executing simulation
 	simulate(simulation, output_setting, laser, particle, particle_state, accellerator, nodes, &lua_state, output_dir);
 	
-	// Close output files
-	close_global_files();
+
 }

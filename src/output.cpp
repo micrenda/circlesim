@@ -2,27 +2,11 @@
 #include "util.hpp"
 #include "type.hpp"
 
-ofstream stream_particle;
-ofstream stream_interaction;
-ofstream stream_field;
-ofstream stream_node;
-
-ofstream stream_map_xy;
-ofstream stream_map_xz;
-ofstream stream_map_yz;
-
-void open_global_files(fs::path output_dir)
+void setup_particle(ofstream& stream)
 {
-	stream_particle.open			((output_dir / fs::path("particle.csv")).c_str());
-	stream_node.open				((output_dir / fs::path("node.csv")).c_str());
-
-	stream_particle.setf(ios::scientific);
-	stream_node.setf(ios::scientific);
-	
-	stream_particle.precision(16);
-	stream_node.precision(16);
-	
-	stream_particle 
+	stream.setf(ios::scientific);
+	stream.precision(16);
+	stream
 		<< "#"
 		<< "time" 					<< ";" 
 		<< "position_x" 			<< ";" 
@@ -31,8 +15,13 @@ void open_global_files(fs::path output_dir)
 		<< "momentum_x" 			<< ";"
 		<< "momentum_y" 			<< ";"
 		<< "momentum_z" 			<< endl;
+}
 
-	stream_node 
+void setup_node(ofstream& stream)
+{
+	stream.setf(ios::scientific);
+	stream.precision(16);
+	stream 
 		<< "#"
 		<< "id" 					<< ";" 
 		<< "position_x" 			<< ";" 
@@ -47,21 +36,13 @@ void open_global_files(fs::path output_dir)
 		<< "rot_3_1" 				<< ";"
 		<< "rot_3_2" 				<< ";"
 		<< "rot_3_3" 				<< endl;
-		
 }
 
-void open_interaction_files(fs::path output_dir, unsigned int interaction, int node)
+void setup_interaction(ofstream& stream)
 {
-	stream_interaction.open			((output_dir / fs::path((bo::format("interaction_i%un%d.csv") %  interaction % node).str())).c_str());
-	stream_field.open				((output_dir / fs::path((bo::format("field_i%un%d.csv") %  interaction % node).str())).c_str());
-	
-	stream_interaction.setf(ios::scientific);
-	stream_field.setf(ios::scientific);
-	
-	stream_interaction.precision(16);
-	stream_field.precision(16);
-	
-	stream_interaction 
+	stream.setf(ios::scientific);
+	stream.precision(16);
+	stream 
 		<< "#"
 		<< "time"					<< ";"
 		<< "relative_position_x" 	<< ";" 
@@ -82,8 +63,13 @@ void open_interaction_files(fs::path output_dir, unsigned int interaction, int n
 		<< "field_b_x"			 	<< ";"
 		<< "field_b_y"			 	<< ";"
 		<< "field_b_z"			 	<< endl;
-		
-	stream_field 
+}
+
+void setup_particle_field(ofstream& stream)
+{
+	stream.setf(ios::scientific);
+	stream.precision(16);
+	stream 
 		<< "#"
 		<< "time"					<< ";"
 		<< "relative_position_x" 	<< ";" 
@@ -97,12 +83,11 @@ void open_interaction_files(fs::path output_dir, unsigned int interaction, int n
 		<< "field_b_z"			 	<< endl;
 }
 
-void open_field_map_xy_files(fs::path output_dir, unsigned int interaction, int node, unsigned int t)
+void setup_field_map_xy(ofstream& stream)
 {
-	stream_map_xy.open ((output_dir / fs::path((bo::format("field_map_xy_i%un%dt%u.csv") %  interaction % node % t).str())).c_str());
-	stream_map_xy.setf(ios::scientific);
-	stream_map_xy.precision(16);
-	stream_map_xy 
+	stream.setf(ios::scientific);
+	stream.precision(16);
+	stream 
 		<< "#"
 		<< "time"					<< ";"
 		<< "relative_position_x"	<< ";"
@@ -117,13 +102,11 @@ void open_field_map_xy_files(fs::path output_dir, unsigned int interaction, int 
 }
 
 
-void open_field_map_xz_files(fs::path output_dir, unsigned int interaction, int node, unsigned int t)
+void setup_field_map_xz(ofstream& stream)
 {	
-	
-	stream_map_xz.open ((output_dir / fs::path((bo::format("field_map_xz_i%un%dt%u.csv") %  interaction % node % t).str())).c_str());
-	stream_map_xz.setf(ios::scientific);	
-	stream_map_xz.precision(16);
-	stream_map_xz
+	stream.setf(ios::scientific);	
+	stream.precision(16);
+	stream
 		<< "#"
 		<< "time"					<< ";"
 		<< "relative_position_x"	<< ";"
@@ -135,15 +118,13 @@ void open_field_map_xz_files(fs::path output_dir, unsigned int interaction, int 
 		<< "field_b_x"			 	<< ";"
 		<< "field_b_y"			 	<< ";"
 		<< "field_b_z"			 	<< endl;
-	
 }
 
-void open_field_map_yz_files(fs::path output_dir, unsigned int interaction, int node, unsigned int t)
+void setup_field_map_yz(ofstream& stream)
 {
-	stream_map_yz.open ((output_dir / fs::path((bo::format("field_map_yz_i%un%dt%u.csv") %  interaction % node % t).str())).c_str());
-	stream_map_yz.setf(ios::scientific);
-	stream_map_yz.precision(16);
-	stream_map_yz
+	stream.setf(ios::scientific);
+	stream.precision(16);
+	stream
 		<< "#"
 		<< "time"					<< ";"
 		<< "relative_position_x"	<< ";"
@@ -158,28 +139,62 @@ void open_field_map_yz_files(fs::path output_dir, unsigned int interaction, int 
 }
 
 
-void write_particle(double current_time, ParticleState& state)
+string get_filename_particle(fs::path output_dir)
 {
-	stream_particle.precision(16);
-	stream_particle 
+	return (output_dir / fs::path("particle.csv")).string();
+}
+
+string get_filename_node(fs::path output_dir)
+{
+	return (output_dir / fs::path("node.csv")).string();
+}
+
+string get_filename_interaction(fs::path output_dir, unsigned int interaction, int node)
+{
+	return (output_dir / fs::path((bo::format("interaction_i%un%d.csv") %  interaction % node).str())).string();
+}
+
+string get_filename_particle_field(fs::path output_dir, unsigned int interaction, int node)
+{
+	return (output_dir / fs::path((bo::format("particle_field_i%un%d.csv") %  interaction % node).str())).string();
+}
+
+string get_filename_field_map_xy(fs::path output_dir, unsigned int interaction, int node, unsigned int t)
+{
+	return ((output_dir / fs::path((bo::format("field_map_xy_i%un%dt%u.csv") %  interaction % node % t).str())).c_str());
+}
+
+string get_filename_field_map_xz(fs::path output_dir, unsigned int interaction, int node, unsigned int t)
+{	
+	return (output_dir / fs::path((bo::format("field_map_xz_i%un%dt%u.csv") %  interaction % node % t).str())).string();
+}
+
+string get_filename_field_map_yz(fs::path output_dir, unsigned int interaction, int node, unsigned int t)
+{
+	return (output_dir / fs::path((bo::format("field_map_yz_i%un%dt%u.csv") %  interaction % node % t).str())).string();
+}
+
+void write_particle(ofstream& stream, double current_time, ParticleState& state)
+{
+	stream.precision(16);
+	stream 
 		<< current_time		* AU_TIME		<< ";";
 		
-	stream_particle.precision(20);
-	stream_particle 
+	stream.precision(20);
+	stream 
 		<< state.position_x	* AU_LENGTH		<< ";" 
 		<< state.position_y	* AU_LENGTH		<< ";" 
 		<< state.position_z	* AU_LENGTH		<< ";";
 		
-	stream_particle.precision(16);
-	stream_particle  
+	stream.precision(16);
+	stream  
 		<< state.momentum_x * AU_MOMENTUM	<< ";"
 		<< state.momentum_y	* AU_MOMENTUM	<< ";"
 		<< state.momentum_z * AU_MOMENTUM	<< endl;
-		
-		stream_particle.flush();
 }
 
 void write_interaction(
+	ofstream& stream, 
 	double current_time, 
 	double rel_pos_x, 
 	double rel_pos_y, 
@@ -205,7 +220,7 @@ void write_interaction(
 	rel_mom_rho = vector_module(rel_mom_x, rel_mom_y, rel_mom_z);
 	cartesian_to_spherical(rel_mom_x, rel_mom_y, rel_mom_z, rel_mom_theta, rel_mom_phi);
 	
-	stream_interaction
+	stream
 		<< current_time	* AU_TIME			<< ";"
 		<< rel_pos_x    * AU_LENGTH 		<< ";" 
 		<< rel_pos_y    * AU_LENGTH 		<< ";" 
@@ -226,18 +241,17 @@ void write_interaction(
 		<< field.b_y 	* AU_MAGNETIC_FIELD	<< ";"
 		<< field.b_z 	* AU_MAGNETIC_FIELD	<< ";"
 		<< rel_mom_phi 						<< endl;
-		
-		stream_interaction.flush();
 }
 
-void write_field(
+void write_particle_field(
+	ofstream& stream, 
 	double current_time, 
 	double rel_pos_x, 
 	double rel_pos_y, 
 	double rel_pos_z, 
 	FieldEB& field)
 {
-	stream_field
+	stream
 		<< current_time	* AU_TIME			<< ";"
 		<< rel_pos_x    * AU_LENGTH 		<< ";" 
 		<< rel_pos_y    * AU_LENGTH 		<< ";" 
@@ -248,13 +262,11 @@ void write_field(
 		<< field.b_x 	* AU_MAGNETIC_FIELD	<< ";"
 		<< field.b_y 	* AU_MAGNETIC_FIELD	<< ";"
 		<< field.b_z 	* AU_MAGNETIC_FIELD	<< endl;
-		
-		stream_field.flush();
 }
 
-void write_node(Node& node)
+void write_node(ofstream& stream, Node& node)
 {
-	stream_node 
+	stream 
 		<< node.id 						<< ";" 
 		<< node.position_x * AU_LENGTH	<< ";" 
 		<< node.position_y * AU_LENGTH	<< ";" 
@@ -270,9 +282,9 @@ void write_node(Node& node)
 		<< node.axis(2,2)				<< endl;
 }
 
-void write_field_maps_xy(double time, double position_x, double position_y, double position_z, FieldEB& field)
+void write_field_maps_xy(ofstream& stream, double time, double position_x, double position_y, double position_z, FieldEB& field)
 {
-	stream_map_xy 
+	stream 
 		<< time			* AU_TIME			<< ";" 
 		<< position_x	* AU_LENGTH			<< ";" 
 		<< position_y	* AU_LENGTH			<< ";" 
@@ -285,9 +297,9 @@ void write_field_maps_xy(double time, double position_x, double position_y, doub
 		<< field.b_z	* AU_MAGNETIC_FIELD	<< endl;
 }
 
-void write_field_maps_xz(double time, double position_x, double position_y, double position_z, FieldEB& field)
+void write_field_maps_xz(ofstream& stream, double time, double position_x, double position_y, double position_z, FieldEB& field)
 {
-	stream_map_xz 
+	stream 
 		<< time			* AU_TIME			<< ";" 
 		<< position_x	* AU_LENGTH			<< ";" 
 		<< position_y	* AU_LENGTH			<< ";" 
@@ -300,9 +312,9 @@ void write_field_maps_xz(double time, double position_x, double position_y, doub
 		<< field.b_z	* AU_MAGNETIC_FIELD	<< endl;
 }
 
-void write_field_maps_yz(double time, double position_x, double position_y, double position_z, FieldEB& field)
+void write_field_maps_yz(ofstream& stream, double time, double position_x, double position_y, double position_z, FieldEB& field)
 {
-	stream_map_yz 
+	stream 
 		<< time			* AU_TIME			<< ";" 
 		<< position_x	* AU_LENGTH			<< ";" 
 		<< position_y	* AU_LENGTH			<< ";" 
@@ -313,31 +325,4 @@ void write_field_maps_yz(double time, double position_x, double position_y, doub
 		<< field.b_x	* AU_MAGNETIC_FIELD	<< ";" 
 		<< field.b_y	* AU_MAGNETIC_FIELD	<< ";"
 		<< field.b_z	* AU_MAGNETIC_FIELD	<< endl;
-}
-
-void close_interaction_files()
-{
-	stream_interaction.close();
-	stream_field.close();
-}
-
-void close_global_files()
-{
-	stream_particle.close();
-	stream_node.close();
-}
-
-void close_field_map_xy_files()
-{
-	stream_map_xy.close();
-}
-
-void close_field_map_xz_files()
-{
-	stream_map_xz.close();
-}
-
-void close_field_map_yz_files()
-{
-	stream_map_yz.close();
 }

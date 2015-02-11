@@ -1,22 +1,25 @@
 #include "type.hpp"
 
-void open_global_files(fs::path output_dir);
-void open_interaction_files(fs::path output_dir, unsigned int interaction, int node);
-void open_field_map_xy_files(fs::path output_dir, unsigned int interaction, int node, unsigned int t);
-void open_field_map_xz_files(fs::path output_dir, unsigned int interaction, int node, unsigned int t);
-void open_field_map_yz_files(fs::path output_dir, unsigned int interaction, int node, unsigned int t);
+void setup_particle			(ofstream& stream);
+void setup_node				(ofstream& stream);
+void setup_interaction		(ofstream& stream);
+void setup_particle_field	(ofstream& stream);
+void setup_field_map_xy		(ofstream& stream);
+void setup_field_map_xz		(ofstream& stream);
+void setup_field_map_yz		(ofstream& stream);
 
-void write_node(Node& node);
-void write_particle(double current_time, ParticleState& state);
-void write_interaction(double time_current,	double rel_pos_x, double rel_pos_y, double rel_pos_z, double rel_mom_x, double rel_mom_y, double rel_mom_z,	FieldEB& field);
-void write_field(double current_time, double rel_pos_x,  double rel_pos_y,  double rel_pos_z,  FieldEB& field);
+string get_filename_particle		(fs::path output_dir);
+string get_filename_node			(fs::path output_dir);
+string get_filename_interaction		(fs::path output_dir, unsigned int interaction, int node);
+string get_filename_particle_field	(fs::path output_dir, unsigned int interaction, int node);
+string get_filename_field_map_xy	(fs::path output_dir, unsigned int interaction, int node, unsigned int t);
+string get_filename_field_map_xz	(fs::path output_dir, unsigned int interaction, int node, unsigned int t);
+string get_filename_field_map_yz	(fs::path output_dir, unsigned int interaction, int node, unsigned int t);
 
-void write_field_maps_xy(double time, double position_x, double position_y, double position_z, FieldEB& field);
-void write_field_maps_xz(double time, double position_x, double position_y, double position_z, FieldEB& field);
-void write_field_maps_yz(double time, double position_x, double position_y, double position_z, FieldEB& field);
-
-void close_interaction_files();
-void close_global_files();
-void close_field_map_xy_files();
-void close_field_map_xz_files();
-void close_field_map_yz_files();
+void write_particle			(ofstream& stream, double current_time, ParticleState& state);
+void write_interaction		(ofstream& stream, double current_time, double rel_pos_x, double rel_pos_y, double rel_pos_z, double rel_mom_x, double rel_mom_y, double rel_mom_z, FieldEB& field);
+void write_particle_field	(ofstream& stream, double current_time, double rel_pos_x, double rel_pos_y, double rel_pos_z, FieldEB& field);
+void write_node				(ofstream& stream, Node& node);
+void write_field_maps_xy	(ofstream& stream, double time, double position_x, double position_y, double position_z, FieldEB& field);
+void write_field_maps_xz	(ofstream& stream, double time, double position_x, double position_y, double position_z, FieldEB& field);
+void write_field_maps_yz	(ofstream& stream, double time, double position_x, double position_y, double position_z, FieldEB& field);
