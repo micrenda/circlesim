@@ -475,7 +475,7 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 		
 		if (current_range == LASER)
 		{
-			Node& node = nodes[current_node];
+			Node& node = accellerator.nodes[current_node];
 			simulate_laser(
 				simulation,
 				laser,
