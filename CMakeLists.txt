@@ -8,7 +8,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 #for finding external libraries. 
 #see /usr/share/cmake-2.8/Modules/Find*.cmake for more examples
 
-find_package(Boost      1.41.0 COMPONENTS filesystem system regex   REQUIRED)
+find_package(Boost      1.55.0 COMPONENTS filesystem system regex   REQUIRED)
 find_package(GSL                                                    REQUIRED)
 find_package(LibConfig                                              REQUIRED)
 find_package(Armadillo                                              REQUIRED)
