@@ -3,7 +3,8 @@
 #include <LuaState.h>
 #include <boost/regex.hpp>
 #include <boost/unordered_map.hpp>
-#include <boost/io/detail/quoted_manip.hpp>
+#include <boost/algorithm/string.hpp>
+#include <algorithm>
 #include "config.hpp"
 #include "type.hpp"
 #include "util.hpp"
@@ -423,8 +424,12 @@ void read_config(
 		s += (bo::format("    % -12s\t= %l\n") 		% entry->first % entry->second).str();
 	for (bo::unordered_map<string,double>::iterator	entry = laser_field_param_map_float.begin(); entry != laser_field_param_map_float.end(); ++entry) 
 		s += (bo::format("    % -12s\t= %.16E\n") 	% entry->first % entry->second).str();
-	for (bo::unordered_map<string,string>::iterator	entry = laser_field_param_map_string.begin(); entry != laser_field_param_map_string.end(); ++entry) 
-		s += (bo::format("    % -12s\t= %s\n") 		% entry->first %  bo::io::quoted(entry->second)).str();
+	for (bo::unordered_map<string,string>::iterator	entry = laser_field_param_map_string.begin(); entry != laser_field_param_map_string.end(); ++entry)
+	{
+		string value = entry->second;
+		bo::replace_all(value, "\"", "\\\"");
+		s += (bo::format("    % -12s\t= %s\n") 		% entry->first % value).str();
+	}
 	for (bo::unordered_map<string,bool>::iterator	entry = laser_field_param_map_boolean.begin(); entry != laser_field_param_map_boolean.end(); ++entry) 
 		s += (bo::format("    % -12s\t= %s\n") 		% entry->first % (entry->second ? "true" : "false")).str();
 	s += "    -- completed\n\n";
