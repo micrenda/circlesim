@@ -17,11 +17,11 @@ bool is_in_influence_radius(ParticleState& state, Node& node, double laser_influ
 			state.position_z - node.position_z) <= laser_influence_radius;
 }
 
-int get_near_node_id(ParticleState& state, int nodes_count, Node nodes[], double laser_influence_radius)
+int get_near_node_id(ParticleState& state, Accellerator accellerator, double laser_influence_radius)
 {
-	for (int r = 0; r < nodes_count; r++)
+	for (unsigned int r = 0; r < accellerator.nodes.size(); r++)
 	{
-		Node& node = nodes[r];
+		Node& node = accellerator.nodes[r];
 		
 		if (is_in_influence_radius(state, node, laser_influence_radius))
 			return r;
@@ -239,7 +239,7 @@ void simulate_laser(
 }
 
 
-void simulate_free(Simulation& simulation, Particle& particle, ParticleState& state, long double& time_current_p, int nodes_count, Node nodes[], lua::State* lua_state, ofstream& stream_particle)
+void simulate_free(Simulation& simulation, Accellerator& accellerator, Particle& particle, ParticleState& state, long double& time_current_p, lua::State* lua_state, ofstream& stream_particle)
 {
 	
 	
@@ -306,7 +306,7 @@ void simulate_free(Simulation& simulation, Particle& particle, ParticleState& st
 		write_particle(stream_particle, time_current, state);
 		
 		// Checking if we are in a range of a laser.
-		if (get_near_node_id(state, nodes_count, nodes, simulation.laser_influence_radius) > 0)
+		if (get_near_node_id(state, accellerator, simulation.laser_influence_radius) > 0)
 			break;
 		
 	}
@@ -407,7 +407,7 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 }	
 
 
-void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& laser, Particle& particle, ParticleState& particle_state, Accellerator& accellerator, Node nodes[], lua::State* lua_state, fs::path& output_dir)
+void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& laser, Particle& particle, ParticleState& particle_state, Accellerator& accellerator, lua::State* lua_state, fs::path& output_dir)
 {
 	
 	printf("Simulation duration: %f s\n", simulation.duration * AU_TIME);
@@ -437,7 +437,7 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 		
 		// Identifing if our particle is inside the laser action range or outside.
 		// If outside we use the free motion laws, if inside we calculate the integration between the laser and the particle	
-		int new_node = get_near_node_id(particle_state, accellerator.nodes, nodes, simulation.laser_influence_radius);
+		int new_node = get_near_node_id(particle_state, accellerator, simulation.laser_influence_radius);
 		
 		if (current_range == LASER && new_node < 0 )
 		{
@@ -493,11 +493,10 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 		{
 			simulate_free(
 				simulation,
+				accellerator,
 				particle,
 				particle_state,
 				time_current,
-				accellerator.nodes,
-				nodes,
 				lua_state, 
 				stream_particle);
 		}

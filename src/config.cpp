@@ -42,18 +42,204 @@ bool wrong_param(string param, string message)
 	return true;
 }
 
+
+void init_nodes(Accellerator& accellerator)
+{
+	unsigned int n = 0;
+	for (Node& node: accellerator.nodes)
+	{
+		node.position_x = accellerator.radius * sin(2 * M_PI * n / accellerator.nodes.size());
+		node.position_y = accellerator.radius * cos(2 * M_PI * n / accellerator.nodes.size());
+		node.position_z = 0;
+		
+		
+		double theta	= 0; 
+		double phi		= 0;
+		
+		if (accellerator.node_axis_rotate_theta)
+			theta = +2 * M_PI * n / accellerator.nodes.size();
+		if (accellerator.node_axis_rotate_phi)
+			theta = -2 * M_PI * n / accellerator.nodes.size();
+		
+		mat versors = zeros<mat>(3,3);
+		
+		switch (accellerator.node_axis_mode)
+		{
+			case MODE_P:
+				versors(0,0) =  1; 
+				versors(1,0) =  0; 
+				versors(2,0) =  0;
+				
+				versors(0,1) =  0; 
+				versors(1,1) =  1; 
+				versors(2,1) =  0;
+				
+				versors(0,2) =  0; 
+				versors(1,2) =  0; 
+				versors(2,2) =  1;
+			break;
+			
+			
+			case MODE_T_FW:
+				versors(0,0) =  0; 
+				versors(1,0) =  1; 
+				versors(2,0) =  0;
+				
+				versors(0,1) =  0; 
+				versors(1,1) =  0; 
+				versors(2,1) =  1;
+				
+				versors(0,2) =  1; 
+				versors(1,2) =  0; 
+				versors(2,2) =  0;
+			break;
+			
+			case MODE_T_BW:
+				versors(0,0) =  0; 
+				versors(1,0) = -1; 
+				versors(2,0) =  0;
+				
+				versors(0,1) =  0; 
+				versors(1,1) =  0; 
+				versors(2,1) =  1;
+				
+				versors(0,2) = -1; 
+				versors(1,2) =  0; 
+				versors(2,2) =  0;
+			break;
+
+		}
+		
+		rotate_spherical(versors(0,0), versors(1,0), versors(2,0), theta, phi);
+		rotate_spherical(versors(0,1), versors(1,1), versors(2,1), theta, phi);
+		rotate_spherical(versors(0,2), versors(1,2), versors(2,2), theta, phi);
+		
+		// setting to zero all the versor components where abs(v) < 1E-15
+		// We do this because these values are likely created by cos(π/2) != 0 and sin(0) != 0functions and
+   
+		if (abs(versors(0,0)) < 1E-15)  versors(0,0) =  0; 
+		if (abs(versors(1,0)) < 1E-15)  versors(1,0) =  0; 
+		if (abs(versors(2,0)) < 1E-15)  versors(2,0) =  0; 
+		if (abs(versors(0,1)) < 1E-15)  versors(0,1) =  0; 
+		if (abs(versors(1,1)) < 1E-15)  versors(1,1) =  0; 
+		if (abs(versors(2,1)) < 1E-15)  versors(2,1) =  0; 
+		if (abs(versors(0,2)) < 1E-15)  versors(0,2) =  0; 
+		if (abs(versors(1,2)) < 1E-15)  versors(1,2) =  0; 
+		if (abs(versors(2,2)) < 1E-15)  versors(2,2) =  0; 
+			
+		
+		node.axis = versors;
+		
+#ifdef DEBUG_NODE_VERSORS
+		printf("Node %d\n", node.id);
+		node.axis.print("local versors:");
+		printf("\n\n");
+#endif
+
+		n++;
+	}
+}
+
+
+void init_position_and_momentum(Parameters& parameters, Accellerator& accellerator, ParticleState& particle_state)
+{
+	// Setting the position of the particle relative to selected node
+	
+	if (parameters.initial_reference_node < 0 || parameters.initial_reference_node >= accellerator.nodes.size())
+	{
+		wrong_param("initial_reference_node", "Invalid node index\n");
+	}
+		
+	Node& first_node = accellerator.nodes[parameters.initial_reference_node];
+	
+	
+	// Initializing POSITION 
+	double rel_pos_x;
+	double rel_pos_y;
+	double rel_pos_z;
+	
+	if (parameters.has_position_sphe && parameters.has_position_cart)
+	{
+		wrong_param("initial_position", "You must to specify one of spherical or cartesian position. You can not specify both.\n");
+	}
+	else if (parameters.has_position_sphe)
+	{
+
+		spherical_to_cartesian(
+			parameters.initial_position_module,
+			parameters.initial_position_theta,
+			parameters.initial_position_phi,
+			rel_pos_x,
+			rel_pos_y,
+			rel_pos_z);
+		
+		
+		rotate_spherical(rel_pos_x, rel_pos_y, rel_pos_z, parameters.initial_position_theta, parameters.initial_position_phi);
+		
+	}
+	else if (parameters.has_position_cart)
+	{
+		rel_pos_x	= parameters.initial_position_x / AU_LENGTH;
+		rel_pos_y	= parameters.initial_position_y / AU_LENGTH;
+		rel_pos_z	= parameters.initial_position_z / AU_LENGTH;
+	}
+	else
+	{
+		wrong_param("initial_position", "You must to specify an initial position (cartesian or spherical).\n");
+	}
+	
+	
+	// Initializing MOMENTUM 
+	double rel_mom_x;
+	double rel_mom_y;
+	double rel_mom_z;
+	
+	if (parameters.has_momentum_sphe && parameters.has_momentum_cart)
+	{
+		wrong_param("initial_momentum", "You must to specify one of spherical or cartesian momentum. You can not specify both.\n");
+	}
+	else if (parameters.has_momentum_sphe)
+	{
+		spherical_to_cartesian(
+			parameters.initial_momentum_module,
+			parameters.initial_momentum_theta,
+			parameters.initial_momentum_phi,
+			rel_mom_x,
+			rel_mom_y,
+			rel_mom_z);
+			
+		rotate_spherical(rel_mom_x, rel_mom_y, rel_mom_z, parameters.initial_momentum_theta, parameters.initial_momentum_phi);
+	}
+	else if (parameters.has_momentum_cart)
+	{
+		rel_mom_x	= parameters.initial_momentum_x / AU_MOMENTUM;
+		rel_mom_y	= parameters.initial_momentum_y / AU_MOMENTUM;
+		rel_mom_z	= parameters.initial_momentum_z / AU_MOMENTUM;
+	}
+	else
+	{
+		wrong_param("initial_momentum", "You must to specify an initial momentum (cartesian or spherical).\n");
+	}	
+		
+		
+		
+	
+	// Converting to global state
+	state_local_to_global(particle_state, first_node, rel_pos_x, rel_pos_y, rel_pos_z, rel_mom_x, rel_mom_y, rel_mom_z);
+}
+
 void read_config(
 	fs::path& cfg_file,
-	Parameters& parameters,
 	Simulation& simulation,
 	OutputSetting& output,
 	Pulse& laser,
 	Particle& particle,
 	ParticleState& particle_state,
 	Accellerator& accellerator,
-	Node nodes[], 
 	lua::State* lua_state)
 {
+	Parameters parameters;
+	
 	Config* config = new Config;
 	
 	
@@ -181,6 +367,18 @@ void read_config(
 		config_output.lookupValue			("field_map_enable_xz",		parameters.field_map_enable_xz)		|| missing_param("field_map_enable_xz");
 		config_output.lookupValue			("field_map_enable_yz",		parameters.field_map_enable_yz)		|| missing_param("field_map_enable_yz");
 		
+		
+		Setting& field_map_xy_skip = config_output["field_map_xy_skip"];
+		Setting& field_map_xz_skip = config_output["field_map_xz_skip"];
+		Setting& field_map_yz_skip = config_output["field_map_yz_skip"];
+		
+		for (int i = 0; i < field_map_xy_skip.getLength(); i++)
+			parameters.field_map_xy_skip.push_back(field_map_xy_skip[i]);
+		for (int i = 0; i < field_map_xz_skip.getLength(); i++)
+			parameters.field_map_xz_skip.push_back(field_map_xz_skip[i]);
+		for (int i = 0; i < field_map_yz_skip.getLength(); i++)
+			parameters.field_map_yz_skip.push_back(field_map_yz_skip[i]);
+		
 		config_output.lookupValue			("field_map_resolution_t",	parameters.field_map_resolution_t)	|| missing_param("field_map_resolution_t");
 		config_output.lookupValue			("field_map_resolution_x",	parameters.field_map_resolution_x)	|| missing_param("field_map_resolution_x");
 		config_output.lookupValue			("field_map_resolution_y",	parameters.field_map_resolution_y)	|| missing_param("field_map_resolution_y");
@@ -251,8 +449,16 @@ void read_config(
 	particle.rest_mass 					= parameters.rest_mass 				/ AU_MASS;
 	particle.charge 					= parameters.charge    				/ AU_CHARGE;
 	
-	accellerator.nodes					= parameters.nodes;
 	accellerator.radius					= parameters.radius 				/ AU_LENGTH;
+	
+	
+	for (unsigned int n = 0; n < parameters.nodes; n++)
+	{ 
+		Node node = Node();
+		accellerator.nodes.push_back(node);
+		node.id = n;
+	}
+
 	
 	if (ba::iequals(parameters.node_axis_mode, 			"MODE_P")) 
 		accellerator.node_axis_mode 	= MODE_P;
@@ -276,11 +482,18 @@ void read_config(
 	else
 		accellerator.timing_mode = CONSTANT;
 	
-	accellerator.timing_value			= parameters.timing_value;
+	accellerator.timing_value	= parameters.timing_value;
 	
-	output.field_map_enable_xy			= parameters.field_map_enable_xy;
-	output.field_map_enable_xz			= parameters.field_map_enable_xz;
-	output.field_map_enable_yz			= parameters.field_map_enable_yz;
+	output.field_map_enable_xy	= parameters.field_map_enable_xy;
+	output.field_map_enable_xz	= parameters.field_map_enable_xz;
+	output.field_map_enable_yz	= parameters.field_map_enable_yz;
+	
+	for (string skip: parameters.field_map_xy_skip)
+		output.field_map_xy_skip.push_back(bo::regex(skip));
+	for (string skip: parameters.field_map_xz_skip)
+		output.field_map_xz_skip.push_back(bo::regex(skip));
+	for (string skip: parameters.field_map_yz_skip)
+		output.field_map_yz_skip.push_back(bo::regex(skip));
 	
 	output.field_map_resolution_t	= parameters.field_map_resolution_t  / AU_TIME;
 	output.field_map_resolution_x	= parameters.field_map_resolution_x  / AU_LENGTH;
@@ -292,193 +505,7 @@ void read_config(
 	output.field_map_size_z	= parameters.field_map_size_z / AU_LENGTH;
 
 	delete config;
-}
-
-
-void init_nodes(Accellerator& accellerator, Node nodes[])
-{
 	
-	for (unsigned int n = 0; n < accellerator.nodes; n++)
-	{
-		Node& node = nodes[n];
-		
-		node.id = n;
-		
-		node.position_x = accellerator.radius * sin(2 * M_PI * n / accellerator.nodes);
-		node.position_y = accellerator.radius * cos(2 * M_PI * n / accellerator.nodes);
-		node.position_z = 0;
-		
-		
-		double theta	= 0; 
-		double phi		= 0;
-		
-		if (accellerator.node_axis_rotate_theta)
-			theta = +2 * M_PI * n / accellerator.nodes;
-		if (accellerator.node_axis_rotate_phi)
-			theta = -2 * M_PI * n / accellerator.nodes;
-		
-		mat versors = zeros<mat>(3,3);
-		
-		switch (accellerator.node_axis_mode)
-		{
-			case MODE_P:
-				versors(0,0) =  1; 
-				versors(1,0) =  0; 
-				versors(2,0) =  0;
-				
-				versors(0,1) =  0; 
-				versors(1,1) =  1; 
-				versors(2,1) =  0;
-				
-				versors(0,2) =  0; 
-				versors(1,2) =  0; 
-				versors(2,2) =  1;
-			break;
-			
-			
-			case MODE_T_FW:
-				versors(0,0) =  0; 
-				versors(1,0) =  1; 
-				versors(2,0) =  0;
-				
-				versors(0,1) =  0; 
-				versors(1,1) =  0; 
-				versors(2,1) =  1;
-				
-				versors(0,2) =  1; 
-				versors(1,2) =  0; 
-				versors(2,2) =  0;
-			break;
-			
-			case MODE_T_BW:
-				versors(0,0) =  0; 
-				versors(1,0) = -1; 
-				versors(2,0) =  0;
-				
-				versors(0,1) =  0; 
-				versors(1,1) =  0; 
-				versors(2,1) =  1;
-				
-				versors(0,2) = -1; 
-				versors(1,2) =  0; 
-				versors(2,2) =  0;
-			break;
-
-		}
-		
-		rotate_spherical(versors(0,0), versors(1,0), versors(2,0), theta, phi);
-		rotate_spherical(versors(0,1), versors(1,1), versors(2,1), theta, phi);
-		rotate_spherical(versors(0,2), versors(1,2), versors(2,2), theta, phi);
-		
-		// setting to zero all the versor components where abs(v) < 1E-15
-		// We do this because these values are likely created by cos(π/2) != 0 and sin(0) != 0functions and
-   
-		if (abs(versors(0,0)) < 1E-15)  versors(0,0) =  0; 
-		if (abs(versors(1,0)) < 1E-15)  versors(1,0) =  0; 
-		if (abs(versors(2,0)) < 1E-15)  versors(2,0) =  0; 
-		if (abs(versors(0,1)) < 1E-15)  versors(0,1) =  0; 
-		if (abs(versors(1,1)) < 1E-15)  versors(1,1) =  0; 
-		if (abs(versors(2,1)) < 1E-15)  versors(2,1) =  0; 
-		if (abs(versors(0,2)) < 1E-15)  versors(0,2) =  0; 
-		if (abs(versors(1,2)) < 1E-15)  versors(1,2) =  0; 
-		if (abs(versors(2,2)) < 1E-15)  versors(2,2) =  0; 
-			
-		
-		node.axis = versors;
-		
-#ifdef DEBUG_NODE_VERSORS
-		printf("Node %d\n", node.id);
-		node.axis.print("local versors:");
-		printf("\n\n");
-#endif
-
-	}
-}
-
-
-void init_position_and_momentum(Parameters& parameters, Accellerator& accellerator, ParticleState& particle_state, Node nodes[])
-{
-	// Setting the position of the particle relative to selected node
-	
-	if (parameters.initial_reference_node < 0 || parameters.initial_reference_node >= (int)accellerator.nodes)
-	{
-		wrong_param("initial_reference_node", "Invalid node index\n");
-	}
-		
-	Node& first_node = nodes[parameters.initial_reference_node];
-	
-	
-	// Initializing POSITION 
-	double rel_pos_x;
-	double rel_pos_y;
-	double rel_pos_z;
-	
-	if (parameters.has_position_sphe && parameters.has_position_cart)
-	{
-		wrong_param("initial_position", "You must to specify one of spherical or cartesian position. You can not specify both.\n");
-	}
-	else if (parameters.has_position_sphe)
-	{
-
-		spherical_to_cartesian(
-			parameters.initial_position_module,
-			parameters.initial_position_theta,
-			parameters.initial_position_phi,
-			rel_pos_x,
-			rel_pos_y,
-			rel_pos_z);
-		
-		
-		rotate_spherical(rel_pos_x, rel_pos_y, rel_pos_z, parameters.initial_position_theta, parameters.initial_position_phi);
-		
-	}
-	else if (parameters.has_position_cart)
-	{
-		rel_pos_x	= parameters.initial_position_x / AU_LENGTH;
-		rel_pos_y	= parameters.initial_position_y / AU_LENGTH;
-		rel_pos_z	= parameters.initial_position_z / AU_LENGTH;
-	}
-	else
-	{
-		wrong_param("initial_position", "You must to specify an initial position (cartesian or spherical).\n");
-	}
-	
-	
-	// Initializing MOMENTUM 
-	double rel_mom_x;
-	double rel_mom_y;
-	double rel_mom_z;
-	
-	if (parameters.has_momentum_sphe && parameters.has_momentum_cart)
-	{
-		wrong_param("initial_momentum", "You must to specify one of spherical or cartesian momentum. You can not specify both.\n");
-	}
-	else if (parameters.has_momentum_sphe)
-	{
-		spherical_to_cartesian(
-			parameters.initial_momentum_module,
-			parameters.initial_momentum_theta,
-			parameters.initial_momentum_phi,
-			rel_mom_x,
-			rel_mom_y,
-			rel_mom_z);
-			
-		rotate_spherical(rel_mom_x, rel_mom_y, rel_mom_z, parameters.initial_momentum_theta, parameters.initial_momentum_phi);
-	}
-	else if (parameters.has_momentum_cart)
-	{
-		rel_mom_x	= parameters.initial_momentum_x / AU_MOMENTUM;
-		rel_mom_y	= parameters.initial_momentum_y / AU_MOMENTUM;
-		rel_mom_z	= parameters.initial_momentum_z / AU_MOMENTUM;
-	}
-	else
-	{
-		wrong_param("initial_momentum", "You must to specify an initial momentum (cartesian or spherical).\n");
-	}	
-		
-		
-		
-	
-	// Converting to global state
-	state_local_to_global(particle_state, first_node, rel_pos_x, rel_pos_y, rel_pos_z, rel_mom_x, rel_mom_y, rel_mom_z);
+	init_nodes(accellerator);
+	init_position_and_momentum(parameters, accellerator, particle_state);
 }
