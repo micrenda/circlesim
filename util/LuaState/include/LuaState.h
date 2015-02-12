@@ -31,7 +31,7 @@
 #include <cstring>
 #include <cmath>
 
-#include <lua5.1/lua.hpp>
+#include <lua.hpp>
 
 #include "./Traits.h"
 
