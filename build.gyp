@@ -17,7 +17,7 @@
 			],
 			
 			'include_dirs': ['util/LuaState/include/'],
-			'libraries'	  : ['-fopenmp', '-lgsl', '-lgslcblas', '-lconfig++', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-llua5.2', '-larmadillo'],
+			
 			
 			'conditions':
 			[
@@ -27,20 +27,27 @@
 						'cflags': 		['-std=c++11', '-Wall', '-fopenmp'],
 						'include_dirs':
 						[
-							'/usr/include/',
-							'/usr/include/lua5.2/',
+							'/usr/include/lua5.1/',
 						],
 						
 					}
 				],
+				
 				[
 					'LINKING=="static"',
 					{
 						'libraries':	
 						[
-							'-static',
+							'-static-libgcc',
 							'-static-libstdc++',
+							'-Wl,-Bstatic',
+							'-fopenmp', '-lgsl', '-lgslcblas', '-lconfig++', '-lboost_filesystem', '-lboost_system', '-lboost_regex', 
+							'-Wl,-Bdynamic',
+							'-llua5.1', '-larmadillo'
 						],
+					},
+					{
+						'libraries'	  : ['-fopenmp', '-lgsl', '-lgslcblas', '-lconfig++', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-llua5.1', '-larmadillo'],
 					}
 				],
 				[
