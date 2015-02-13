@@ -1,7 +1,5 @@
-rm -r build/
-mkdir -p build/
+rm -rf build/
+gyp build.gyp --depth . --generator-output=build -DLINKING=dynamic -DTARGET=release
 cd build/
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make clean
 make
-cp src/circlesim ..
+cp out/Default/circlesim ..
