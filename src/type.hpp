@@ -150,6 +150,25 @@ typedef struct FieldEBStruct
 	double b_z;
 } FieldEB;
 
+typedef struct FieldEBLimitsStruct
+{
+	double e_x_min;
+	double e_y_min;
+	double e_z_min;
+	
+	double e_x_max;
+	double e_y_max;
+	double e_z_max;
+	
+	double b_x_min;
+	double b_y_min;
+	double b_z_min;
+	
+	double b_x_max;
+	double b_y_max;
+	double b_z_max;
+} FieldEBLimits;
+
 typedef struct ParticleStruct
 {
 	double rest_mass;
