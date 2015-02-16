@@ -1,12 +1,12 @@
 title 'Electric field $|\vec{E}|$'
 text-separator ;
 
-eval 'z_min = 0'
-eval 'z_max = (${e_min_x}*${e_min_x} + ${e_min_y}*${e_min_y} + ${e_min_z}*${e_min_z})**0.5'
+z_min = $(eval "0")
+z_max = $(eval "($(e_x_max)*$(e_x_max) + $(e_y_max)*$(e_y_max) + $(e_z_max)*$(e_z_max))**0.5" )
 
 xyz-map
 new-zaxis zvalues /location right /bar_size=4mm
-plot @'$2:$4:($5*$5 + $6*$6 + $7*$7)**0.5'  /color-map '#ffffff(${z_min})--#bdd7e7--#6baed6--#3182bd--#08519c(${z_max})' /zaxis zvalues
+plot @'$2:$4:($5*$5 + $6*$6 + $7*$7)**0.5'  /color-map "#ffffff($(z_min))--#bdd7e7--#6baed6--#3182bd--#08519c($(z_max))" /zaxis zvalues
 
 xlabel '$x$ [$m$]'
 ylabel '$z$ [$m$]'

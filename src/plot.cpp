@@ -58,21 +58,21 @@ string get_ctioga_limits(FieldEBLimits limits)
 {
 	string s = "";
 	
-	s += (bo::format(" --set e_x_min %E") % limits.e_x_min).str();
-	s += (bo::format(" --set e_y_min %E") % limits.e_y_min).str();
-	s += (bo::format(" --set e_z_min %E") % limits.e_z_min).str();
-	
-	s += (bo::format(" --set e_x_max %E") % limits.e_x_max).str();
-	s += (bo::format(" --set e_y_max %E") % limits.e_y_max).str();
-	s += (bo::format(" --set e_z_max %E") % limits.e_z_max).str();
-	
-	s += (bo::format(" --set b_x_min %E") % limits.b_x_min).str();
-	s += (bo::format(" --set b_y_min %E") % limits.b_y_min).str();
-	s += (bo::format(" --set b_z_min %E") % limits.b_z_min).str();
-	
-	s += (bo::format(" --set b_x_max %E") % limits.b_x_max).str();
-	s += (bo::format(" --set b_y_max %E") % limits.b_y_max).str();
-	s += (bo::format(" --set b_z_max %E") % limits.b_z_max).str();
+	s += (bo::format(" --set e_x_min %E") % (limits.e_x_min * AU_ELECTRIC_FIELD)).str();
+	s += (bo::format(" --set e_y_min %E") % (limits.e_y_min * AU_ELECTRIC_FIELD)).str();
+	s += (bo::format(" --set e_z_min %E") % (limits.e_z_min * AU_ELECTRIC_FIELD)).str();
+	                                                                           
+	s += (bo::format(" --set e_x_max %E") % (limits.e_x_max * AU_ELECTRIC_FIELD)).str();
+	s += (bo::format(" --set e_y_max %E") % (limits.e_y_max * AU_ELECTRIC_FIELD)).str();
+	s += (bo::format(" --set e_z_max %E") % (limits.e_z_max * AU_ELECTRIC_FIELD)).str();
+	                                                                           
+	s += (bo::format(" --set b_x_min %E") % (limits.b_x_min * AU_MAGNETIC_FIELD)).str();
+	s += (bo::format(" --set b_y_min %E") % (limits.b_y_min * AU_MAGNETIC_FIELD)).str();
+	s += (bo::format(" --set b_z_min %E") % (limits.b_z_min * AU_MAGNETIC_FIELD)).str();
+	                                                                           
+	s += (bo::format(" --set b_x_max %E") % (limits.b_x_max * AU_MAGNETIC_FIELD)).str();
+	s += (bo::format(" --set b_y_max %E") % (limits.b_y_max * AU_MAGNETIC_FIELD)).str();
+	s += (bo::format(" --set b_z_max %E") % (limits.b_z_max * AU_MAGNETIC_FIELD)).str();
 		
 	return s;
 }
