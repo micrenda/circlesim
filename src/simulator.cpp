@@ -320,8 +320,61 @@ void simulate_free(Simulation& simulation, Accellerator& accellerator, Particle&
 
 }
 
-void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction, int node, double start_t, double end_t, double trigger_t, Pulse& laser, lua::State* lua_state, fs::path output_dir)
+void update_limits(FieldEBLimits& limits, FieldEB field)
 {
+	if (field.e_x > limits.e_x_max)
+		limits.e_x_max = field.e_x;
+	if (field.e_y > limits.e_y_max)
+		limits.e_y_max = field.e_y;
+	if (field.e_z > limits.e_z_max)
+		limits.e_z_max = field.e_z;
+		
+	if (field.e_x < limits.e_x_min)
+		limits.e_x_min = field.e_x;
+	if (field.e_y < limits.e_y_min)
+		limits.e_y_min = field.e_y;
+	if (field.e_z < limits.e_z_min)
+		limits.e_z_min = field.e_z;
+		
+	if (field.b_x > limits.b_x_max)
+		limits.b_x_max = field.b_x;
+	if (field.b_y > limits.b_y_max)
+		limits.b_y_max = field.b_y;
+	if (field.b_z > limits.b_z_max)
+		limits.b_z_max = field.b_z;
+		
+	if (field.b_x < limits.b_x_min)
+		limits.b_x_min = field.b_x;
+	if (field.b_y < limits.b_y_min)
+		limits.b_y_min = field.b_y;
+	if (field.b_z < limits.b_z_min)
+		limits.b_z_min = field.b_z;
+}
+
+void init_limits(FieldEBLimits& limits)
+{
+	limits.e_x_min = + numeric_limits<double>::infinity();
+	limits.e_y_min = + numeric_limits<double>::infinity();
+	limits.e_z_min = + numeric_limits<double>::infinity();
+	
+	limits.e_x_max = - numeric_limits<double>::infinity();
+	limits.e_y_max = - numeric_limits<double>::infinity();
+	limits.e_z_max = - numeric_limits<double>::infinity();
+	
+	limits.b_x_min = + numeric_limits<double>::infinity();
+	limits.b_y_min = + numeric_limits<double>::infinity();
+	limits.b_z_min = + numeric_limits<double>::infinity();
+	
+	limits.b_x_max = - numeric_limits<double>::infinity();
+	limits.b_y_max = - numeric_limits<double>::infinity();
+	limits.b_z_max = - numeric_limits<double>::infinity();
+}
+
+void simulate_field_maps(OutputSetting& output_setting, FieldEBLimits& limits, unsigned int interaction, int node, double start_t, double end_t, double trigger_t, Pulse& laser, lua::State* lua_state, fs::path output_dir)
+{
+	
+	init_limits(limits);
+	
 	double dt = output_setting.field_map_resolution_t;
 	double dx = output_setting.field_map_resolution_x;
 	double dy = output_setting.field_map_resolution_y;
@@ -348,6 +401,8 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 					FieldEB field;
 					calculate_fields(C0*(current_t - trigger_t), x, y, 0, laser, field, lua_state);
 					write_field_maps_xy(stream, current_t, x, y, 0, field);
+					
+					update_limits(limits, field);
 				}
 			}
 			
@@ -373,6 +428,8 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 					FieldEB field;
 					calculate_fields(C0*(current_t - trigger_t), x, 0, z, laser, field, lua_state);
 					write_field_maps_xz(stream, current_t, x, 0, z, field);
+					
+					update_limits(limits, field);
 				}
 			}
 			
@@ -398,6 +455,8 @@ void simulate_field_maps(OutputSetting& output_setting, unsigned int interaction
 					FieldEB field;
 					calculate_fields(C0*(current_t - trigger_t), 0, y, z, laser, field, lua_state);
 					write_field_maps_yz(stream, current_t, 0, y, z, field);
+					
+					update_limits(limits, field);
 				}
 			}
 			
@@ -448,11 +507,13 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 			
 			double laser_trigger_time = (last_laser_exit_time - last_laser_enter_time) / 2;
 			
-			simulate_field_maps(output_setting, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, output_dir);
+			FieldEBLimits field_limits;
+			
+			simulate_field_maps(output_setting, field_limits, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, output_dir);
 			
 			
 			plot_interaction_files	(output_dir, current_interaction, current_node);
-			plot_field_maps			(output_dir, output_setting, current_interaction, current_node);
+			plot_field_maps			(output_dir, output_setting, field_limits, current_interaction, current_node);
 			
 			
 			current_range = FREE;
