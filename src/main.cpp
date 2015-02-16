@@ -138,7 +138,11 @@ int main(int argc, char *argv[])
 	}
 	
 	if (num_threads >= 1)
+	{
 		omp_set_num_threads(num_threads);
+		
+		printf("Max number of threads: %d.\n", num_threads);
+	}
 	else
 	{
 		printf("The <num_threads> parameters specified with option -j must be not smaller than 1.\n");
