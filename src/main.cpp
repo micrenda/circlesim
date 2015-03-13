@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 	Simulation		simulation;
 	Pulse			laser;
 	Particle		particle;
-	Accellerator 	accellerator;
+	Laboratory 		laboratory;
 	ParticleState	particle_state;
 	OutputSetting   output_setting;
 	
@@ -172,14 +172,10 @@ int main(int argc, char *argv[])
 		exit(-2);
 	}
 	
-	//if(true)
-	//{
-		// Please don't use the parameters variable outside this block
-	//	Parameters parameters;
-	
-		read_config(cfg_file_si_tmp, simulation, output_setting, laser, particle, particle_state, accellerator, &lua_state);
+
+	read_config(cfg_file_si_tmp, simulation, output_setting, laser, particle, particle_state, laboratory, &lua_state);
 		
-	//}
+	
 	
 	
 	// Creating output directory
@@ -210,12 +206,12 @@ int main(int argc, char *argv[])
 	ofstream stream_node;
 	stream_node.open(get_filename_node(output_dir));
 	setup_node(stream_node);
-	for (Node& node: accellerator.nodes)
+	for (Node& node: laboratory.nodes)
 		write_node(stream_node, node);
 	stream_node.close();
 	
 	// Executing simulation
-	simulate(simulation, output_setting, laser, particle, particle_state, accellerator, &lua_state, output_dir);
+	simulate(simulation, output_setting, laser, particle, particle_state, laboratory, &lua_state, output_dir);
 	
 
 }

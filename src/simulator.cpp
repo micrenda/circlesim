@@ -17,11 +17,11 @@ bool is_in_influence_radius(ParticleState& state, Node& node, double laser_influ
 			state.position_z - node.position_z) <= laser_influence_radius;
 }
 
-int get_near_node_id(ParticleState& state, Accellerator accellerator, double laser_influence_radius)
+int get_near_node_id(ParticleState& state, Laboratory& laboratory, double laser_influence_radius)
 {
-	for (unsigned int r = 0; r < accellerator.nodes.size(); r++)
+	for (unsigned int r = 0; r < laboratory.nodes.size(); r++)
 	{
-		Node& node = accellerator.nodes[r];
+		Node& node = laboratory.nodes[r];
 		
 		if (is_in_influence_radius(state, node, laser_influence_radius))
 			return r;
@@ -239,7 +239,7 @@ void simulate_laser(
 }
 
 
-void simulate_free(Simulation& simulation, Accellerator& accellerator, Particle& particle, ParticleState& state, long double& time_current_p, lua::State* lua_state, ofstream& stream_particle)
+void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& particle, ParticleState& state, long double& time_current_p, lua::State* lua_state, ofstream& stream_particle)
 {
 	
 	
@@ -306,7 +306,7 @@ void simulate_free(Simulation& simulation, Accellerator& accellerator, Particle&
 		write_particle(stream_particle, time_current, state);
 		
 		// Checking if we are in a range of a laser.
-		if (get_near_node_id(state, accellerator, simulation.laser_influence_radius) > 0)
+		if (get_near_node_id(state, laboratory, simulation.laser_influence_radius) > 0)
 			break;
 		
 	}
@@ -380,11 +380,31 @@ void simulate_field_maps(OutputSetting& output_setting, FieldEBLimits& limits, u
 	double dy = output_setting.field_map_resolution_y;
 	double dz = output_setting.field_map_resolution_z;
 	
+	double ni = output_setting.field_map_size_x / dx;
+	double nj = output_setting.field_map_size_y / dy;
+	double nk = output_setting.field_map_size_z / dz;
+	
 	int t_count = round((end_t - start_t) / dt);
 	
 	
 	if (output_setting.field_map_enable_xy)
 	{
+		FieldEB field[t_count][output_setting.field_map_size_x][output_setting.field_map_size_y];
+		
+		#pragma omp parallel for
+		for (int t = 0; t < t_count; t++)
+		{
+			for (double i = 0; i < ni; i++)
+			{
+				double x = -output_setting.field_map_size_x/2 + dx * i;
+				for (double j = 0; j < nj; j++)
+				{
+					double y = -output_setting.field_map_size_y/2 + dy * j;
+					calculate_fields(C0*(current_t - trigger_t), x, y, 0, laser, field[t, i, j], lua_state);
+				}
+			}
+		}
+		
 		#pragma omp parallel for
 		for (int t = 0; t < t_count; t++)
 		{
@@ -393,21 +413,20 @@ void simulate_field_maps(OutputSetting& output_setting, FieldEBLimits& limits, u
 			ofstream stream;
 			stream.open(get_filename_field_map_xy(output_dir, interaction, node, t));
 			setup_field_map_xy(stream);
-				
-			for (double x = -output_setting.field_map_size_x/2; x < output_setting.field_map_size_x/2; x += dx)
+			
+			for (double i = 0; i < ni; i++)
 			{
-				for (double y = -output_setting.field_map_size_y/2; y < output_setting.field_map_size_y/2; y += dy)
+				double x = -output_setting.field_map_size_x/2 + dx * i;
+				for (double j = 0; j < nj; j++)
 				{
-					FieldEB field;
-					calculate_fields(C0*(current_t - trigger_t), x, y, 0, laser, field, lua_state);
-					write_field_maps_xy(stream, current_t, x, y, 0, field);
-					
-					update_limits(limits, field);
+					write_field_maps_xy(stream, current_t, x, y, 0, field[t, i, j]);
+					update_limits(limits, field[t, i, j]);
 				}
 			}
 			
 			stream.close();
 		}
+		
 	}
 
 	if (output_setting.field_map_enable_xz)
@@ -466,15 +485,11 @@ void simulate_field_maps(OutputSetting& output_setting, FieldEBLimits& limits, u
 }	
 
 
-void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& laser, Particle& particle, ParticleState& particle_state, Accellerator& accellerator, lua::State* lua_state, fs::path& output_dir)
+void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& laser, Particle& particle, ParticleState& particle_state, Laboratory& laboratory, lua::State* lua_state, fs::path& output_dir)
 {
 	
 	printf("Simulation duration: %f s\n", simulation.duration * AU_TIME);
 	
-	// This is the laser period. Our simulation time will progress by units of this period. It will be splitted in integrations_laser and integrations_free subperiods.
-	// TODO: this value must be cached because it does not change during all the simulation
-	
-	//
 	
 	RangeMode 	  current_range = FREE;
 	unsigned int  current_interaction = 0;
@@ -496,7 +511,7 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 		
 		// Identifing if our particle is inside the laser action range or outside.
 		// If outside we use the free motion laws, if inside we calculate the integration between the laser and the particle	
-		int new_node = get_near_node_id(particle_state, accellerator, simulation.laser_influence_radius);
+		int new_node = get_near_node_id(particle_state, laboratory, simulation.laser_influence_radius);
 		
 		if (current_range == LASER && new_node < 0 )
 		{
@@ -536,7 +551,7 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 		
 		if (current_range == LASER)
 		{
-			Node& node = accellerator.nodes[current_node];
+			Node& node = laboratory.nodes[current_node];
 			simulate_laser(
 				simulation,
 				laser,
@@ -554,7 +569,7 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 		{
 			simulate_free(
 				simulation,
-				accellerator,
+				laboratory,
 				particle,
 				particle_state,
 				time_current,

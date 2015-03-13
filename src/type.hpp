@@ -221,6 +221,11 @@ typedef struct NodeStruct
 	mat				axis; 				// Axis rotation 3x3 matrix
 } Node;
 
+typedef struct LaboratoryStruct
+{  
+	vector<Node> 	nodes;
+} Laboratory;
+
 typedef struct AccelleratorStruct
 {  
 	vector<Node> 	nodes;

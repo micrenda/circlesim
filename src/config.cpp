@@ -44,114 +44,114 @@ bool wrong_param(string param, string message)
 }
 
 
-void init_nodes(Accellerator& accellerator)
-{
-	unsigned int n = 0;
-	for (Node& node: accellerator.nodes)
-	{
-		node.position_x = accellerator.radius * sin(2 * M_PI * n / accellerator.nodes.size());
-		node.position_y = accellerator.radius * cos(2 * M_PI * n / accellerator.nodes.size());
-		node.position_z = 0;
+//void init_nodes(Accellerator& accellerator)
+//{
+	//unsigned int n = 0;
+	//for (Node& node: accellerator.nodes)
+	//{
+		//node.position_x = accellerator.radius * sin(2 * M_PI * n / accellerator.nodes.size());
+		//node.position_y = accellerator.radius * cos(2 * M_PI * n / accellerator.nodes.size());
+		//node.position_z = 0;
 		
 		
-		double theta	= 0; 
-		double phi		= 0;
+		//double theta	= 0; 
+		//double phi		= 0;
 		
-		if (accellerator.node_axis_rotate_theta)
-			theta = +2 * M_PI * n / accellerator.nodes.size();
-		if (accellerator.node_axis_rotate_phi)
-			theta = -2 * M_PI * n / accellerator.nodes.size();
+		//if (accellerator.node_axis_rotate_theta)
+			//theta = +2 * M_PI * n / accellerator.nodes.size();
+		//if (accellerator.node_axis_rotate_phi)
+			//theta = -2 * M_PI * n / accellerator.nodes.size();
 		
-		mat versors = zeros<mat>(3,3);
+		//mat versors = zeros<mat>(3,3);
 		
-		switch (accellerator.node_axis_mode)
-		{
-			case MODE_P:
-				versors(0,0) =  1; 
-				versors(1,0) =  0; 
-				versors(2,0) =  0;
+		//switch (accellerator.node_axis_mode)
+		//{
+			//case MODE_P:
+				//versors(0,0) =  1; 
+				//versors(1,0) =  0; 
+				//versors(2,0) =  0;
 				
-				versors(0,1) =  0; 
-				versors(1,1) =  1; 
-				versors(2,1) =  0;
+				//versors(0,1) =  0; 
+				//versors(1,1) =  1; 
+				//versors(2,1) =  0;
 				
-				versors(0,2) =  0; 
-				versors(1,2) =  0; 
-				versors(2,2) =  1;
-			break;
+				//versors(0,2) =  0; 
+				//versors(1,2) =  0; 
+				//versors(2,2) =  1;
+			//break;
 			
 			
-			case MODE_T_FW:
-				versors(0,0) =  0; 
-				versors(1,0) =  1; 
-				versors(2,0) =  0;
+			//case MODE_T_FW:
+				//versors(0,0) =  0; 
+				//versors(1,0) =  1; 
+				//versors(2,0) =  0;
 				
-				versors(0,1) =  0; 
-				versors(1,1) =  0; 
-				versors(2,1) =  1;
+				//versors(0,1) =  0; 
+				//versors(1,1) =  0; 
+				//versors(2,1) =  1;
 				
-				versors(0,2) =  1; 
-				versors(1,2) =  0; 
-				versors(2,2) =  0;
-			break;
+				//versors(0,2) =  1; 
+				//versors(1,2) =  0; 
+				//versors(2,2) =  0;
+			//break;
 			
-			case MODE_T_BW:
-				versors(0,0) =  0; 
-				versors(1,0) = -1; 
-				versors(2,0) =  0;
+			//case MODE_T_BW:
+				//versors(0,0) =  0; 
+				//versors(1,0) = -1; 
+				//versors(2,0) =  0;
 				
-				versors(0,1) =  0; 
-				versors(1,1) =  0; 
-				versors(2,1) =  1;
+				//versors(0,1) =  0; 
+				//versors(1,1) =  0; 
+				//versors(2,1) =  1;
 				
-				versors(0,2) = -1; 
-				versors(1,2) =  0; 
-				versors(2,2) =  0;
-			break;
+				//versors(0,2) = -1; 
+				//versors(1,2) =  0; 
+				//versors(2,2) =  0;
+			//break;
 
-		}
+		//}
 		
-		rotate_spherical(versors(0,0), versors(1,0), versors(2,0), theta, phi);
-		rotate_spherical(versors(0,1), versors(1,1), versors(2,1), theta, phi);
-		rotate_spherical(versors(0,2), versors(1,2), versors(2,2), theta, phi);
+		//rotate_spherical(versors(0,0), versors(1,0), versors(2,0), theta, phi);
+		//rotate_spherical(versors(0,1), versors(1,1), versors(2,1), theta, phi);
+		//rotate_spherical(versors(0,2), versors(1,2), versors(2,2), theta, phi);
 		
-		// setting to zero all the versor components where abs(v) < 1E-15
-		// We do this because these values are likely created by cos(π/2) != 0 and sin(0) != 0functions and
+		//// setting to zero all the versor components where abs(v) < 1E-15
+		//// We do this because these values are likely created by cos(π/2) != 0 and sin(0) != 0functions and
    
-		if (abs(versors(0,0)) < 1E-15)  versors(0,0) =  0; 
-		if (abs(versors(1,0)) < 1E-15)  versors(1,0) =  0; 
-		if (abs(versors(2,0)) < 1E-15)  versors(2,0) =  0; 
-		if (abs(versors(0,1)) < 1E-15)  versors(0,1) =  0; 
-		if (abs(versors(1,1)) < 1E-15)  versors(1,1) =  0; 
-		if (abs(versors(2,1)) < 1E-15)  versors(2,1) =  0; 
-		if (abs(versors(0,2)) < 1E-15)  versors(0,2) =  0; 
-		if (abs(versors(1,2)) < 1E-15)  versors(1,2) =  0; 
-		if (abs(versors(2,2)) < 1E-15)  versors(2,2) =  0; 
+		//if (abs(versors(0,0)) < 1E-15)  versors(0,0) =  0; 
+		//if (abs(versors(1,0)) < 1E-15)  versors(1,0) =  0; 
+		//if (abs(versors(2,0)) < 1E-15)  versors(2,0) =  0; 
+		//if (abs(versors(0,1)) < 1E-15)  versors(0,1) =  0; 
+		//if (abs(versors(1,1)) < 1E-15)  versors(1,1) =  0; 
+		//if (abs(versors(2,1)) < 1E-15)  versors(2,1) =  0; 
+		//if (abs(versors(0,2)) < 1E-15)  versors(0,2) =  0; 
+		//if (abs(versors(1,2)) < 1E-15)  versors(1,2) =  0; 
+		//if (abs(versors(2,2)) < 1E-15)  versors(2,2) =  0; 
 			
 		
-		node.axis = versors;
+		//node.axis = versors;
 		
-#ifdef DEBUG_NODE_VERSORS
-		printf("Node %d\n", node.id);
-		node.axis.print("local versors:");
-		printf("\n\n");
-#endif
+//#ifdef DEBUG_NODE_VERSORS
+		//printf("Node %d\n", node.id);
+		//node.axis.print("local versors:");
+		//printf("\n\n");
+//#endif
 
-		n++;
-	}
-}
+		//n++;
+	//}
+//}
 
 
-void init_position_and_momentum(Parameters& parameters, Accellerator& accellerator, ParticleState& particle_state)
+void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, ParticleState& particle_state)
 {
 	// Setting the position of the particle relative to selected node
 	
-	if (parameters.initial_reference_node < 0 || parameters.initial_reference_node >= accellerator.nodes.size())
+	if (parameters.initial_reference_node < 0 || parameters.initial_reference_node >= laboratory.nodes.size())
 	{
 		wrong_param("initial_reference_node", "Invalid node index\n");
 	}
 		
-	Node& first_node = accellerator.nodes[parameters.initial_reference_node];
+	Node& first_node = laboratory.nodes[parameters.initial_reference_node];
 	
 	
 	// Initializing POSITION 
@@ -236,7 +236,7 @@ void read_config(
 	Pulse& laser,
 	Particle& particle,
 	ParticleState& particle_state,
-	Accellerator& accellerator,
+	Laboratory& laboratory,
 	lua::State* lua_state)
 {
 	Parameters parameters;
@@ -250,7 +250,6 @@ void read_config(
 	bo::unordered_map<string, string> laser_field_param_map_string;
 	bo::unordered_map<string, bool>	  laser_field_param_map_boolean;
 
-
 	// Read the file. If there is an error, report it and exit.
 	try 
 	{
@@ -259,7 +258,8 @@ void read_config(
 		Setting&  config_simulation	 		= config->lookup("simulation");
 		Setting&  config_laser 				= config->lookup("laser");
 		Setting&  config_particle 			= config->lookup("particle");
-		Setting&  config_accellerator 		= config->lookup("accellerator");
+		//Setting&  config_accellerator 		= config->lookup("accellerator");
+		Setting&  config_laboratory 		= config->lookup("laboratory");
 		Setting&  config_output				= config->lookup("output");
 
 		config_laser.lookupValue			("duration",  	parameters.pulse_duration)							|| missing_param("duration (laser)");
@@ -354,15 +354,15 @@ void read_config(
 		config_simulation.lookupValue		("laser_influence_radius",  parameters.laser_influence_radius)	|| missing_param("laser_influence_radius");
 		config_simulation.lookupValue		("func_commons",  			parameters.func_commons)			|| missing_param("func_commons");
 
-		config_accellerator.lookupValue		("nodes",   				parameters.nodes)					|| missing_param("nodes");
-		config_accellerator.lookupValue		("radius",  				parameters.radius)					|| missing_param("radius");
+		//config_accellerator.lookupValue		("nodes",   				parameters.nodes)					|| missing_param("nodes");
+		//config_accellerator.lookupValue		("radius",  				parameters.radius)					|| missing_param("radius");
 
-		config_accellerator.lookupValue		("node_axis_mode",  		parameters.node_axis_mode)			|| missing_param("node_axis_mode");
-		config_accellerator.lookupValue		("node_axis_rotate_theta",  parameters.node_axis_rotate_theta)	|| missing_param("node_axis_rotate_theta");
-		config_accellerator.lookupValue		("node_axis_rotate_phi",  	parameters.node_axis_rotate_phi)	|| missing_param("node_axis_rotate_phi");
+		//config_accellerator.lookupValue		("node_axis_mode",  		parameters.node_axis_mode)			|| missing_param("node_axis_mode");
+		//config_accellerator.lookupValue		("node_axis_rotate_theta",  parameters.node_axis_rotate_theta)	|| missing_param("node_axis_rotate_theta");
+		//config_accellerator.lookupValue		("node_axis_rotate_phi",  	parameters.node_axis_rotate_phi)	|| missing_param("node_axis_rotate_phi");
 
-		config_accellerator.lookupValue 	("timing_mode",   			parameters.timing_mode)				|| missing_param("timing_mode");
-		config_accellerator.lookupValue		("timing_value",  			parameters.timing_value)			|| missing_param("timing_value");
+		//config_accellerator.lookupValue 		("timing_mode",   			parameters.timing_mode)				|| missing_param("timing_mode");
+		//config_accellerator.lookupValue		("timing_value",  			parameters.timing_value)			|| missing_param("timing_value");
 		
 		config_output.lookupValue			("field_map_enable_xy",		parameters.field_map_enable_xy)		|| missing_param("field_map_enable_xy");
 		config_output.lookupValue			("field_map_enable_xz",		parameters.field_map_enable_xz)		|| missing_param("field_map_enable_xz");
@@ -391,6 +391,62 @@ void read_config(
 		
 		config_output.lookupValue			("field_map_movie_length",	parameters.field_map_movie_length)	|| missing_param("field_map_movie_length");
 	  
+		static const bo::regex el("^node\\_([0-9])+$");
+		for (int i = 0; i < config_laboratory.getLength(); i++)
+		{
+			Setting& setting = config_laser[i];
+			bo::match_results<string::const_iterator> what;
+			if (bo::regex_match(string(setting.getName()), what, e))
+			{
+				Node node = Node();
+				laboratory.nodes.push_back(node);
+				node.id = stoi(what[1]);
+				
+				double position_x;
+				double position_y;
+				double position_z;
+				
+				setting.lookupValue("position_x", position_x) || missing_param("node_%d->position_x");
+				setting.lookupValue("position_y", position_y) || missing_param("node_%d->position_y");
+				setting.lookupValue("position_z", position_z) || missing_param("node_%d->position_z");
+				
+				position_x /= AU_LENGTH;
+				position_y /= AU_LENGTH;
+				position_z /= AU_LENGTH;
+				
+				node.position_x = position_x;
+				node.position_y = position_y;
+				node.position_z = position_z;
+				
+				Mat<double> versors = mat(3, 3, fill::eye);
+				
+				double theta;
+				double phi;
+				
+				setting.lookupValue("theta", theta) || missing_param("node_%d->theta");
+				setting.lookupValue("phi",   phi)   || missing_param("node_%d->phi");
+				
+				rotate_spherical(versors(0,0), versors(1,0), versors(2,0), theta, phi);
+				rotate_spherical(versors(0,1), versors(1,1), versors(2,1), theta, phi);
+				rotate_spherical(versors(0,2), versors(1,2), versors(2,2), theta, phi);
+				
+				// setting to zero all the versor components where abs(v) < 1E-15
+				// We do this because these values are likely created by cos(π/2) != 0 and sin(0) != 0 functions and
+		   
+				if (abs(versors(0,0)) < 1E-15)  versors(0,0) =  0; 
+				if (abs(versors(1,0)) < 1E-15)  versors(1,0) =  0; 
+				if (abs(versors(2,0)) < 1E-15)  versors(2,0) =  0; 
+				if (abs(versors(0,1)) < 1E-15)  versors(0,1) =  0; 
+				if (abs(versors(1,1)) < 1E-15)  versors(1,1) =  0; 
+				if (abs(versors(2,1)) < 1E-15)  versors(2,1) =  0; 
+				if (abs(versors(0,2)) < 1E-15)  versors(0,2) =  0; 
+				if (abs(versors(1,2)) < 1E-15)  versors(1,2) =  0; 
+				if (abs(versors(2,2)) < 1E-15)  versors(2,2) =  0; 
+				
+				node.axis = versors;
+			}
+		}
+		
 	}
 	catch (ParseException& e)  
 	{
@@ -456,40 +512,37 @@ void read_config(
 	particle.rest_mass 					= parameters.rest_mass 				/ AU_MASS;
 	particle.charge 					= parameters.charge    				/ AU_CHARGE;
 	
-	accellerator.radius					= parameters.radius 				/ AU_LENGTH;
+	//accellerator.radius					= parameters.radius 				/ AU_LENGTH;
 	
 	
-	for (unsigned int n = 0; n < parameters.nodes; n++)
-	{ 
-		Node node = Node();
-		accellerator.nodes.push_back(node);
-		node.id = n;
-	}
+	////for (unsigned int n = 0; n < parameters.nodes; n++)
+	////{ 
+		
+	////}
 
 	
-	if (ba::iequals(parameters.node_axis_mode, 			"MODE_P")) 
-		accellerator.node_axis_mode 	= MODE_P;
-	else if (ba::iequals(parameters.node_axis_mode, 	"MODE_T_FW"))
-		accellerator.node_axis_mode 	= MODE_T_FW;
-	else if (ba::iequals(parameters.node_axis_mode, 	"MODE_T_BW")) 
-		accellerator.node_axis_mode 	= MODE_T_BW;
-	else
-		wrong_param("node_axis_mode", "accepted values are: MODE_P, MODE_T_FW, MODE_T_BW");
+	//if (ba::iequals(parameters.node_axis_mode, 			"MODE_P")) 
+		//accellerator.node_axis_mode 	= MODE_P;
+	//else if (ba::iequals(parameters.node_axis_mode, 	"MODE_T_FW"))
+		//accellerator.node_axis_mode 	= MODE_T_FW;
+	//else if (ba::iequals(parameters.node_axis_mode, 	"MODE_T_BW")) 
+		//accellerator.node_axis_mode 	= MODE_T_BW;
+	//else
+		//wrong_param("node_axis_mode", "accepted values are: MODE_P, MODE_T_FW, MODE_T_BW");
 		
-	accellerator.node_axis_rotate_theta	= parameters.node_axis_rotate_theta;
-	accellerator.node_axis_rotate_phi	= parameters.node_axis_rotate_phi;
+	//accellerator.node_axis_rotate_theta	= parameters.node_axis_rotate_theta;
+	//accellerator.node_axis_rotate_phi	= parameters.node_axis_rotate_phi;
+
+	//if (ba::iequals(parameters.timing_mode, 		"TURN_ON")) 
+		//accellerator.timing_mode = TURN_ON;
+	//else if (ba::iequals(parameters.timing_mode, 	"CONSTANT"))
+		//accellerator.timing_mode = CONSTANT;
+	//else if (ba::iequals(parameters.timing_mode, 	"TURN_OFF")) 
+		//accellerator.timing_mode = TURN_OFF;
+	//else
+		//accellerator.timing_mode = CONSTANT;
 	
-	
-	if (ba::iequals(parameters.timing_mode, 		"TURN_ON")) 
-		accellerator.timing_mode = TURN_ON;
-	else if (ba::iequals(parameters.timing_mode, 	"CONSTANT"))
-		accellerator.timing_mode = CONSTANT;
-	else if (ba::iequals(parameters.timing_mode, 	"TURN_OFF")) 
-		accellerator.timing_mode = TURN_OFF;
-	else
-		accellerator.timing_mode = CONSTANT;
-	
-	accellerator.timing_value	= parameters.timing_value;
+	//accellerator.timing_value	= parameters.timing_value;
 	
 	output.field_map_enable_xy	= parameters.field_map_enable_xy;
 	output.field_map_enable_xz	= parameters.field_map_enable_xz;
@@ -515,6 +568,6 @@ void read_config(
 
 	delete config;
 	
-	init_nodes(accellerator);
-	init_position_and_momentum(parameters, accellerator, particle_state);
+	//init_nodes(accellerator);
+	init_position_and_momentum(parameters, laboratory, particle_state);
 }
