@@ -54,7 +54,7 @@ void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, co
   
 	double e1, e2, e3, b1, b2, b3;
 	
-	#pragma omp critical
+	#pragma omp critical (lua_fields)
 	{
 		// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
 		lua::tie(e1, e2, e3, b1, b2, b3) = (*lua_state)["func_fields"](param_duration, param_time, param_x, param_y, param_z);
@@ -356,10 +356,9 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 	});
 	
 	string wrapper = "\
-	function field(t, x, y, z)                   \
-		c_values   = field_c_wrapper(t, x, y, z); \
-		lua_values = { e_x = c_values(0), e_y = c_values(1), e_z = c_values(2), b_x = c_values(3), b_y = c_values(4), b_z = c_values(5) }          \
-		return lua_values \
+	function field(t, x, y, z)                    \
+		value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = field_c_wrapper(t, x, y, z)  \
+		return { e_x = value_e_x, e_y = value_e_y, e_z = value_e_z, b_x = value_b_x, b_y = value_b_y, b_z = value_b_z }          \
 	end";
 	
 	try
@@ -381,28 +380,39 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 	unsigned int nj = field_render.space_size_y / field_render.space_resolution;
 	unsigned int nk = field_render.space_size_z / field_render.space_resolution;
 	
-	
 	double**** space;
 	
-	unsigned int size_1;
-	unsigned int size_2;
-	unsigned int size_3;
+	string axis1;
+	string axis2;
+	
+	unsigned int n_a;
+	unsigned int n_b;
+	double len_a;
+	double len_b;
 
 	space = new double***[nt];
 	
-	size_1 = nt;
 	
+	// Creating space arrays with the field for the entire duration
 	switch(field_render.plane)
 	{
 		case XY:
-			size_2 = ni;
-			size_3 = nj;
+			axis1 = "x";
+			axis2 = "y";
+			n_a = ni;
+			n_b = nj;
+			len_a = field_render.space_size_x;
+			len_b = field_render.space_size_y;
 		
 			for (unsigned int t = 0; t < nt; t++)
 			{
+				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * t / nt);
+				fflush(stdout);
 				space[t] = new double**[ni];
 				
 				double time = start_t + t * field_render.time_resolution;
+				
+				#pragma omp parallel for shared(space)
 				for (unsigned int i = 0; i < ni; i++)
 				{
 					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
@@ -413,7 +423,11 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 						space[t][i][j] = new double[field_render.count];
 						
 						double v0,v1,v2,v3,v4,v5,v6,v7;
-						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time, x * AU_LENGTH, y * AU_LENGTH, field_render.axis_cut * AU_LENGTH);
+						
+						#pragma omp critical (lua_field_render)
+						{
+						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time * AU_TIME, x * AU_LENGTH, y * AU_LENGTH, field_render.axis_cut * AU_LENGTH);
+						}
 						
 						for (unsigned short c = 0; c < field_render.count; c++)
 						{
@@ -467,15 +481,46 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 		
 	}
 	
-
-		
+	// Writing space array into a csv file
+	
+	FILE* file=fopen((output_dir / fs::path((bo::format("field_render_%s.csv") % field_render.id).str())).string().c_str(), "w");
+	
+	fprintf(file, (bo::format("#t,time,%s,%s") % axis1 % axis2).str().c_str());
+	for (unsigned short c = 0; c < field_render.count; c++)
+		fprintf(file, (bo::format(",value_%u") % c).str().c_str());
+	fprintf(file, "\n");
 	
 	
-	for (unsigned int s1 = 0; s1 < size_1; s1++)
+	
+	for (unsigned int t = 0; t < nt; t++)
 	{
-		for (unsigned int s2 = 0; s2 < size_2; s2++)
+		double time = start_t + t * field_render.time_resolution;
+		
+		for (unsigned int a = 0; a < n_a; a++)
 		{
-			for (unsigned int s3 = 0; s3 < size_3; s3++)
+			double pos_a = -len_a/2 + field_render.space_resolution * a;
+			for (unsigned int b = 0; b < n_b; b++)
+			{
+				double pos_b = -len_b/2 + field_render.space_resolution * b;
+				fprintf(file, "%u,%.16E,%.16E,%.16E", t, time * AU_TIME, pos_a * AU_LENGTH, pos_b * AU_LENGTH);
+				
+				for (unsigned short c = 0; c < field_render.count; c++)
+					fprintf(file, ",%.16E", space[t][a][b][c]);
+					
+				fprintf(file, "\n");
+			}
+		}
+	}
+	
+	fclose(file);
+	
+	
+	
+	for (unsigned int s1 = 0; s1 < nt; s1++)
+	{
+		for (unsigned int s2 = 0; s2 < n_a; s2++)
+		{
+			for (unsigned int s3 = 0; s3 < n_b; s3++)
 			{
 				delete space[s1][s2][s3];
 			}
@@ -509,6 +554,7 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 	while (time_current < simulation.duration)
 	{
 		printf("\rSimulating: %3.4f%%", (double)time_current / simulation.duration * 100);
+		fflush(stdout);
 		
 		// Identifing if our particle is inside the laser action range or outside.
 		// If outside we use the free motion laws, if inside we calculate the integration between the laser and the particle	

@@ -229,7 +229,7 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	state_local_to_global(particle_state, first_node, rel_pos_x, rel_pos_y, rel_pos_z, rel_mom_x, rel_mom_y, rel_mom_z);
 }
 
-void read_config_renders(Setting* field_renders_config, set<FieldRender*> renders, lua::State* lua_state)
+void read_config_renders(Setting* field_renders_config, set<FieldRender*>& renders, lua::State* lua_state)
 {
 	try 
 	{
@@ -323,7 +323,7 @@ void read_config(
 	Particle& particle,
 	ParticleState& particle_state,
 	Laboratory& laboratory,
-	set<FieldRender*> field_renders,
+	set<FieldRender*>& field_renders,
 	lua::State* lua_state)
 {
 	Parameters parameters;
@@ -443,24 +443,25 @@ void read_config(
 
 
 		
-		static const bo::regex el("^node\\_([0-9])+$");
+		static const bo::regex e_node("^node\\_([0-9]+)$");
 		for (int i = 0; i < config_laboratory.getLength(); i++)
 		{
-			Setting& setting = config_laser[i];
+			Setting& node_setting = config_laboratory[i];
 			bo::match_results<string::const_iterator> what;
-			if (bo::regex_match(string(setting.getName()), what, e))
+			string node_name = string(node_setting.getName());
+			if (bo::regex_match(node_name, what, e_node))
 			{
-				Node node = Node();
-				laboratory.nodes.push_back(node);
+				Node node;
+				
 				node.id = stoi(what[1]);
 				
 				double position_x;
 				double position_y;
 				double position_z;
 				
-				setting.lookupValue("position_x", position_x) || missing_param("node_%d->position_x");
-				setting.lookupValue("position_y", position_y) || missing_param("node_%d->position_y");
-				setting.lookupValue("position_z", position_z) || missing_param("node_%d->position_z");
+				node_setting.lookupValue("position_x", position_x) || missing_param("node_%d->position_x");
+				node_setting.lookupValue("position_y", position_y) || missing_param("node_%d->position_y");
+				node_setting.lookupValue("position_z", position_z) || missing_param("node_%d->position_z");
 				
 				position_x /= AU_LENGTH;
 				position_y /= AU_LENGTH;
@@ -470,32 +471,32 @@ void read_config(
 				node.position_y = position_y;
 				node.position_z = position_z;
 				
-				Mat<double> versors = mat(3, 3, fill::eye);
+				node.axis = mat(3, 3, fill::eye);
 				
 				double theta;
 				double phi;
 				
-				setting.lookupValue("theta", theta) || missing_param("node_%d->theta");
-				setting.lookupValue("phi",   phi)   || missing_param("node_%d->phi");
+				node_setting.lookupValue("rotation_theta", theta) || missing_param((bo::format("node_%d->rotation_theta") % node.id).str());
+				node_setting.lookupValue("rotation_phi",   phi)   || missing_param((bo::format("node_%d->rotation_phi"  ) % node.id).str());
 				
-				rotate_spherical(versors(0,0), versors(1,0), versors(2,0), theta, phi);
-				rotate_spherical(versors(0,1), versors(1,1), versors(2,1), theta, phi);
-				rotate_spherical(versors(0,2), versors(1,2), versors(2,2), theta, phi);
+				rotate_spherical(node.axis(0,0), node.axis(1,0), node.axis(2,0), theta, phi);
+				rotate_spherical(node.axis(0,1), node.axis(1,1), node.axis(2,1), theta, phi);
+				rotate_spherical(node.axis(0,2), node.axis(1,2), node.axis(2,2), theta, phi);
 				
 				// setting to zero all the versor components where abs(v) < 1E-15
-				// We do this because these values are likely created by cos(π/2) != 0 and sin(0) != 0 functions and
+				// We do this because these values are likely created by cos(π/2) != 0 and sin(0) != 0 functions
 		   
-				if (abs(versors(0,0)) < 1E-15)  versors(0,0) =  0; 
-				if (abs(versors(1,0)) < 1E-15)  versors(1,0) =  0; 
-				if (abs(versors(2,0)) < 1E-15)  versors(2,0) =  0; 
-				if (abs(versors(0,1)) < 1E-15)  versors(0,1) =  0; 
-				if (abs(versors(1,1)) < 1E-15)  versors(1,1) =  0; 
-				if (abs(versors(2,1)) < 1E-15)  versors(2,1) =  0; 
-				if (abs(versors(0,2)) < 1E-15)  versors(0,2) =  0; 
-				if (abs(versors(1,2)) < 1E-15)  versors(1,2) =  0; 
-				if (abs(versors(2,2)) < 1E-15)  versors(2,2) =  0; 
+				if (abs(node.axis(0,0)) < 1E-15)  node.axis(0,0) =  0; 
+				if (abs(node.axis(1,0)) < 1E-15)  node.axis(1,0) =  0; 
+				if (abs(node.axis(2,0)) < 1E-15)  node.axis(2,0) =  0; 
+				if (abs(node.axis(0,1)) < 1E-15)  node.axis(0,1) =  0; 
+				if (abs(node.axis(1,1)) < 1E-15)  node.axis(1,1) =  0; 
+				if (abs(node.axis(2,1)) < 1E-15)  node.axis(2,1) =  0; 
+				if (abs(node.axis(0,2)) < 1E-15)  node.axis(0,2) =  0; 
+				if (abs(node.axis(1,2)) < 1E-15)  node.axis(1,2) =  0; 
+				if (abs(node.axis(2,2)) < 1E-15)  node.axis(2,2) =  0; 
 				
-				node.axis = versors;
+				laboratory.nodes.push_back(node);
 			}
 		}
 		
