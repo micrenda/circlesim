@@ -563,7 +563,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 				double time = start_t + t * field_render.time_resolution;
 				
 				#pragma omp parallel for shared(space)
-				for (unsigned int j = 0; i < nj; j++)
+				for (unsigned int j = 0; j < nj; j++)
 				{
 					double y = -field_render.space_size_y/2 + field_render.space_resolution * j;
 					space[t][j] = new double*[nk];
@@ -592,7 +592,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 								break;
 								
 								case 2:
-									space[t][i][k][c] = v2;
+									space[t][j][k][c] = v2;
 								break;
 								
 								case 3:
@@ -630,12 +630,12 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 	
 	for (unsigned int t = 0; t < nt; t++)
 	{
-		FILE* file=fopen((output_dir / fs::path((bo::format("field_render_%s_t%u.csv") % field_render.id % t).str())).string().c_str(), "w");
+		FILE* file_csv=fopen((output_dir / fs::path((bo::format("field_render_i%u_%s_t%u.csv") % interaction % field_render.id % t).str())).string().c_str(), "w");
 	
-		fprintf(file, (bo::format("#time;%s;%s") % axis1 % axis2).str().c_str());
+		fprintf(file_csv, (bo::format("#time;%s;%s") % axis1 % axis2).str().c_str());
 		for (unsigned short c = 0; c < field_render.count; c++)
-			fprintf(file, (bo::format(";value_%u") % c).str().c_str());
-		fprintf(file, "\n");
+			fprintf(file_csv, (bo::format(";value_%u") % c).str().c_str());
+		fprintf(file_csv, "\n");
 	
 		double time = start_t + t * field_render.time_resolution;
 		
@@ -645,42 +645,67 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 			for (unsigned int b = 0; b < n_b; b++)
 			{
 				double pos_b = -len_b/2 + field_render.space_resolution * b;
-				fprintf(file, "%.16E;%.16E;%.16E", time * AU_TIME, pos_a * AU_LENGTH, pos_b * AU_LENGTH);
+				fprintf(file_csv, "%.16E;%.16E;%.16E", time * AU_TIME, pos_a * AU_LENGTH, pos_b * AU_LENGTH);
 				
 				for (unsigned short c = 0; c < field_render.count; c++)
-					fprintf(file, ";%.16E", space[t][a][b][c]);
+					fprintf(file_csv, ";%.16E", space[t][a][b][c]);
 					
-				fprintf(file, "\n");
+				fprintf(file_csv, "\n");
 			}
 		}
 		
-		fclose(file);
+		fclose(file_csv);
 	}
 	
 
 	
-	// Writing ctioga2 files
+	
 	for (unsigned short c = 0; c < field_render.count; c++)
 	{
-		FILE* file_ct = fopen((output_dir / fs::path((bo::format("field_render_%s_%u.csv") % field_render.id % c).str())).string().c_str(), "w");
+		fs::path filename_ct = output_dir / fs::path((bo::format("field_render_%s_%u.ct2") % field_render.id % c).str());
 		
-		fprintf(file_ct, "title '%s'\n", field_render->title.get(c));
+		FILE* file_ct = fopen(filename_ct.string().c_str(), "w");
+		
+		// Writing ctioga2 files
+		fprintf(file_ct, "title '%s'\n", field_render.titles[c].c_str());
 		fprintf(file_ct, "text-separator ;\n");
 		fprintf(file_ct, "\n");
-		fprintf(file_ct, "z_min = %.16E\n", 0); // TODO: add value
-		fprintf(file_ct, "z_max = %.16E\n", 100); // TODO: add value
+		fprintf(file_ct, "z_min = %.16E\n", 0.0); // TODO: add value
+		fprintf(file_ct, "z_max = %.16E\n", 100.0); // TODO: add value
 		fprintf(file_ct, "\n");
 		fprintf(file_ct, "xyz-map\n");
 		fprintf(file_ct, "new-zaxis zvalues /location right /bar_size=6mm\n");
 		fprintf(file_ct, "plot @'$2:$3:$%u'  /color-map \"#ffffff($(z_min))--#bdd7e7--#6baed6--#3182bd--#08519c($(z_max))\" /zaxis zvalues\n", 4+c);
 		fprintf(file_ct, "\n");
-		fprintf(file_ct, "xlabel '$%s$ [$m$]'\n", axis1);
-		fprintf(file_ct, "ylabel '$%s$ [$m$]'\n", axis2);
+		fprintf(file_ct, "xlabel '$%s$ [$m$]'\n", axis1.c_str());
+		fprintf(file_ct, "ylabel '$%s$ [$m$]'\n", axis2.c_str());
 		
 		fclose(file_ct);
+		
+		// Writing shell file that will create the movie
+		FILE* file_sh = fopen((output_dir / fs::path((bo::format("field_render_i%u_%s_%u.sh") % interaction % field_render.id % c).str())).string().c_str(), "w");
+		fprintf(file_sh, "#!/bin/sh\n");
+		fprintf(file_sh, "\n");
+		
+		for (unsigned int t = 0; t < nt; t++)
+		{
+			string basename = (bo::format("field_render_i%u_%s_t%u")  % interaction % field_render.id % t).str();
+			fs::path filename_csv = output_dir / fs::path((bo::format("%s.csv") % basename).str());
+			fprintf(file_sh, "ctioga2 --load '%s' -f '%s'  --output-directory '%s' --name '%s'\n", filename_csv.string().c_str(), filename_ct.string().c_str(), output_dir.string().c_str(), basename.c_str());
+		}
+		fprintf(file_sh, "\n");
+		for (unsigned int t = 0; t < nt; t++)
+		{
+			string basename = (bo::format("field_render_i%u_%s_t%u")  % interaction % field_render.id % t).str();
+			
+			fprintf(file_sh, (bo::format("pdftoppm -singlefile '%s/%s.pdf' '%s/%s'\n") % output_dir.string() % basename % output_dir.string() % basename).str().c_str());
+		}
+		fprintf(file_sh, "\n");
+		
+		fclose(file_sh);
 	}
 	
-	
+	// Freeing the allocated memory
 	for (unsigned int s1 = 0; s1 < nt; s1++)
 	{
 		for (unsigned int s2 = 0; s2 < n_a; s2++)

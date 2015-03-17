@@ -193,7 +193,7 @@ typedef struct FieldRender
 	string id;
 	
 	unsigned short 	count;
-	list<string> 	titles;
+	vector<string> 	titles;
 	
 	Plane plane;
 
