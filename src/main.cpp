@@ -153,12 +153,13 @@ int main(int argc, char *argv[])
 	lua::State		lua_state;
 
 	
-	Simulation		simulation;
-	Pulse			laser;
-	Particle		particle;
-	Laboratory 		laboratory;
-	ParticleState	particle_state;
-	OutputSetting   output_setting;
+	Simulation			simulation;
+	Pulse				laser;
+	Particle			particle;
+	Laboratory 			laboratory;
+	ParticleState		particle_state;
+	set<FieldRender*>	field_renders;
+	
 	
 	// Convert the config file to a SI compliant version
 	fs::path cfg_file_si_tmp = fs::temp_directory_path() / fs::unique_path();
@@ -172,9 +173,10 @@ int main(int argc, char *argv[])
 		exit(-2);
 	}
 	
-
-	read_config(cfg_file_si_tmp, simulation, output_setting, laser, particle, particle_state, laboratory, &lua_state);
-		
+	
+	read_config(cfg_file_si_tmp, simulation, laser, particle, particle_state, laboratory, field_renders, &lua_state);
+	
+	
 	
 	
 	
@@ -211,7 +213,7 @@ int main(int argc, char *argv[])
 	stream_node.close();
 	
 	// Executing simulation
-	simulate(simulation, output_setting, laser, particle, particle_state, laboratory, &lua_state, output_dir);
+	simulate(simulation, field_renders, laser, particle, particle_state, laboratory, &lua_state, output_dir);
 	
 
 }

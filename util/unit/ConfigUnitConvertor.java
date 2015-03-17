@@ -101,7 +101,7 @@ public class ConfigUnitConvertor
 		pattern1 = Pattern.compile("^\\s*(\\w+)\\s*=.*");
 
 		String expRegex = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?";
-		String muRegex  = "[Α-Ωα-ωa-zA-Z\\_\\*\\/\\%]";
+		String muRegex  = "[Α-Ωα-ωa-zA-Z\\_\\*\\/\\%\\°]";
 		pattern2 	= Pattern.compile("^\\s*(\\w+)\\s*=\\s*(" + expRegex + ")\\s*((" + muRegex + ")*)\\s*$");
 		
 		

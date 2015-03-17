@@ -229,14 +229,101 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	state_local_to_global(particle_state, first_node, rel_pos_x, rel_pos_y, rel_pos_z, rel_mom_x, rel_mom_y, rel_mom_z);
 }
 
+void read_config_renders(Setting* field_renders_config, set<FieldRender*> renders, lua::State* lua_state)
+{
+	try 
+	{
+		for (int i = 0; i < field_renders_config->getLength(); i++)
+		{
+			Setting& render_config = (*field_renders_config)[i];
+			
+			FieldRender* render = new FieldRender;
+			
+			render->id 		= string(render_config.getName());
+			
+			render->count	= 0;
+			while (render_config.exists((bo::format("title_%u") % (render->count+1)).str()))
+			{
+				render->titles.push_back(render_config[(bo::format("title_%u") % (render->count+1)).str()]);
+				render->count++;
+			}
+			
+			if (render->count == 0)
+			{
+				printf("Unable to find '%s' parameter in render section '%s'\n", "title_1", render->id.c_str());
+				exit(-1);
+			}
+			
+			string plane;
+			if (render_config.exists("plane"))	plane = (const char *) render_config["plane"]; else missing_param("plane");
+			
+			if (plane == "xy")
+				render->plane = XY;
+			if (plane == "xz")
+				render->plane = XZ;
+			if (plane == "yz")
+				render->plane = YZ;
+
+			if (render_config.exists("axis_cut")) 			render->axis_cut 		= (double)render_config["axis_cut"] 			/ AU_LENGTH;	else render->axis_cut = 0;
+			if (render_config.exists("space_resolution")) 	render->space_resolution	= (double)render_config["space_resolution"] / AU_LENGTH;	else missing_param("space_resolution");
+			
+			if (render_config.exists("space_size_x"))		render->space_size_x 	= (double)render_config["space_size_x"] 		/ AU_LENGTH; 	else missing_param("space_size_x");
+			if (render_config.exists("space_size_y"))		render->space_size_y 	= (double)render_config["space_size_y"] 		/ AU_LENGTH; 	else missing_param("space_size_y");
+			if (render_config.exists("space_size_z"))		render->space_size_z 	= (double)render_config["space_size_z"] 		/ AU_LENGTH; 	else missing_param("space_size_z");
+			
+			if (render_config.exists("time_resolution"))	render->time_resolution 	= (double)render_config["time_resolution"]	/ AU_TIME; 		else missing_param("time_resolution");
+			if (render_config.exists("movie_length"))		render->movie_length 	= (double)render_config["movie_length"] 		/ AU_TIME; 		else missing_param("movie_length");
+
+			if (!render_config.exists("formula")) missing_param("formula");
+			
+			render->func_formula_name = (bo::format("func_field_render_%s") % render->id).str();
+			string s = (bo::format("function %s(D, t, x, y, z)\n") % render->func_formula_name).str();
+			s += "    -- Injecting default variables\n";
+			s += (bo::format("    dx = %16E\n") % (render->space_resolution / 1000)).str();
+			s += (bo::format("    dy = %16E\n") % (render->space_resolution / 1000)).str();
+			s += (bo::format("    dz = %16E\n") % (render->space_resolution / 1000)).str();
+			s += (bo::format("    dt = %16E\n") % (render->time_resolution  / 1000)).str();
+			s += "    -- completed\n\n";
+			
+			string formula = render_config["formula"];
+			s += (bo::format("%s\n") % (formula)).str();
+			s += "end\n";
+			
+			try
+			{
+				lua_state->doString(s.c_str());
+			}
+			catch (lua::LoadError& e)
+			{
+				check_lua_error(e, render->func_formula_name, s);
+			}
+			
+			printf("Generated fields LUA function:\n");
+			printf("--------------------------------------------------------\n");
+			printf("%s\n", s.c_str());
+			printf("--------------------------------------------------------\n");
+
+
+			renders.insert(render);
+		}
+		
+	}
+	catch (ParseException& e)  
+	{
+		printf("Error while reading configuration file: %s\n", e.getFile());
+		printf("Line %d: %s\n", e.getLine(), e.getError());
+		exit(-1);
+	}
+}
+
 void read_config(
 	fs::path& cfg_file,
 	Simulation& simulation,
-	OutputSetting& output,
 	Pulse& laser,
 	Particle& particle,
 	ParticleState& particle_state,
 	Laboratory& laboratory,
+	set<FieldRender*> field_renders,
 	lua::State* lua_state)
 {
 	Parameters parameters;
@@ -260,7 +347,7 @@ void read_config(
 		Setting&  config_particle 			= config->lookup("particle");
 		//Setting&  config_accellerator 		= config->lookup("accellerator");
 		Setting&  config_laboratory 		= config->lookup("laboratory");
-		Setting&  config_output				= config->lookup("output");
+		//Setting&  config_output				= config->lookup("output");
 
 		config_laser.lookupValue			("duration",  	parameters.pulse_duration)							|| missing_param("duration (laser)");
 		
@@ -354,43 +441,8 @@ void read_config(
 		config_simulation.lookupValue		("laser_influence_radius",  parameters.laser_influence_radius)	|| missing_param("laser_influence_radius");
 		config_simulation.lookupValue		("func_commons",  			parameters.func_commons)			|| missing_param("func_commons");
 
-		//config_accellerator.lookupValue		("nodes",   				parameters.nodes)					|| missing_param("nodes");
-		//config_accellerator.lookupValue		("radius",  				parameters.radius)					|| missing_param("radius");
 
-		//config_accellerator.lookupValue		("node_axis_mode",  		parameters.node_axis_mode)			|| missing_param("node_axis_mode");
-		//config_accellerator.lookupValue		("node_axis_rotate_theta",  parameters.node_axis_rotate_theta)	|| missing_param("node_axis_rotate_theta");
-		//config_accellerator.lookupValue		("node_axis_rotate_phi",  	parameters.node_axis_rotate_phi)	|| missing_param("node_axis_rotate_phi");
-
-		//config_accellerator.lookupValue 		("timing_mode",   			parameters.timing_mode)				|| missing_param("timing_mode");
-		//config_accellerator.lookupValue		("timing_value",  			parameters.timing_value)			|| missing_param("timing_value");
 		
-		config_output.lookupValue			("field_map_enable_xy",		parameters.field_map_enable_xy)		|| missing_param("field_map_enable_xy");
-		config_output.lookupValue			("field_map_enable_xz",		parameters.field_map_enable_xz)		|| missing_param("field_map_enable_xz");
-		config_output.lookupValue			("field_map_enable_yz",		parameters.field_map_enable_yz)		|| missing_param("field_map_enable_yz");
-		
-		
-		Setting& field_map_xy_skip = config_output["field_map_xy_skip"];
-		Setting& field_map_xz_skip = config_output["field_map_xz_skip"];
-		Setting& field_map_yz_skip = config_output["field_map_yz_skip"];
-		
-		for (int i = 0; i < field_map_xy_skip.getLength(); i++)
-			parameters.field_map_xy_skip.push_back(field_map_xy_skip[i]);
-		for (int i = 0; i < field_map_xz_skip.getLength(); i++)
-			parameters.field_map_xz_skip.push_back(field_map_xz_skip[i]);
-		for (int i = 0; i < field_map_yz_skip.getLength(); i++)
-			parameters.field_map_yz_skip.push_back(field_map_yz_skip[i]);
-		
-		config_output.lookupValue			("field_map_resolution_t",	parameters.field_map_resolution_t)	|| missing_param("field_map_resolution_t");
-		config_output.lookupValue			("field_map_resolution_x",	parameters.field_map_resolution_x)	|| missing_param("field_map_resolution_x");
-		config_output.lookupValue			("field_map_resolution_y",	parameters.field_map_resolution_y)	|| missing_param("field_map_resolution_y");
-		config_output.lookupValue			("field_map_resolution_z",	parameters.field_map_resolution_z)	|| missing_param("field_map_resolution_z");
-		
-		config_output.lookupValue			("field_map_size_x",		parameters.field_map_size_x)		|| missing_param("field_map_size_x");
-		config_output.lookupValue			("field_map_size_y",		parameters.field_map_size_y)		|| missing_param("field_map_size_y");
-		config_output.lookupValue			("field_map_size_z",		parameters.field_map_size_z)		|| missing_param("field_map_size_z");
-		
-		config_output.lookupValue			("field_map_movie_length",	parameters.field_map_movie_length)	|| missing_param("field_map_movie_length");
-	  
 		static const bo::regex el("^node\\_([0-9])+$");
 		for (int i = 0; i < config_laboratory.getLength(); i++)
 		{
@@ -512,59 +564,8 @@ void read_config(
 	particle.rest_mass 					= parameters.rest_mass 				/ AU_MASS;
 	particle.charge 					= parameters.charge    				/ AU_CHARGE;
 	
-	//accellerator.radius					= parameters.radius 				/ AU_LENGTH;
-	
-	
-	////for (unsigned int n = 0; n < parameters.nodes; n++)
-	////{ 
-		
-	////}
-
-	
-	//if (ba::iequals(parameters.node_axis_mode, 			"MODE_P")) 
-		//accellerator.node_axis_mode 	= MODE_P;
-	//else if (ba::iequals(parameters.node_axis_mode, 	"MODE_T_FW"))
-		//accellerator.node_axis_mode 	= MODE_T_FW;
-	//else if (ba::iequals(parameters.node_axis_mode, 	"MODE_T_BW")) 
-		//accellerator.node_axis_mode 	= MODE_T_BW;
-	//else
-		//wrong_param("node_axis_mode", "accepted values are: MODE_P, MODE_T_FW, MODE_T_BW");
-		
-	//accellerator.node_axis_rotate_theta	= parameters.node_axis_rotate_theta;
-	//accellerator.node_axis_rotate_phi	= parameters.node_axis_rotate_phi;
-
-	//if (ba::iequals(parameters.timing_mode, 		"TURN_ON")) 
-		//accellerator.timing_mode = TURN_ON;
-	//else if (ba::iequals(parameters.timing_mode, 	"CONSTANT"))
-		//accellerator.timing_mode = CONSTANT;
-	//else if (ba::iequals(parameters.timing_mode, 	"TURN_OFF")) 
-		//accellerator.timing_mode = TURN_OFF;
-	//else
-		//accellerator.timing_mode = CONSTANT;
-	
-	//accellerator.timing_value	= parameters.timing_value;
-	
-	output.field_map_enable_xy	= parameters.field_map_enable_xy;
-	output.field_map_enable_xz	= parameters.field_map_enable_xz;
-	output.field_map_enable_yz	= parameters.field_map_enable_yz;
-	
-	for (string skip: parameters.field_map_xy_skip)
-		output.field_map_xy_skip.push_back(bo::regex(skip));
-	for (string skip: parameters.field_map_xz_skip)
-		output.field_map_xz_skip.push_back(bo::regex(skip));
-	for (string skip: parameters.field_map_yz_skip)
-		output.field_map_yz_skip.push_back(bo::regex(skip));
-	
-	output.field_map_resolution_t	= parameters.field_map_resolution_t  / AU_TIME;
-	output.field_map_resolution_x	= parameters.field_map_resolution_x  / AU_LENGTH;
-	output.field_map_resolution_y	= parameters.field_map_resolution_y  / AU_LENGTH;
-	output.field_map_resolution_z	= parameters.field_map_resolution_z  / AU_LENGTH;
-	
-	output.field_map_size_x	= parameters.field_map_size_x / AU_LENGTH;
-	output.field_map_size_y	= parameters.field_map_size_y / AU_LENGTH;
-	output.field_map_size_z	= parameters.field_map_size_z / AU_LENGTH;
-	
-	output.field_map_movie_length	= parameters.field_map_movie_length / AU_TIME;
+	Setting& field_renders_setting = config->lookup("field_renders");
+	read_config_renders(&field_renders_setting, field_renders, lua_state);
 
 	delete config;
 	

@@ -17,10 +17,9 @@ namespace fs = boost::filesystem;
 namespace ba = boost::algorithm;
 namespace bo = boost;
 
-
 typedef enum {FREE, LASER}				 		RangeMode;
 typedef enum {TURN_ON, CONSTANT, TURN_OFF} 		TimingMode;
-typedef enum {MODE_P, MODE_T_FW, MODE_T_BW} 	NodeAxisMode;
+typedef enum {XY, XZ, YZ} 						Plane;
 
 #define pow2(a) ((a) * (a)) 
 #define pow3(a) ((a) * (a) * (a)) 
@@ -49,7 +48,7 @@ typedef enum {MODE_P, MODE_T_FW, MODE_T_BW} 	NodeAxisMode;
 #define AU_MAGNETIC_FIELD		(AU_ANG_MOMENTUM / AU_CHARGE / AU_LENGTH / AU_LENGTH) 	// T		ℏ/(ea₀²)
 
 
-typedef struct ParametersStruct
+typedef struct Parameters
 {
 	string 			basename;
 	double 		 	simulation_duration;
@@ -91,36 +90,10 @@ typedef struct ParametersStruct
 	double initial_momentum_phi;
 
 	unsigned int 	nodes;
-	double 			radius;
-	
-	string			node_axis_mode;
-	bool			node_axis_rotate_theta;
-	bool			node_axis_rotate_phi;
-	  
-	string			timing_mode;
-	double          timing_value;
-	
-	bool field_map_enable_xy; 
-	bool field_map_enable_xz;
-	bool field_map_enable_yz;
 
-	vector<string> field_map_xy_skip;
-	vector<string> field_map_xz_skip;
-	vector<string> field_map_yz_skip;
-	
-	double field_map_resolution_t;
-	double field_map_resolution_x;
-	double field_map_resolution_y;
-	double field_map_resolution_z;
-	
-	double field_map_size_x;
-	double field_map_size_y;
-	double field_map_size_z;
-	
-	double field_map_movie_length;
 } Parameters;
 
-typedef struct SimulationStruct
+typedef struct Simulation
 {
 	string 			basename;
 	double		 	duration;
@@ -135,13 +108,13 @@ typedef struct SimulationStruct
 	
 } Simulation;
 
-typedef struct PulseStruct
+typedef struct Pulse
 {
 	double	duration;		// pulse duration
 	int		func_fields;	// coockie of LUA function
 } Pulse;
 
-typedef struct FieldEBStruct
+typedef struct Field
 {
 	double e_x;
 	double e_y;
@@ -150,34 +123,23 @@ typedef struct FieldEBStruct
 	double b_x;
 	double b_y;
 	double b_z;
-} FieldEB;
 
-typedef struct FieldEBLimitsStruct
+} Field;
+
+typedef struct RenderLimit
 {
-	double e_x_min;
-	double e_y_min;
-	double e_z_min;
-	
-	double e_x_max;
-	double e_y_max;
-	double e_z_max;
-	
-	double b_x_min;
-	double b_y_min;
-	double b_z_min;
-	
-	double b_x_max;
-	double b_y_max;
-	double b_z_max;
-} FieldEBLimits;
+	unsigned int frames;
+	double value_min;
+	double value_max;
+} RenderLimit;
 
-typedef struct ParticleStruct
+typedef struct Particle
 {
 	double rest_mass;
 	double charge;
 } Particle;
 
-typedef struct ParticleStateStruct
+typedef struct ParticleState
 {	
 	
 	/*
@@ -212,7 +174,7 @@ typedef struct ParticleStateStruct
 	double momentum_z;
 } ParticleState;
 
-typedef struct NodeStruct
+typedef struct Node
 {
 	unsigned int	id;
 	long double 	position_x;
@@ -221,47 +183,36 @@ typedef struct NodeStruct
 	mat				axis; 				// Axis rotation 3x3 matrix
 } Node;
 
-typedef struct LaboratoryStruct
+typedef struct Laboratory
 {  
 	vector<Node> 	nodes;
 } Laboratory;
 
-typedef struct AccelleratorStruct
-{  
-	vector<Node> 	nodes;
-	double 			radius;
-
-	NodeAxisMode	node_axis_mode;
-	bool			node_axis_rotate_theta;
-	bool			node_axis_rotate_phi;
-
-	TimingMode 		timing_mode;
-	double          timing_value;
-} Accellerator;
-
-
-
-typedef struct OutputSettingStruct
+typedef struct FieldRender
 {
-	bool field_map_enable_xy; 
-	bool field_map_enable_xz;
-	bool field_map_enable_yz;
+	string id;
 	
-	vector<bo::regex> field_map_xy_skip;
-	vector<bo::regex> field_map_xz_skip;
-	vector<bo::regex> field_map_yz_skip;
+	unsigned short 	count;
+	list<string> 	titles;
+	
+	Plane plane;
 
-	double field_map_resolution_t;
-	double field_map_resolution_x;
-	double field_map_resolution_y;
-	double field_map_resolution_z;
-	
-	double field_map_size_x;
-	double field_map_size_y;
-	double field_map_size_z;
-	
-	double field_map_movie_length;
+	double axis_cut;
+	double space_resolution;
 
-} OutputSetting;
+	double space_size_x;
+	double space_size_y;
+	double space_size_z;
+
+
+	double time_resolution;
+	double movie_length;
+
+
+	string func_formula_name;
+
+	
+
+} FieldRender;
 
 #endif

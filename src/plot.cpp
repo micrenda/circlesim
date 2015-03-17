@@ -27,7 +27,7 @@ int execute_plot_cmd(string cmd)
 	return status;
 }
 
-void plot_interaction_files(fs::path output_dir, unsigned int interaction, int node)
+void plot_interaction_files(unsigned int interaction, int node, fs::path output_dir)
 {
 	fs::path plot_dir = output_dir / fs::path("plot_interactions");
 	
@@ -54,31 +54,9 @@ void plot_interaction_files(fs::path output_dir, unsigned int interaction, int n
 	
 }
 
-string get_ctioga_limits(FieldEBLimits limits)
-{
-	string s = "";
-	
-	s += (bo::format(" --set e_x_min %E") % (limits.e_x_min * AU_ELECTRIC_FIELD)).str();
-	s += (bo::format(" --set e_y_min %E") % (limits.e_y_min * AU_ELECTRIC_FIELD)).str();
-	s += (bo::format(" --set e_z_min %E") % (limits.e_z_min * AU_ELECTRIC_FIELD)).str();
-	                                                                           
-	s += (bo::format(" --set e_x_max %E") % (limits.e_x_max * AU_ELECTRIC_FIELD)).str();
-	s += (bo::format(" --set e_y_max %E") % (limits.e_y_max * AU_ELECTRIC_FIELD)).str();
-	s += (bo::format(" --set e_z_max %E") % (limits.e_z_max * AU_ELECTRIC_FIELD)).str();
-	                                                                           
-	s += (bo::format(" --set b_x_min %E") % (limits.b_x_min * AU_MAGNETIC_FIELD)).str();
-	s += (bo::format(" --set b_y_min %E") % (limits.b_y_min * AU_MAGNETIC_FIELD)).str();
-	s += (bo::format(" --set b_z_min %E") % (limits.b_z_min * AU_MAGNETIC_FIELD)).str();
-	                                                                           
-	s += (bo::format(" --set b_x_max %E") % (limits.b_x_max * AU_MAGNETIC_FIELD)).str();
-	s += (bo::format(" --set b_y_max %E") % (limits.b_y_max * AU_MAGNETIC_FIELD)).str();
-	s += (bo::format(" --set b_z_max %E") % (limits.b_z_max * AU_MAGNETIC_FIELD)).str();
-		
-	return s;
-}
 
 
-void make_field_map_video(fs::path output_dir, fs::path file_ct, FieldEBLimits limits, string plane, unsigned int interaction, int node, unsigned int max_t, double movie_length)
+void make_field_map_video(fs::path output_dir, fs::path file_ct, RenderLimit& render_limits, string plane, unsigned int interaction, int node, unsigned int max_t, double movie_length)
 {
 	string basename_ct = file_ct.stem().string();
 	
@@ -94,10 +72,9 @@ void make_field_map_video(fs::path output_dir, fs::path file_ct, FieldEBLimits l
 		string basename_in  = (bo::format("field_map_%s_i%un%it%u") % plane 	  % interaction % node % t).str();
 		string basename_out = (bo::format("%s_i%un%it%u") 			% basename_ct % interaction % node % t).str();
 
-		execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s/%s.csv' %s -f '%s'  --output-directory '%s' --name '%s'")
+		execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s/%s.csv' -f '%s'  --output-directory '%s' --name '%s'")
 			% output_dir.string()
 			% basename_in
-			% get_ctioga_limits(limits)
 			% file_ct.string()
 			% plot_dir.string() 
 			% basename_out).str());
@@ -134,104 +111,10 @@ void make_field_map_video(fs::path output_dir, fs::path file_ct, FieldEBLimits l
 }
 
 
-void plot_field_maps(fs::path output_dir, OutputSetting output_setting, FieldEBLimits limits, unsigned int interaction, int node)
+void plot_field_maps( FieldRender& render, RenderLimit& render_limits, unsigned int interaction, int node, fs::path output_dir)
 {
 	
-	fs::path plot_dir = fs::path(exe_path) / fs::path("/util/plot_interaction_field/");
 	
-	fs::directory_iterator end_iter;
-
-	if ( fs::exists(output_dir) && fs::is_directory(output_dir))
-	{
-		static const bo::regex e("^field\\_map\\_([xyz]{2})\\_i([0-9]+)n([0-9]+)t([0-9]+).csv$");
-
-		bool has_xy = false;
-		bool has_xz = false;
-		bool has_yz = false;
-		
-		unsigned int max_t_xy = 0;
-		unsigned int max_t_xz = 0;
-		unsigned int max_t_yz = 0;
-		
-		for( fs::directory_iterator current_iter(output_dir); current_iter != end_iter ; ++current_iter)
-		{
-			if (fs::is_regular_file(current_iter->status()) )
-			{
-				bo::match_results<string::const_iterator> what;
-				if (bo::regex_match(current_iter->path().filename().string(), what, e))
-				{
-					string filename = what[0];
-					string plane    = what[1];
-					
-					
-					unsigned int i  = stol(what[2].str()); 
-					int n           = stol(what[3].str());
-					unsigned int t  = stol(what[4].str());
-					
-					if (interaction == i && node == n)
-					{
-						if (plane == "xy")
-						{
-							has_xy = true;
-							if (t > max_t_xy) max_t_xy = t;
-						}
-						if (plane == "xz")
-						{
-							has_xz = true;
-							if (t > max_t_xz) max_t_xz = t;
-						}
-						if (plane == "yz")
-						{
-							has_yz = true;
-							if (t > max_t_yz) max_t_yz = t;
-						}
-					}					
-				} 
-			}
-		}
-		
-		
-		static const bo::regex e_xy("^plot\\_xy[[:print:]]*\\.ct2$");
-		static const bo::regex e_xz("^plot\\_xz[[:print:]]*\\.ct2$");
-		static const bo::regex e_yz("^plot\\_yz[[:print:]]*\\.ct2$");
-		
-		for( fs::directory_iterator current_iter(plot_dir); current_iter != end_iter ; ++current_iter)
-		{		
-			if (fs::is_regular_file(current_iter->status()) )
-			{
-				string filename = current_iter->path().filename().string();
-				if (has_xy && bo::regex_match(filename, e_xy))
-				{
-					bool skip = false;
-					
-					for (bo::regex e_skip: output_setting.field_map_xy_skip)
-						skip |= bo::regex_match(filename, e_skip);
-					
-					if (!skip)
-						make_field_map_video(output_dir, current_iter->path(), limits, "xy", interaction, node, max_t_xy, output_setting.field_map_movie_length);
-				}
-				if (has_xz && bo::regex_match(current_iter->path().filename().string(), e_xz))
-				{
-					bool skip = false;
-					
-					for (bo::regex e_skip: output_setting.field_map_xz_skip)
-						skip |= bo::regex_match(filename, e_skip);
-					
-					if (!skip)
-						make_field_map_video(output_dir, current_iter->path(), limits, "xz", interaction, node, max_t_xz, output_setting.field_map_movie_length);
-				}
-				if (has_yz && bo::regex_match(current_iter->path().filename().string(), e_yz)) 
-				{
-					bool skip = false;
-					
-					for (bo::regex e_skip: output_setting.field_map_yz_skip)
-						skip |= bo::regex_match(filename, e_skip);
-					
-					if (!skip)
-						make_field_map_video(output_dir, current_iter->path(), limits, "yz", interaction, node, max_t_yz, output_setting.field_map_movie_length);
-				}
-			}
-		}
-	}
+	//make_field_map_video(output_dir, current_iter->path(), limits, "yz", interaction, node, max_t_yz, output_setting.field_map_movie_length);
 }
 

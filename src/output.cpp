@@ -202,7 +202,7 @@ void write_interaction(
 	double rel_mom_x, 
 	double rel_mom_y, 
 	double rel_mom_z,
-	FieldEB& field)
+	Field& field)
 {
 	
 	double rel_pos_rho;
@@ -249,7 +249,7 @@ void write_particle_field(
 	double rel_pos_x, 
 	double rel_pos_y, 
 	double rel_pos_z, 
-	FieldEB& field)
+	Field& field)
 {
 	stream
 		<< current_time	* AU_TIME			<< ";"
@@ -282,7 +282,7 @@ void write_node(ofstream& stream, Node& node)
 		<< node.axis(2,2)				<< endl;
 }
 
-void write_field_maps_xy(ofstream& stream, double time, double position_x, double position_y, double position_z, FieldEB& field)
+void write_field_maps_xy(ofstream& stream, double time, double position_x, double position_y, double position_z, Field& field)
 {
 	stream 
 		<< time			* AU_TIME			<< ";" 
@@ -297,7 +297,7 @@ void write_field_maps_xy(ofstream& stream, double time, double position_x, doubl
 		<< field.b_z	* AU_MAGNETIC_FIELD	<< endl;
 }
 
-void write_field_maps_xz(ofstream& stream, double time, double position_x, double position_y, double position_z, FieldEB& field)
+void write_field_maps_xz(ofstream& stream, double time, double position_x, double position_y, double position_z, Field& field)
 {
 	stream 
 		<< time			* AU_TIME			<< ";" 
@@ -312,7 +312,7 @@ void write_field_maps_xz(ofstream& stream, double time, double position_x, doubl
 		<< field.b_z	* AU_MAGNETIC_FIELD	<< endl;
 }
 
-void write_field_maps_yz(ofstream& stream, double time, double position_x, double position_y, double position_z, FieldEB& field)
+void write_field_maps_yz(ofstream& stream, double time, double position_x, double position_y, double position_z, Field& field)
 {
 	stream 
 		<< time			* AU_TIME			<< ";" 

@@ -40,7 +40,7 @@ typedef struct gsl_odeiv_custom_params
 } gsl_odeiv_custom_params;
 
       
-void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, Pulse& laser, FieldEB& field, lua::State* lua_state)
+void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, const Pulse& laser, Field& field, lua::State* lua_state)
 {
 	//TODO: These values must be cached because does not change between the execution of calculate fiels (or neither in all simulation)
 	
@@ -56,7 +56,7 @@ void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, Pu
 	
 	#pragma omp critical
 	{
-		// Unfortunately LuaState is not thread save, so we must not parallel execute this section of code
+		// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
 		lua::tie(e1, e2, e3, b1, b2, b3) = (*lua_state)["func_fields"](param_duration, param_time, param_x, param_y, param_z);
 	}
 	
@@ -91,7 +91,7 @@ int gsl_odeiv_func_laser(double t, const double y[], double f[], void *params)
 	double mom_y = y[4];
 	double mom_z = y[5];
 	
-	FieldEB field;
+	Field field;
 	calculate_fields(pos_t, pos_x, pos_y, pos_z, laser, field, lua_state);
 	
 	double e_x = field.e_x;
@@ -215,7 +215,7 @@ void simulate_laser(
 		// Print the particle state (global position)
 		write_particle(stream_particle, time_current, state);
 		
-		FieldEB field;
+		Field field;
 		// Print the particle interaction (local position, fields, etc)
 		calculate_fields(time_current*C0, y[0], y[1], y[2], laser, field, lua_state);
 		write_interaction(stream_interaction, time_current, y[0], y[1], y[2], y[3], y[4], y[5], field);
@@ -320,172 +320,173 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 
 }
 
-void update_limits(FieldEBLimits& limits, FieldEB field)
-{
-	if (field.e_x > limits.e_x_max)
-		limits.e_x_max = field.e_x;
-	if (field.e_y > limits.e_y_max)
-		limits.e_y_max = field.e_y;
-	if (field.e_z > limits.e_z_max)
-		limits.e_z_max = field.e_z;
-		
-	if (field.e_x < limits.e_x_min)
-		limits.e_x_min = field.e_x;
-	if (field.e_y < limits.e_y_min)
-		limits.e_y_min = field.e_y;
-	if (field.e_z < limits.e_z_min)
-		limits.e_z_min = field.e_z;
-		
-	if (field.b_x > limits.b_x_max)
-		limits.b_x_max = field.b_x;
-	if (field.b_y > limits.b_y_max)
-		limits.b_y_max = field.b_y;
-	if (field.b_z > limits.b_z_max)
-		limits.b_z_max = field.b_z;
-		
-	if (field.b_x < limits.b_x_min)
-		limits.b_x_min = field.b_x;
-	if (field.b_y < limits.b_y_min)
-		limits.b_y_min = field.b_y;
-	if (field.b_z < limits.b_z_min)
-		limits.b_z_min = field.b_z;
-}
 
-void init_limits(FieldEBLimits& limits)
+void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, unsigned int interaction, int node, double start_t, double end_t, double trigger_t, Pulse& laser, lua::State* lua_state, fs::path output_dir)
 {
-	limits.e_x_min = + numeric_limits<double>::infinity();
-	limits.e_y_min = + numeric_limits<double>::infinity();
-	limits.e_z_min = + numeric_limits<double>::infinity();
-	
-	limits.e_x_max = - numeric_limits<double>::infinity();
-	limits.e_y_max = - numeric_limits<double>::infinity();
-	limits.e_z_max = - numeric_limits<double>::infinity();
-	
-	limits.b_x_min = + numeric_limits<double>::infinity();
-	limits.b_y_min = + numeric_limits<double>::infinity();
-	limits.b_z_min = + numeric_limits<double>::infinity();
-	
-	limits.b_x_max = - numeric_limits<double>::infinity();
-	limits.b_y_max = - numeric_limits<double>::infinity();
-	limits.b_z_max = - numeric_limits<double>::infinity();
-}
-
-void simulate_field_maps(OutputSetting& output_setting, FieldEBLimits& limits, unsigned int interaction, int node, double start_t, double end_t, double trigger_t, Pulse& laser, lua::State* lua_state, fs::path output_dir)
-{
-	
-	init_limits(limits);
-	
-	double dt = output_setting.field_map_resolution_t;
-	double dx = output_setting.field_map_resolution_x;
-	double dy = output_setting.field_map_resolution_y;
-	double dz = output_setting.field_map_resolution_z;
-	
-	double ni = output_setting.field_map_size_x / dx;
-	double nj = output_setting.field_map_size_y / dy;
-	double nk = output_setting.field_map_size_z / dz;
-	
-	int t_count = round((end_t - start_t) / dt);
-	
-	
-	if (output_setting.field_map_enable_xy)
+	lua_state->set("field_c_wrapper", [laser, lua_state] (double time, double pos_x, double pos_y, double pos_z) -> tuple<double, double, double, double, double, double>
 	{
-		FieldEB field[t_count][output_setting.field_map_size_x][output_setting.field_map_size_y];
+		Field field_value;
+		calculate_fields(
+			time * C0 / AU_LENGTH,
+			pos_x / AU_LENGTH,
+			pos_y / AU_LENGTH,
+			pos_z / AU_LENGTH,
+			laser,
+			field_value,
+			lua_state);
 		
-		#pragma omp parallel for
-		for (int t = 0; t < t_count; t++)
-		{
-			for (double i = 0; i < ni; i++)
-			{
-				double x = -output_setting.field_map_size_x/2 + dx * i;
-				for (double j = 0; j < nj; j++)
-				{
-					double y = -output_setting.field_map_size_y/2 + dy * j;
-					calculate_fields(C0*(current_t - trigger_t), x, y, 0, laser, field[t, i, j], lua_state);
-				}
-			}
-		}
+		field_value.e_x *= AU_ELECTRIC_FIELD;
+		field_value.e_y *= AU_ELECTRIC_FIELD;
+		field_value.e_z *= AU_ELECTRIC_FIELD;
 		
-		#pragma omp parallel for
-		for (int t = 0; t < t_count; t++)
-		{
-			double current_t = t * dt;
-			
-			ofstream stream;
-			stream.open(get_filename_field_map_xy(output_dir, interaction, node, t));
-			setup_field_map_xy(stream);
-			
-			for (double i = 0; i < ni; i++)
-			{
-				double x = -output_setting.field_map_size_x/2 + dx * i;
-				for (double j = 0; j < nj; j++)
-				{
-					write_field_maps_xy(stream, current_t, x, y, 0, field[t, i, j]);
-					update_limits(limits, field[t, i, j]);
-				}
-			}
-			
-			stream.close();
-		}
+		field_value.b_x *= AU_MAGNETIC_FIELD;
+		field_value.b_y *= AU_MAGNETIC_FIELD;
+		field_value.b_z *= AU_MAGNETIC_FIELD;
 		
+		tuple<double, double, double, double, double, double> values = make_tuple
+		(	field_value.e_x,
+			field_value.e_y,
+			field_value.e_z,
+			field_value.b_x,
+			field_value.b_y,
+			field_value.b_z);
+			
+		
+		return values;
+	});
+	
+	string wrapper = "\
+	function field(t, x, y, z)                   \
+		c_values   = field_c_wrapper(t, x, y, z); \
+		lua_values = { e_x = c_values(0), e_y = c_values(1), e_z = c_values(2), b_x = c_values(3), b_y = c_values(4), b_z = c_values(5) }          \
+		return lua_values \
+	end";
+	
+	try
+	{
+		lua_state->doString(wrapper);
+	}
+	catch (lua::LoadError& e)
+	{
+		printf("Error while parsing 'field': %s\n", e.what());
+		printf("--------------------------------------------------------\n");
+		printf("%s\n", wrapper.c_str());
+		printf("--------------------------------------------------------\n");
+		
+		exit(-4);
 	}
 
-	if (output_setting.field_map_enable_xz)
-	{
-		#pragma omp parallel for
-		for (int t = 0; t < t_count; t++)
-		{	
-			double current_t = t * dt;
-			
-			ofstream stream;
-			stream.open(get_filename_field_map_xz(output_dir, interaction, node, t));
-			setup_field_map_xz(stream);
-			
-			for (double x = -output_setting.field_map_size_x/2; x < output_setting.field_map_size_x/2; x += dx)
-			{
-				for (double z = -output_setting.field_map_size_z/2; z < output_setting.field_map_size_z/2; z += dz)
-				{
-					FieldEB field;
-					calculate_fields(C0*(current_t - trigger_t), x, 0, z, laser, field, lua_state);
-					write_field_maps_xz(stream, current_t, x, 0, z, field);
-					
-					update_limits(limits, field);
-				}
-			}
-			
-			stream.close();
-		}
-	}
+	unsigned int nt = (end_t - start_t) / field_render.time_resolution;
+	unsigned int ni = field_render.space_size_x / field_render.space_resolution;
+	unsigned int nj = field_render.space_size_y / field_render.space_resolution;
+	unsigned int nk = field_render.space_size_z / field_render.space_resolution;
+	
+	
+	double**** space;
+	
+	unsigned int size_1;
+	unsigned int size_2;
+	unsigned int size_3;
 
-	if (output_setting.field_map_enable_yz)
+	space = new double***[nt];
+	
+	size_1 = nt;
+	
+	switch(field_render.plane)
 	{
-		#pragma omp parallel for
-		for (int t = 0; t < t_count; t++)
-		{
-			double current_t = t * dt;
-			
-			ofstream stream;
-			stream.open(get_filename_field_map_yz(output_dir, interaction, node, t));
-			setup_field_map_yz(stream);
-			
-			for (double y = -output_setting.field_map_size_y/2; y < output_setting.field_map_size_y/2; y += dy)
+		case XY:
+			size_2 = ni;
+			size_3 = nj;
+		
+			for (unsigned int t = 0; t < nt; t++)
 			{
-				for (double z = -output_setting.field_map_size_z/2; z < output_setting.field_map_size_z/2; z += dz)
+				space[t] = new double**[ni];
+				
+				double time = start_t + t * field_render.time_resolution;
+				for (unsigned int i = 0; i < ni; i++)
 				{
-					FieldEB field;
-					calculate_fields(C0*(current_t - trigger_t), 0, y, z, laser, field, lua_state);
-					write_field_maps_yz(stream, current_t, 0, y, z, field);
-					
-					update_limits(limits, field);
+					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
+					space[t][i] = new double*[nj];
+					for (unsigned int j = 0; j < nj; j++)
+					{
+						double y = -field_render.space_size_y/2 + field_render.space_resolution * j;
+						space[t][i][j] = new double[field_render.count];
+						
+						double v0,v1,v2,v3,v4,v5,v6,v7;
+						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time, x * AU_LENGTH, y * AU_LENGTH, field_render.axis_cut * AU_LENGTH);
+						
+						for (unsigned short c = 0; c < field_render.count; c++)
+						{
+							switch(c)
+							{
+								case 0:
+									space[t][i][j][c] = v0;
+								break;
+								
+								case 1:
+									space[t][i][j][c] = v1;
+								break;
+								
+								case 2:
+									space[t][i][j][c] = v2;
+								break;
+								
+								case 3:
+									space[t][i][j][c] = v3;
+								break;
+								
+								case 4:
+									space[t][i][j][c] = v4;
+								break;
+								
+								case 5:
+									space[t][i][j][c] = v5;
+								break;
+								
+								case 6:
+									space[t][i][j][c] = v6;
+								break;
+								
+								case 7:
+									space[t][i][j][c] = v7;
+								break;
+							}
+						}
+					}
 				}
 			}
-			
-			stream.close();
-		}
+		break;
+		
+		case XZ:
+
+		break;
+		
+		case YZ:
+
+		break;
+		
 	}
+	
+
+		
+	
+	
+	for (unsigned int s1 = 0; s1 < size_1; s1++)
+	{
+		for (unsigned int s2 = 0; s2 < size_2; s2++)
+		{
+			for (unsigned int s3 = 0; s3 < size_3; s3++)
+			{
+				delete space[s1][s2][s3];
+			}
+			delete space[s1][s2];
+		}
+		delete space[s1];
+	}
+	delete space;
 }	
 
-
-void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& laser, Particle& particle, ParticleState& particle_state, Laboratory& laboratory, lua::State* lua_state, fs::path& output_dir)
+void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& laser, Particle& particle, ParticleState& particle_state, Laboratory& laboratory, lua::State* lua_state, fs::path& output_dir)
 {
 	
 	printf("Simulation duration: %f s\n", simulation.duration * AU_TIME);
@@ -522,14 +523,17 @@ void simulate (Simulation& simulation, OutputSetting& output_setting, Pulse& las
 			
 			double laser_trigger_time = (last_laser_exit_time - last_laser_enter_time) / 2;
 			
-			FieldEBLimits field_limits;
+			plot_interaction_files	(current_interaction, current_node, output_dir);
 			
-			simulate_field_maps(output_setting, field_limits, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, output_dir);
-			
-			
-			plot_interaction_files	(output_dir, current_interaction, current_node);
-			plot_field_maps			(output_dir, output_setting, field_limits, current_interaction, current_node);
-			
+
+			set<FieldRender*>::iterator render_iterator;
+			for (render_iterator = field_renders.begin(); render_iterator != field_renders.end(); ++render_iterator)
+			{
+				FieldRender* render = *render_iterator;
+				RenderLimit render_limit;
+				calculate_field_map (*render,  render_limit, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, output_dir);
+				plot_field_maps		(*render,  render_limit, current_interaction, current_node, output_dir);
+			}
 			
 			current_range = FREE;
 			current_node  = -1;
