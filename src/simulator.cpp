@@ -472,28 +472,171 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 		break;
 		
 		case XZ:
-
+			axis1 = "x";
+			axis2 = "z";
+			n_a = ni;
+			n_b = nk;
+			len_a = field_render.space_size_x;
+			len_b = field_render.space_size_z;
+		
+			for (unsigned int t = 0; t < nt; t++)
+			{
+				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * t / nt);
+				fflush(stdout);
+				space[t] = new double**[ni];
+				
+				double time = start_t + t * field_render.time_resolution;
+				
+				#pragma omp parallel for shared(space)
+				for (unsigned int i = 0; i < ni; i++)
+				{
+					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
+					space[t][i] = new double*[nk];
+					for (unsigned int k = 0; k < nk; k++)
+					{
+						double z = -field_render.space_size_z/2 + field_render.space_resolution * k;
+						space[t][i][k] = new double[field_render.count];
+						
+						double v0,v1,v2,v3,v4,v5,v6,v7;
+						
+						#pragma omp critical (lua_field_render)
+						{
+						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time * AU_TIME, x * AU_LENGTH, field_render.axis_cut * AU_LENGTH, z * AU_LENGTH);
+						}
+						
+						for (unsigned short c = 0; c < field_render.count; c++)
+						{
+							switch(c)
+							{
+								case 0:
+									space[t][i][k][c] = v0;
+								break;
+								
+								case 1:
+									space[t][i][k][c] = v1;
+								break;
+								
+								case 2:
+									space[t][i][k][c] = v2;
+								break;
+								
+								case 3:
+									space[t][i][k][c] = v3;
+								break;
+								
+								case 4:
+									space[t][i][k][c] = v4;
+								break;
+								
+								case 5:
+									space[t][i][k][c] = v5;
+								break;
+								
+								case 6:
+									space[t][i][k][c] = v6;
+								break;
+								
+								case 7:
+									space[t][i][k][c] = v7;
+								break;
+							}
+						}
+					}
+				}
+			}
 		break;
 		
 		case YZ:
-
+			axis1 = "y";
+			axis2 = "z";
+			n_a = nj;
+			n_b = nk;
+			len_a = field_render.space_size_y;
+			len_b = field_render.space_size_z;
+		
+			for (unsigned int t = 0; t < nt; t++)
+			{
+				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * t / nt);
+				fflush(stdout);
+				space[t] = new double**[nj];
+				
+				double time = start_t + t * field_render.time_resolution;
+				
+				#pragma omp parallel for shared(space)
+				for (unsigned int j = 0; i < nj; j++)
+				{
+					double y = -field_render.space_size_y/2 + field_render.space_resolution * j;
+					space[t][j] = new double*[nk];
+					for (unsigned int k = 0; k < nk; k++)
+					{
+						double z = -field_render.space_size_z/2 + field_render.space_resolution * k;
+						space[t][j][k] = new double[field_render.count];
+						
+						double v0,v1,v2,v3,v4,v5,v6,v7;
+						
+						#pragma omp critical (lua_field_render)
+						{
+						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time * AU_TIME, field_render.axis_cut * AU_LENGTH, y * AU_LENGTH, z * AU_LENGTH);
+						}
+						
+						for (unsigned short c = 0; c < field_render.count; c++)
+						{
+							switch(c)
+							{
+								case 0:
+									space[t][j][k][c] = v0;
+								break;
+								
+								case 1:
+									space[t][j][k][c] = v1;
+								break;
+								
+								case 2:
+									space[t][i][k][c] = v2;
+								break;
+								
+								case 3:
+									space[t][j][k][c] = v3;
+								break;
+								
+								case 4:
+									space[t][j][k][c] = v4;
+								break;
+								
+								case 5:
+									space[t][j][k][c] = v5;
+								break;
+								
+								case 6:
+									space[t][j][k][c] = v6;
+								break;
+								
+								case 7:
+									space[t][j][k][c] = v7;
+								break;
+							}
+						}
+					}
+				}
+			}
 		break;
 		
 	}
 	
 	// Writing space array into a csv file
 	
-	FILE* file=fopen((output_dir / fs::path((bo::format("field_render_%s.csv") % field_render.id).str())).string().c_str(), "w");
-	
-	fprintf(file, (bo::format("#t,time,%s,%s") % axis1 % axis2).str().c_str());
-	for (unsigned short c = 0; c < field_render.count; c++)
-		fprintf(file, (bo::format(",value_%u") % c).str().c_str());
-	fprintf(file, "\n");
 	
 	
 	
 	for (unsigned int t = 0; t < nt; t++)
 	{
+		FILE* file=fopen((output_dir / fs::path((bo::format("field_render_%s_t%u.csv") % field_render.id % t).str())).string().c_str(), "w");
+	
+		fprintf(file, (bo::format("#time;%s;%s") % axis1 % axis2).str().c_str());
+		for (unsigned short c = 0; c < field_render.count; c++)
+			fprintf(file, (bo::format(";value_%u") % c).str().c_str());
+		fprintf(file, "\n");
+	
 		double time = start_t + t * field_render.time_resolution;
 		
 		for (unsigned int a = 0; a < n_a; a++)
@@ -502,18 +645,40 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 			for (unsigned int b = 0; b < n_b; b++)
 			{
 				double pos_b = -len_b/2 + field_render.space_resolution * b;
-				fprintf(file, "%u,%.16E,%.16E,%.16E", t, time * AU_TIME, pos_a * AU_LENGTH, pos_b * AU_LENGTH);
+				fprintf(file, "%.16E;%.16E;%.16E", time * AU_TIME, pos_a * AU_LENGTH, pos_b * AU_LENGTH);
 				
 				for (unsigned short c = 0; c < field_render.count; c++)
-					fprintf(file, ",%.16E", space[t][a][b][c]);
+					fprintf(file, ";%.16E", space[t][a][b][c]);
 					
 				fprintf(file, "\n");
 			}
 		}
+		
+		fclose(file);
 	}
 	
-	fclose(file);
+
 	
+	// Writing ctioga2 files
+	for (unsigned short c = 0; c < field_render.count; c++)
+	{
+		FILE* file_ct = fopen((output_dir / fs::path((bo::format("field_render_%s_%u.csv") % field_render.id % c).str())).string().c_str(), "w");
+		
+		fprintf(file_ct, "title '%s'\n", field_render->title.get(c));
+		fprintf(file_ct, "text-separator ;\n");
+		fprintf(file_ct, "\n");
+		fprintf(file_ct, "z_min = %.16E\n", 0); // TODO: add value
+		fprintf(file_ct, "z_max = %.16E\n", 100); // TODO: add value
+		fprintf(file_ct, "\n");
+		fprintf(file_ct, "xyz-map\n");
+		fprintf(file_ct, "new-zaxis zvalues /location right /bar_size=6mm\n");
+		fprintf(file_ct, "plot @'$2:$3:$%u'  /color-map \"#ffffff($(z_min))--#bdd7e7--#6baed6--#3182bd--#08519c($(z_max))\" /zaxis zvalues\n", 4+c);
+		fprintf(file_ct, "\n");
+		fprintf(file_ct, "xlabel '$%s$ [$m$]'\n", axis1);
+		fprintf(file_ct, "ylabel '$%s$ [$m$]'\n", axis2);
+		
+		fclose(file_ct);
+	}
 	
 	
 	for (unsigned int s1 = 0; s1 < nt; s1++)
