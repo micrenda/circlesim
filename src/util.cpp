@@ -317,3 +317,45 @@ void check_lua_error(char** lua_msg)
 //{
 //	
 //	}
+
+
+
+/**
+ * Scale an image and ensure it will never be bigger than max_w x max_h.
+ * It will scale it keeping the proportions
+ */
+void scale_image(unsigned int& w, unsigned int& h, unsigned int max_w, unsigned int max_h)
+{
+
+	double ratio = 1.0 * max_w / max_h;
+	
+	unsigned int orig_w = w;
+	unsigned int orig_h = h;
+
+	if (1.d * orig_w / orig_h >= ratio)
+	{
+		if (orig_w > max_w)
+		{
+			w = max_w;
+			h = (orig_h * w / orig_w / 2) * 2; // Ensure we have an even number
+		}
+		else
+		{
+			w = (orig_w / 2) * 2;
+			h = (orig_h / 2) * 2;
+		}
+	}
+	else
+	{
+		if (orig_h > max_h)
+		{
+			h = max_h;
+			w = (orig_w * h / orig_h / 2) * 2; // Ensure we have an even number
+		}
+		else
+		{
+			h = (orig_h / 2) * 2;
+			w = (orig_w / 2) * 2;
+		}
+	}
+}

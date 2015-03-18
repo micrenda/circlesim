@@ -298,7 +298,7 @@ void read_config_renders(Setting* field_renders_config, set<FieldRender*>& rende
 				check_lua_error(e, render->func_formula_name, s);
 			}
 			
-			printf("Generated fields LUA function:\n");
+			printf((bo::format("Render field %s LUA function:\n") % render->id).str().c_str());
 			printf("--------------------------------------------------------\n");
 			printf("%s\n", s.c_str());
 			printf("--------------------------------------------------------\n");

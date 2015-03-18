@@ -149,30 +149,16 @@ string get_filename_node(fs::path output_dir)
 	return (output_dir / fs::path("node.csv")).string();
 }
 
-string get_filename_interaction(fs::path output_dir, unsigned int interaction, int node)
+string get_filename_interaction(fs::path output_dir)
 {
-	return (output_dir / fs::path((bo::format("interaction_i%un%d.csv") %  interaction % node).str())).string();
+	return (output_dir / fs::path("interaction.csv")).string();
 }
 
-string get_filename_particle_field(fs::path output_dir, unsigned int interaction, int node)
+string get_filename_particle_field(fs::path output_dir)
 {
-	return (output_dir / fs::path((bo::format("particle_field_i%un%d.csv") %  interaction % node).str())).string();
+	return (output_dir / fs::path("particle_field.csv")).string();
 }
 
-string get_filename_field_map_xy(fs::path output_dir, unsigned int interaction, int node, unsigned int t)
-{
-	return ((output_dir / fs::path((bo::format("field_map_xy_i%un%dt%u.csv") %  interaction % node % t).str())).c_str());
-}
-
-string get_filename_field_map_xz(fs::path output_dir, unsigned int interaction, int node, unsigned int t)
-{	
-	return (output_dir / fs::path((bo::format("field_map_xz_i%un%dt%u.csv") %  interaction % node % t).str())).string();
-}
-
-string get_filename_field_map_yz(fs::path output_dir, unsigned int interaction, int node, unsigned int t)
-{
-	return (output_dir / fs::path((bo::format("field_map_yz_i%un%dt%u.csv") %  interaction % node % t).str())).string();
-}
 
 void write_particle(ofstream& stream, double current_time, ParticleState& state)
 {
@@ -325,4 +311,50 @@ void write_field_maps_yz(ofstream& stream, double time, double position_x, doubl
 		<< field.b_x	* AU_MAGNETIC_FIELD	<< ";" 
 		<< field.b_y	* AU_MAGNETIC_FIELD	<< ";"
 		<< field.b_z	* AU_MAGNETIC_FIELD	<< endl;
+}
+
+
+
+void export_field_render(
+	unsigned int nt,
+	unsigned int n_a,
+	unsigned int n_b,
+	double   start_t,
+	double   end_t,
+	double   len_a,
+	double   len_b,
+	FieldRender& field_render,
+	double**** space,
+	string axis1,
+	string axis2,
+	fs::path output_dir)
+{
+	for (unsigned int t = 0; t < nt; t++)
+	{
+		FILE* file_csv=fopen((output_dir / fs::path((bo::format("field_render_%s_t%u.csv") % field_render.id % t).str())).string().c_str(), "w");
+	
+		fprintf(file_csv, (bo::format("#time;%s;%s") % axis1 % axis2).str().c_str());
+		for (unsigned short c = 0; c < field_render.count; c++)
+			fprintf(file_csv, (bo::format(";value_%u") % c).str().c_str());
+		fprintf(file_csv, "\n");
+	
+		double time = start_t + t * field_render.time_resolution;
+		
+		for (unsigned int a = 0; a < n_a; a++)
+		{
+			double pos_a = -len_a/2 + field_render.space_resolution * a;
+			for (unsigned int b = 0; b < n_b; b++)
+			{
+				double pos_b = -len_b/2 + field_render.space_resolution * b;
+				fprintf(file_csv, "%.16E;%.16E;%.16E", time * AU_TIME, pos_a * AU_LENGTH, pos_b * AU_LENGTH);
+				
+				for (unsigned short c = 0; c < field_render.count; c++)
+					fprintf(file_csv, ";%.16E", space[t][a][b][c]);
+					
+				fprintf(file_csv, "\n");
+			}
+		}
+		
+		fclose(file_csv);
+	}
 }

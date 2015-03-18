@@ -22,3 +22,5 @@ void state_global_to_local(	ParticleState& state, 	Node& node,	double& local_pos
 void state_local_to_global(	ParticleState& state,	Node& node, double  local_position_x, 	double  local_position_y, 	double  local_position_z,	double  local_momentum_x,	double  local_momentum_y,	double  local_momentum_z);
 
 void check_lua_error(char** lua_msg);
+
+void scale_image(unsigned int& w, unsigned int& h, unsigned int max_w, unsigned int max_h);

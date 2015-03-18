@@ -9,6 +9,8 @@
 #include "plot.hpp"
 
 
+
+
 bool is_in_influence_radius(ParticleState& state, Node& node, double laser_influence_radius)
 {
 	return vector_module(
@@ -323,43 +325,51 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 
 void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, unsigned int interaction, int node, double start_t, double end_t, double trigger_t, Pulse& laser, lua::State* lua_state, fs::path output_dir)
 {
-	lua_state->set("field_c_wrapper", [laser, lua_state] (double time, double pos_x, double pos_y, double pos_z) -> tuple<double, double, double, double, double, double>
-	{
-		Field field_value;
-		calculate_fields(
-			time * C0 / AU_LENGTH,
-			pos_x / AU_LENGTH,
-			pos_y / AU_LENGTH,
-			pos_z / AU_LENGTH,
-			laser,
-			field_value,
-			lua_state);
+	//lua_state->set("field_c_wrapper", [laser, lua_state] (double time, double pos_x, double pos_y, double pos_z) -> tuple<double, double, double, double, double, double>
+	//{
+		//Field field_value;
+		//calculate_fields(
+			//time * C0 / AU_LENGTH,
+			//pos_x / AU_LENGTH,
+			//pos_y / AU_LENGTH,
+			//pos_z / AU_LENGTH,
+			//laser,
+			//field_value,
+			//lua_state);
 		
-		field_value.e_x *= AU_ELECTRIC_FIELD;
-		field_value.e_y *= AU_ELECTRIC_FIELD;
-		field_value.e_z *= AU_ELECTRIC_FIELD;
+		//field_value.e_x *= AU_ELECTRIC_FIELD;
+		//field_value.e_y *= AU_ELECTRIC_FIELD;
+		//field_value.e_z *= AU_ELECTRIC_FIELD;
 		
-		field_value.b_x *= AU_MAGNETIC_FIELD;
-		field_value.b_y *= AU_MAGNETIC_FIELD;
-		field_value.b_z *= AU_MAGNETIC_FIELD;
+		//field_value.b_x *= AU_MAGNETIC_FIELD;
+		//field_value.b_y *= AU_MAGNETIC_FIELD;
+		//field_value.b_z *= AU_MAGNETIC_FIELD;
 		
-		tuple<double, double, double, double, double, double> values = make_tuple
-		(	field_value.e_x,
-			field_value.e_y,
-			field_value.e_z,
-			field_value.b_x,
-			field_value.b_y,
-			field_value.b_z);
+		//tuple<double, double, double, double, double, double> values = make_tuple
+		//(	field_value.e_x,
+			//field_value.e_y,
+			//field_value.e_z,
+			//field_value.b_x,
+			//field_value.b_y,
+			//field_value.b_z);
 			
 		
-		return values;
-	});
+		//return values;
+	//});
 	
-	string wrapper = "\
-	function field(t, x, y, z)                    \
-		value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = field_c_wrapper(t, x, y, z)  \
-		return { e_x = value_e_x, e_y = value_e_y, e_z = value_e_z, b_x = value_b_x, b_y = value_b_y, b_z = value_b_z }          \
-	end";
+	//string wrapper = "
+	//function field(t, x, y, z)                    
+		//value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = field_c_wrapper(t, x, y, z)  
+		//return { e_x = value_e_x, e_y = value_e_y, e_z = value_e_z, b_x = value_b_x, b_y = value_b_y, b_z = value_b_z }          
+	//end";
+	
+	string wrapper  = "";
+	wrapper += "function field(t, x, y, z)\n";
+	wrapper += (bo::format("   D=%.16E\n") % (laser.duration * AU_TIME)).str();             
+	wrapper += "   value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = func_fields(D, t, x, y, z)\n";
+	wrapper += "   return { e_x = value_e_x, e_y = value_e_y, e_z = value_e_z, b_x = value_b_x, b_y = value_b_y, b_z = value_b_z }\n";
+	wrapper += "end";
+	
 	
 	try
 	{
@@ -412,7 +422,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 				
 				double time = start_t + t * field_render.time_resolution;
 				
-				#pragma omp parallel for shared(space)
+				#pragma omp parallel for shared(space, lua_state)
 				for (unsigned int i = 0; i < ni; i++)
 				{
 					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
@@ -424,6 +434,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 						
 						double v0,v1,v2,v3,v4,v5,v6,v7;
 						
+						// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
 						#pragma omp critical (lua_field_render)
 						{
 						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time * AU_TIME, x * AU_LENGTH, y * AU_LENGTH, field_render.axis_cut * AU_LENGTH);
@@ -487,7 +498,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 				
 				double time = start_t + t * field_render.time_resolution;
 				
-				#pragma omp parallel for shared(space)
+				#pragma omp parallel for shared(space, lua_state)
 				for (unsigned int i = 0; i < ni; i++)
 				{
 					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
@@ -499,6 +510,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 						
 						double v0,v1,v2,v3,v4,v5,v6,v7;
 						
+						// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
 						#pragma omp critical (lua_field_render)
 						{
 						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time * AU_TIME, x * AU_LENGTH, field_render.axis_cut * AU_LENGTH, z * AU_LENGTH);
@@ -556,13 +568,13 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 		
 			for (unsigned int t = 0; t < nt; t++)
 			{
-				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * t / nt);
+				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t + 1) / nt);
 				fflush(stdout);
 				space[t] = new double**[nj];
 				
 				double time = start_t + t * field_render.time_resolution;
 				
-				#pragma omp parallel for shared(space)
+				#pragma omp parallel for shared(space, lua_state)
 				for (unsigned int j = 0; j < nj; j++)
 				{
 					double y = -field_render.space_size_y/2 + field_render.space_resolution * j;
@@ -574,6 +586,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 						
 						double v0,v1,v2,v3,v4,v5,v6,v7;
 						
+						// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
 						#pragma omp critical (lua_field_render)
 						{
 						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time * AU_TIME, field_render.axis_cut * AU_LENGTH, y * AU_LENGTH, z * AU_LENGTH);
@@ -624,87 +637,11 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 	}
 	
 	// Writing space array into a csv file
+	export_field_render(nt, n_a, n_b, start_t, end_t, len_a, len_b, field_render, space, axis1, axis2, output_dir);
 	
-	
-	
-	
-	for (unsigned int t = 0; t < nt; t++)
-	{
-		FILE* file_csv=fopen((output_dir / fs::path((bo::format("field_render_i%u_%s_t%u.csv") % interaction % field_render.id % t).str())).string().c_str(), "w");
-	
-		fprintf(file_csv, (bo::format("#time;%s;%s") % axis1 % axis2).str().c_str());
-		for (unsigned short c = 0; c < field_render.count; c++)
-			fprintf(file_csv, (bo::format(";value_%u") % c).str().c_str());
-		fprintf(file_csv, "\n");
-	
-		double time = start_t + t * field_render.time_resolution;
-		
-		for (unsigned int a = 0; a < n_a; a++)
-		{
-			double pos_a = -len_a/2 + field_render.space_resolution * a;
-			for (unsigned int b = 0; b < n_b; b++)
-			{
-				double pos_b = -len_b/2 + field_render.space_resolution * b;
-				fprintf(file_csv, "%.16E;%.16E;%.16E", time * AU_TIME, pos_a * AU_LENGTH, pos_b * AU_LENGTH);
-				
-				for (unsigned short c = 0; c < field_render.count; c++)
-					fprintf(file_csv, ";%.16E", space[t][a][b][c]);
-					
-				fprintf(file_csv, "\n");
-			}
-		}
-		
-		fclose(file_csv);
-	}
-	
+	// Creating files needed to create the video
+	plot_field_render(axis1, axis2, nt, n_a, n_b, field_render, render_limit, output_dir);
 
-	
-	
-	for (unsigned short c = 0; c < field_render.count; c++)
-	{
-		fs::path filename_ct = output_dir / fs::path((bo::format("field_render_%s_%u.ct2") % field_render.id % c).str());
-		
-		FILE* file_ct = fopen(filename_ct.string().c_str(), "w");
-		
-		// Writing ctioga2 files
-		fprintf(file_ct, "title '%s'\n", field_render.titles[c].c_str());
-		fprintf(file_ct, "text-separator ;\n");
-		fprintf(file_ct, "\n");
-		fprintf(file_ct, "z_min = %.16E\n", 0.0); // TODO: add value
-		fprintf(file_ct, "z_max = %.16E\n", 100.0); // TODO: add value
-		fprintf(file_ct, "\n");
-		fprintf(file_ct, "xyz-map\n");
-		fprintf(file_ct, "new-zaxis zvalues /location right /bar_size=6mm\n");
-		fprintf(file_ct, "plot @'$2:$3:$%u'  /color-map \"#ffffff($(z_min))--#bdd7e7--#6baed6--#3182bd--#08519c($(z_max))\" /zaxis zvalues\n", 4+c);
-		fprintf(file_ct, "\n");
-		fprintf(file_ct, "xlabel '$%s$ [$m$]'\n", axis1.c_str());
-		fprintf(file_ct, "ylabel '$%s$ [$m$]'\n", axis2.c_str());
-		
-		fclose(file_ct);
-		
-		// Writing shell file that will create the movie
-		FILE* file_sh = fopen((output_dir / fs::path((bo::format("field_render_i%u_%s_%u.sh") % interaction % field_render.id % c).str())).string().c_str(), "w");
-		fprintf(file_sh, "#!/bin/sh\n");
-		fprintf(file_sh, "\n");
-		
-		for (unsigned int t = 0; t < nt; t++)
-		{
-			string basename = (bo::format("field_render_i%u_%s_t%u")  % interaction % field_render.id % t).str();
-			fs::path filename_csv = output_dir / fs::path((bo::format("%s.csv") % basename).str());
-			fprintf(file_sh, "ctioga2 --load '%s' -f '%s'  --output-directory '%s' --name '%s'\n", filename_csv.string().c_str(), filename_ct.string().c_str(), output_dir.string().c_str(), basename.c_str());
-		}
-		fprintf(file_sh, "\n");
-		for (unsigned int t = 0; t < nt; t++)
-		{
-			string basename = (bo::format("field_render_i%u_%s_t%u")  % interaction % field_render.id % t).str();
-			
-			fprintf(file_sh, (bo::format("pdftoppm -singlefile '%s/%s.pdf' '%s/%s'\n") % output_dir.string() % basename % output_dir.string() % basename).str().c_str());
-		}
-		fprintf(file_sh, "\n");
-		
-		fclose(file_sh);
-	}
-	
 	// Freeing the allocated memory
 	for (unsigned int s1 = 0; s1 < nt; s1++)
 	{
@@ -733,6 +670,8 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 	double		  last_laser_enter_time = 0;
 	double		  last_laser_exit_time  = 0;
 	
+	fs::path int_output_dir;
+	
 	ofstream stream_particle;
 	ofstream stream_interaction;
 	ofstream stream_particle_field;
@@ -759,7 +698,7 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 			
 			double laser_trigger_time = (last_laser_exit_time - last_laser_enter_time) / 2;
 			
-			plot_interaction_files	(current_interaction, current_node, output_dir);
+			plot_interaction_files	(int_output_dir);
 			
 
 			set<FieldRender*>::iterator render_iterator;
@@ -767,8 +706,7 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 			{
 				FieldRender* render = *render_iterator;
 				RenderLimit render_limit;
-				calculate_field_map (*render,  render_limit, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, output_dir);
-				plot_field_maps		(*render,  render_limit, current_interaction, current_node, output_dir);
+				calculate_field_map (*render,  render_limit, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, int_output_dir);
 			}
 			
 			current_range = FREE;
@@ -781,8 +719,11 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 			current_node = new_node; 
 			last_laser_enter_time = time_current;
 			
-			stream_interaction.open   (get_filename_interaction		(output_dir, current_interaction,  current_node));
-			stream_particle_field.open(get_filename_particle_field	(output_dir, current_interaction,  current_node));
+			int_output_dir = output_dir / fs::path((bo::format("i%un%u") % current_interaction % current_node).str());
+			fs::create_directories(int_output_dir);
+			
+			stream_interaction.open   (get_filename_interaction		(int_output_dir));
+			stream_particle_field.open(get_filename_particle_field	(int_output_dir));
 			
 			setup_interaction(stream_interaction);
 			setup_interaction(stream_particle_field);
