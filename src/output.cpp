@@ -329,6 +329,8 @@ void export_field_render(
 	string axis2,
 	fs::path output_dir)
 {
+	
+	#pragma omp parallel for shared(space)
 	for (unsigned int t = 0; t < nt; t++)
 	{
 		FILE* file_csv=fopen((output_dir / fs::path((bo::format("field_render_%s_t%u.csv") % field_render.id % t).str())).string().c_str(), "w");

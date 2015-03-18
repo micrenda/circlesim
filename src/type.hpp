@@ -128,9 +128,10 @@ typedef struct Field
 
 typedef struct RenderLimit
 {
-	unsigned int frames;
 	double value_min;
 	double value_max;
+	double value_min_abs;
+	double value_max_abs;
 } RenderLimit;
 
 typedef struct Particle
@@ -191,9 +192,11 @@ typedef struct Laboratory
 typedef struct FieldRender
 {
 	string id;
+	bool enabled;
 	
 	unsigned short 	count;
 	vector<string> 	titles;
+	vector<string>  colors;
 	
 	Plane plane;
 

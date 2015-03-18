@@ -322,8 +322,17 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 
 }
 
+void update_limits(RenderLimit& limit, double value)
+{
+	if (value < limit.value_min) limit.value_min = value;
+	if (value > limit.value_max) limit.value_max = value;
+	double value_abs = abs(value);
+	if (value_abs < limit.value_min_abs) limit.value_min_abs = value_abs;
+	if (value_abs > limit.value_max_abs) limit.value_max_abs = value_abs;
+}
 
-void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, unsigned int interaction, int node, double start_t, double end_t, double trigger_t, Pulse& laser, lua::State* lua_state, fs::path output_dir)
+
+void calculate_field_map(FieldRender& field_render, unsigned int interaction, int node, double start_t, double end_t, double trigger_t, Pulse& laser, lua::State* lua_state, fs::path output_dir)
 {
 	//lua_state->set("field_c_wrapper", [laser, lua_state] (double time, double pos_x, double pos_y, double pos_z) -> tuple<double, double, double, double, double, double>
 	//{
@@ -399,6 +408,19 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 	unsigned int n_b;
 	double len_a;
 	double len_b;
+	
+	
+	vector<RenderLimit> render_limits;
+	
+	for (unsigned short c = 0; c < field_render.count; c++)
+	{
+		RenderLimit render_limit;
+		render_limit.value_min = +INFINITY;
+		render_limit.value_max = -INFINITY;
+		render_limit.value_min_abs = +INFINITY;
+		render_limit.value_max_abs = 0;
+		render_limits.push_back(render_limit);
+	}
 
 	space = new double***[nt];
 	
@@ -416,7 +438,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 		
 			for (unsigned int t = 0; t < nt; t++)
 			{
-				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * t / nt);
+				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
 				fflush(stdout);
 				space[t] = new double**[ni];
 				
@@ -446,34 +468,42 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 							{
 								case 0:
 									space[t][i][j][c] = v0;
+									update_limits(render_limits[c], v0);
 								break;
 								
 								case 1:
 									space[t][i][j][c] = v1;
+									update_limits(render_limits[c], v1);
 								break;
 								
 								case 2:
 									space[t][i][j][c] = v2;
+									update_limits(render_limits[c], v2);
 								break;
 								
 								case 3:
 									space[t][i][j][c] = v3;
+									update_limits(render_limits[c], v3);
 								break;
 								
 								case 4:
 									space[t][i][j][c] = v4;
+									update_limits(render_limits[c], v4);
 								break;
 								
 								case 5:
 									space[t][i][j][c] = v5;
+									update_limits(render_limits[c], v5);
 								break;
 								
 								case 6:
 									space[t][i][j][c] = v6;
+									update_limits(render_limits[c], v6);
 								break;
 								
 								case 7:
 									space[t][i][j][c] = v7;
+									update_limits(render_limits[c], v7);
 								break;
 							}
 						}
@@ -492,7 +522,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 		
 			for (unsigned int t = 0; t < nt; t++)
 			{
-				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * t / nt);
+				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
 				fflush(stdout);
 				space[t] = new double**[ni];
 				
@@ -522,34 +552,42 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 							{
 								case 0:
 									space[t][i][k][c] = v0;
+									update_limits(render_limits[c], v0);
 								break;
 								
 								case 1:
 									space[t][i][k][c] = v1;
+									update_limits(render_limits[c], v1);
 								break;
 								
 								case 2:
 									space[t][i][k][c] = v2;
+									update_limits(render_limits[c], v2);
 								break;
 								
 								case 3:
 									space[t][i][k][c] = v3;
+									update_limits(render_limits[c], v3);
 								break;
 								
 								case 4:
 									space[t][i][k][c] = v4;
+									update_limits(render_limits[c], v4);
 								break;
 								
 								case 5:
 									space[t][i][k][c] = v5;
+									update_limits(render_limits[c], v5);
 								break;
 								
 								case 6:
 									space[t][i][k][c] = v6;
+									update_limits(render_limits[c], v6);
 								break;
 								
 								case 7:
 									space[t][i][k][c] = v7;
+									update_limits(render_limits[c], v7);
 								break;
 							}
 						}
@@ -568,7 +606,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 		
 			for (unsigned int t = 0; t < nt; t++)
 			{
-				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t + 1) / nt);
+				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
 				fflush(stdout);
 				space[t] = new double**[nj];
 				
@@ -598,34 +636,42 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 							{
 								case 0:
 									space[t][j][k][c] = v0;
+									update_limits(render_limits[c], v0);
 								break;
 								
 								case 1:
 									space[t][j][k][c] = v1;
+									update_limits(render_limits[c], v1);
 								break;
 								
 								case 2:
 									space[t][j][k][c] = v2;
+									update_limits(render_limits[c], v2);
 								break;
 								
 								case 3:
 									space[t][j][k][c] = v3;
+									update_limits(render_limits[c], v3);
 								break;
 								
 								case 4:
 									space[t][j][k][c] = v4;
+									update_limits(render_limits[c], v4);
 								break;
 								
 								case 5:
 									space[t][j][k][c] = v5;
+									update_limits(render_limits[c], v5);
 								break;
 								
 								case 6:
 									space[t][j][k][c] = v6;
+									update_limits(render_limits[c], v6);
 								break;
 								
 								case 7:
 									space[t][j][k][c] = v7;
+									update_limits(render_limits[c], v7);
 								break;
 							}
 						}
@@ -640,7 +686,7 @@ void calculate_field_map(FieldRender& field_render, RenderLimit& render_limit, u
 	export_field_render(nt, n_a, n_b, start_t, end_t, len_a, len_b, field_render, space, axis1, axis2, output_dir);
 	
 	// Creating files needed to create the video
-	plot_field_render(axis1, axis2, nt, n_a, n_b, field_render, render_limit, output_dir);
+	plot_field_render(axis1, axis2, nt, field_render, render_limits, output_dir);
 
 	// Freeing the allocated memory
 	for (unsigned int s1 = 0; s1 < nt; s1++)
@@ -705,8 +751,12 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 			for (render_iterator = field_renders.begin(); render_iterator != field_renders.end(); ++render_iterator)
 			{
 				FieldRender* render = *render_iterator;
-				RenderLimit render_limit;
-				calculate_field_map (*render,  render_limit, current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, int_output_dir);
+				
+				if (render->enabled)
+				{
+					;
+					calculate_field_map (*render,  current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, int_output_dir);
+				}
 			}
 			
 			current_range = FREE;

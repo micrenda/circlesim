@@ -254,6 +254,33 @@ void read_config_renders(Setting* field_renders_config, set<FieldRender*>& rende
 				exit(-1);
 			}
 			
+			if (render->count > 8)
+			{
+				printf("Unfortunatly we can currently support up to 8 sub-renders. If you need more, contact the developer.\n");
+				exit(-1);
+			}
+			
+			
+			if (render_config.exists("colors"))
+			{
+				for (unsigned short c = 0; c < render->count; c++)
+					render->colors.push_back(render_config["colors"]);	
+			}
+			else
+			{
+				for (unsigned short c = 0; c < render->count; c++)
+				{
+					string color_id = (bo::format("color_%u") % (c+1)).str();
+					if (render_config.exists(color_id))
+						render->colors.push_back(render_config[color_id]);
+					else
+						missing_param(color_id);
+				}
+			}
+			
+			
+			if (render_config.exists("enabled")) render->enabled = (bool)render_config["enabled"]; else missing_param("enabled");
+			
 			string plane;
 			if (render_config.exists("plane"))	plane = (const char *) render_config["plane"]; else missing_param("plane");
 			
@@ -279,10 +306,15 @@ void read_config_renders(Setting* field_renders_config, set<FieldRender*>& rende
 			render->func_formula_name = (bo::format("func_field_render_%s") % render->id).str();
 			string s = (bo::format("function %s(D, t, x, y, z)\n") % render->func_formula_name).str();
 			s += "    -- Injecting default variables\n";
-			s += (bo::format("    dx = %16E\n") % (render->space_resolution / 1000)).str();
-			s += (bo::format("    dy = %16E\n") % (render->space_resolution / 1000)).str();
-			s += (bo::format("    dz = %16E\n") % (render->space_resolution / 1000)).str();
-			s += (bo::format("    dt = %16E\n") % (render->time_resolution  / 1000)).str();
+			s += (bo::format("    dx = %.16E\n") % (render->space_resolution / 1000 * AU_LENGTH)).str();
+			s += (bo::format("    dy = %.16E\n") % (render->space_resolution / 1000 * AU_LENGTH)).str();
+			s += (bo::format("    dz = %.16E\n") % (render->space_resolution / 1000 * AU_LENGTH)).str();
+			
+			s += (bo::format("    size_x = %.16E\n") % (render->space_size_x * AU_LENGTH)).str();
+			s += (bo::format("    size_y = %.16E\n") % (render->space_size_y * AU_LENGTH)).str();
+			s += (bo::format("    size_z = %.16E\n") % (render->space_size_z * AU_LENGTH)).str();
+			
+			s += (bo::format("    dt = %.16E\n") % (render->time_resolution  / 1000 * AU_TIME)).str();
 			s += "    -- completed\n\n";
 			
 			string formula = render_config["formula"];
