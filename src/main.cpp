@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 	do
 	{
 		// Try to find a name for the output folder. It increase the suffix until is finds that does not exists a folder with that name
-		output_dir = base_dir / fs::path((bo::format("%s_%d") % simulation.basename % i++).str());
+		output_dir = base_dir / fs::path((bo::format("%s_run%d") % simulation.basename % i++).str());
 	}
 	while(fs::exists(output_dir));
 	
