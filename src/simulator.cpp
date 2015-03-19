@@ -332,7 +332,7 @@ void update_limits(RenderLimit& limit, double value)
 }
 
 
-void calculate_field_map(FieldRender& field_render, unsigned int interaction, int node, double start_t, double end_t, double trigger_t, Pulse& laser, lua::State* lua_state, fs::path output_dir)
+void calculate_field_map(FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, lua::State* lua_state, fs::path output_dir)
 {
 	//lua_state->set("field_c_wrapper", [laser, lua_state] (double time, double pos_x, double pos_y, double pos_z) -> tuple<double, double, double, double, double, double>
 	//{
@@ -371,6 +371,9 @@ void calculate_field_map(FieldRender& field_render, unsigned int interaction, in
 		//value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = field_c_wrapper(t, x, y, z)  
 		//return { e_x = value_e_x, e_y = value_e_y, e_z = value_e_z, b_x = value_b_x, b_y = value_b_y, b_z = value_b_z }          
 	//end";
+	double start_t	= field_render.time_start;
+	double end_t	= field_render.time_end;
+	
 	
 	string wrapper  = "";
 	wrapper += "function field(t, x, y, z)\n";
@@ -713,8 +716,6 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 	RangeMode 	  current_range = FREE;
 	unsigned int  current_interaction = 0;
 	int 		  current_node = -1;
-	double		  last_laser_enter_time = 0;
-	double		  last_laser_exit_time  = 0;
 	
 	fs::path int_output_dir;
 	
@@ -740,9 +741,6 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 			stream_interaction.close();
 			stream_particle_field.close();
 			
-			last_laser_exit_time = time_current;
-			
-			double laser_trigger_time = (last_laser_exit_time - last_laser_enter_time) / 2;
 			
 			plot_interaction_files	(int_output_dir);
 			
@@ -754,8 +752,7 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 				
 				if (render->enabled)
 				{
-					;
-					calculate_field_map (*render,  current_interaction, current_node, last_laser_enter_time, last_laser_exit_time, laser_trigger_time, laser, lua_state, int_output_dir);
+					calculate_field_map (*render,  current_interaction, current_node, laser, lua_state, int_output_dir);
 				}
 			}
 			
@@ -767,7 +764,6 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 		{
 			current_range = LASER;
 			current_node = new_node; 
-			last_laser_enter_time = time_current;
 			
 			int_output_dir = output_dir / fs::path((bo::format("i%un%u") % current_interaction % current_node).str());
 			fs::create_directories(int_output_dir);

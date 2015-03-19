@@ -298,7 +298,10 @@ void read_config_renders(Setting* field_renders_config, set<FieldRender*>& rende
 			if (render_config.exists("space_size_y"))		render->space_size_y 	= (double)render_config["space_size_y"] 		/ AU_LENGTH; 	else missing_param("space_size_y");
 			if (render_config.exists("space_size_z"))		render->space_size_z 	= (double)render_config["space_size_z"] 		/ AU_LENGTH; 	else missing_param("space_size_z");
 			
-			if (render_config.exists("time_resolution"))	render->time_resolution 	= (double)render_config["time_resolution"]	/ AU_TIME; 		else missing_param("time_resolution");
+			if (render_config.exists("time_resolution"))	render->time_resolution = (double)render_config["time_resolution"]	/ AU_TIME; 		else missing_param("time_resolution");
+			if (render_config.exists("time_start"))			render->time_start 		= (double)render_config["time_start"]		/ AU_TIME; 		else missing_param("time_start");
+			if (render_config.exists("time_end"))			render->time_end 		= (double)render_config["time_end"]			/ AU_TIME; 		else missing_param("time_end");
+			
 			if (render_config.exists("movie_length"))		render->movie_length 	= (double)render_config["movie_length"] 		/ AU_TIME; 		else missing_param("movie_length");
 
 			if (!render_config.exists("formula")) missing_param("formula");
@@ -310,9 +313,9 @@ void read_config_renders(Setting* field_renders_config, set<FieldRender*>& rende
 			s += (bo::format("    dy = %.16E\n") % (render->space_resolution / 1000 * AU_LENGTH)).str();
 			s += (bo::format("    dz = %.16E\n") % (render->space_resolution / 1000 * AU_LENGTH)).str();
 			
-			s += (bo::format("    size_x = %.16E\n") % (render->space_size_x * AU_LENGTH)).str();
-			s += (bo::format("    size_y = %.16E\n") % (render->space_size_y * AU_LENGTH)).str();
-			s += (bo::format("    size_z = %.16E\n") % (render->space_size_z * AU_LENGTH)).str();
+			s += (bo::format("    size_x   = %.16E\n") % (render->space_size_x * AU_LENGTH)).str();
+			s += (bo::format("    size_y   = %.16E\n") % (render->space_size_y * AU_LENGTH)).str();
+			s += (bo::format("    size_z   = %.16E\n") % (render->space_size_z * AU_LENGTH)).str();
 			
 			s += (bo::format("    dt = %.16E\n") % (render->time_resolution  / 1000 * AU_TIME)).str();
 			s += "    -- completed\n\n";

@@ -209,6 +209,10 @@ typedef struct FieldRender
 
 
 	double time_resolution;
+	double time_start;
+	double time_end;
+	
+	
 	double movie_length;
 
 
