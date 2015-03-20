@@ -113,6 +113,13 @@ double energy_to_momentum(double rest_mass, double energy)
 	return rest_mass * sqrt(energy*energy / (C0*C0*C0*C0 * rest_mass*rest_mass) - 1) / C0;
 }
 
+double momentum_to_energy(double rest_mass, double momentum)
+{
+	//  p = m₀√(E²/(c⁴m₀²)-1)/c
+	//  E = √(c⁴m₀²((cp/m₀)² + 1))
+	
+	return sqrt(C0*C0*C0*C0 * rest_mass*rest_mass * ((C0 * momentum / rest_mass)*(C0 * momentum / rest_mass) + 1));
+}
 
 
 
@@ -226,75 +233,59 @@ void rotate_euler(double& x, double& y, double& z, double alpha, double beta, do
 
 
 
-void state_global_to_local(
-	ParticleState& state, 
-	Node& node,
-	double& local_position_x,
-	double& local_position_y,
-	double& local_position_z,
-	double& local_momentum_x,
-	double& local_momentum_y,
-	double& local_momentum_z)
+void state_global_to_local(ParticleStateLocal&  state_local, ParticleStateGlobal& state_global, Node& node)
 {
 	// Position
 	
 	vec tr_pos = zeros<vec>(3);
-	tr_pos(0) = state.position_x - node.position_x;
-	tr_pos(1) = state.position_y - node.position_y;
-	tr_pos(2) = state.position_z - node.position_z;
+	tr_pos(0) = state_global.position_x - node.position_x;
+	tr_pos(1) = state_global.position_y - node.position_y;
+	tr_pos(2) = state_global.position_z - node.position_z;
 	
 	vec loc_pos = node.axis * tr_pos;
 	
-	local_position_x = loc_pos(0);
-	local_position_y = loc_pos(1);
-	local_position_z = loc_pos(2);
+	state_local.position_x = loc_pos(0);
+	state_local.position_y = loc_pos(1);
+	state_local.position_z = loc_pos(2);
 	
 	// Momentum
 	
 	vec mom = zeros<vec>(3);
-	mom(0) = state.momentum_x;
-	mom(1) = state.momentum_y;
-	mom(2) = state.momentum_z;
+	mom(0) = state_global.momentum_x;
+	mom(1) = state_global.momentum_y;
+	mom(2) = state_global.momentum_z;
 	
 	vec loc_mom = node.axis * mom;
 	
-	local_momentum_x = loc_mom(0);
-	local_momentum_y = loc_mom(1);
-	local_momentum_z = loc_mom(2);
+	state_local.momentum_x = loc_mom(0);
+	state_local.momentum_y = loc_mom(1);
+	state_local.momentum_z = loc_mom(2);
 }
 
-void state_local_to_global(
-	ParticleState& state,
-	Node& node, 
-	double local_position_x, 
-	double local_position_y, 
-	double local_position_z,
-	double local_momentum_x,
-	double local_momentum_y,
-	double local_momentum_z)
+void state_local_to_global(ParticleStateGlobal& state_global, ParticleStateLocal& state_local, Node& node)
 {
 	vec loc_pos = zeros<vec>(3);
-	loc_pos(0) = local_position_x;
-	loc_pos(1) = local_position_y;
-	loc_pos(2) = local_position_z;
+	loc_pos(0) = state_local.position_x;
+	loc_pos(1) = state_local.position_y;
+	loc_pos(2) = state_local.position_z;
 	
 	vec pos = node.axis.t() * loc_pos;
 	
-	state.position_x = pos(0) + node.position_x;
-	state.position_y = pos(1) + node.position_y;
-	state.position_z = pos(2) + node.position_z;
+	state_global.position_x = pos(0) + node.position_x;
+	state_global.position_y = pos(1) + node.position_y;
+	state_global.position_z = pos(2) + node.position_z;
 	
 	// Momentum
 	vec loc_mom = zeros<vec>(3);
-	loc_mom(0) = local_momentum_x;
-	loc_mom(1) = local_momentum_y;
-	loc_mom(2) = local_momentum_z;
+	loc_mom(0) = state_local.momentum_x;
+	loc_mom(1) = state_local.momentum_y;
+	loc_mom(2) = state_local.momentum_z;
 	
 	vec mom = node.axis.t() * loc_mom;
 	
-	state.momentum_x = mom(0);
-	state.momentum_y = mom(1);
-	state.momentum_z = mom(2);
+	state_global.momentum_x = mom(0);
+	state_global.momentum_y = mom(1);
+	state_global.momentum_z = mom(2);
 }
 
 void check_lua_error(char** lua_msg)

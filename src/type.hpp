@@ -20,6 +20,7 @@ namespace bo = boost;
 typedef enum {FREE, LASER}				 		RangeMode;
 typedef enum {TURN_ON, CONSTANT, TURN_OFF} 		TimingMode;
 typedef enum {XY, XZ, YZ} 						Plane;
+typedef enum {LINEAR, RANDOM} 					ChangeMode;
 
 #define pow2(a) ((a) * (a)) 
 #define pow3(a) ((a) * (a) * (a)) 
@@ -110,8 +111,15 @@ typedef struct Simulation
 
 typedef struct Pulse
 {
-	double	duration;		// pulse duration
-	int		func_fields;	// coockie of LUA function
+	double				duration;		// pulse duration
+
+	map<string, int> 	  params_int;
+	map<string, long>   params_int64;
+	map<string, double> params_float;
+	map<string, string> params_string;
+	map<string, bool>	  params_boolean;
+	
+	int					func_fields;	// coockie of LUA function
 } Pulse;
 
 typedef struct Field
@@ -126,13 +134,6 @@ typedef struct Field
 
 } Field;
 
-typedef struct RenderLimit
-{
-	double value_min;
-	double value_max;
-	double value_min_abs;
-	double value_max_abs;
-} RenderLimit;
 
 typedef struct Particle
 {
@@ -140,7 +141,7 @@ typedef struct Particle
 	double charge;
 } Particle;
 
-typedef struct ParticleState
+typedef struct ParticleStateGlobal
 {	
 	
 	/*
@@ -173,7 +174,19 @@ typedef struct ParticleState
 	double momentum_x;
 	double momentum_y;
 	double momentum_z;
-} ParticleState;
+} ParticleStateGlobal;
+
+
+typedef struct ParticleStateLocal
+{	
+	double position_x;
+	double position_y;
+	double position_z;
+	
+	double momentum_x;
+	double momentum_y;
+	double momentum_z;
+} ParticleStateLocal;
 
 typedef struct Node
 {
@@ -188,6 +201,80 @@ typedef struct Laboratory
 {  
 	vector<Node> 	nodes;
 } Laboratory;
+
+typedef struct ResponseAnalysis
+{
+	unsigned int	id;
+	string 			response_attribute;
+	
+	string 			modifing_object;
+	string 			modifing_attribute;
+	
+	double 			change_range;
+	double 			change_steps;
+	ChangeMode		change_mode;
+} ResponseAnalysis;
+
+
+/**
+ * This struct contains the result of simulation in a laser
+ * All values here are local values
+ */
+typedef struct SimluationResultLaserItem
+{
+	double time;
+	
+	double position_x;
+	double position_y;
+	double position_z;
+	
+	double momentum_x;
+	double momentum_y;
+	double momentum_z;
+	
+	Field  field; // field at position
+	
+} SimluationResultLaserItem;
+
+typedef struct SimluationResultLaserSummary
+{
+	Node   node;
+	
+	double time_enter;
+	double time_exit;
+	
+	vector<SimluationResultLaserItem> items;
+	
+} SimluationResultLaserSummary;
+
+/**
+ * This struct contains the result of simulation outside the laser fields
+ * All values here are global values
+ */
+typedef struct SimluationResultFreeItem
+{
+	double time;
+	
+	double position_x;
+	double position_y;
+	double position_z;
+	
+	double momentum_x;
+	double momentum_y;
+	double momentum_z;
+	
+	Field  field; // field at position
+	
+} SimluationResultFreeItem;
+
+typedef struct SimluationResultFreeSummary
+{
+	double time_enter;
+	double time_exit;
+	
+	vector<SimluationResultFreeItem> items;
+} SimluationResultFreeSummary;
+
 
 typedef struct FieldRender
 {
@@ -221,5 +308,58 @@ typedef struct FieldRender
 	
 
 } FieldRender;
+
+typedef struct FieldRenderLimit
+{
+	double value_min;
+	double value_max;
+	double value_min_abs;
+	double value_max_abs;
+} FieldRenderResultLimit;
+
+typedef struct FieldRenderResult
+{
+	unsigned int   	node;
+	unsigned int 	interaction;
+	
+	string axis1_label;
+	string axis2_label;
+	
+	FieldRender	render;
+
+	unsigned int nt, na, nb;
+	
+	double length_a;
+	double length_b;
+	
+	double time_start;
+	double time_end;
+	
+	/**
+	 * This is a 4-dimensional array where we have:
+	 * values[time][axis1][axis2][subrender]
+	 * 
+	 *   time: 		nt
+	 *   axis1:		na
+	 *   axis2:		nb
+	 *   subrender:	render.count
+	 */
+	double**** 						values;
+	/**
+	 * This array contains the min and max values of the value in values.
+	 * 
+	 * limits[subrender]
+	 */
+	vector<FieldRenderResultLimit>	limits;
+	
+	
+} FieldRenderResultItem;
+
+
+typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node,             double time_local)>		FunctionNode;
+typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)>	FunctionFree;
+
+inline bool operator<(const FieldRender& lhs, 		const FieldRender& rhs) 		{ return lhs.id <  rhs.id; }
+inline bool operator<(const ResponseAnalysis& lhs, 	const ResponseAnalysis& rhs)	{ return lhs.id <  rhs.id; }
 
 #endif

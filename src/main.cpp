@@ -158,7 +158,8 @@ int main(int argc, char *argv[])
 	Particle			particle;
 	Laboratory 			laboratory;
 	ParticleState		particle_state;
-	set<FieldRender*>	field_renders;
+	set<FieldRender>		field_renders;
+	set<ResponseAnalysis>	response_analyses;
 	
 	
 	// Convert the config file to a SI compliant version
@@ -174,7 +175,7 @@ int main(int argc, char *argv[])
 	}
 	
 	
-	read_config(cfg_file_si_tmp, simulation, laser, particle, particle_state, laboratory, field_renders, &lua_state);
+	read_config(cfg_file_si_tmp, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, &lua_state);
 	
 	
 	
@@ -212,8 +213,20 @@ int main(int argc, char *argv[])
 		write_node(stream_node, node);
 	stream_node.close();
 	
-	// Executing simulation
+	// Executing main simulation
 	simulate(simulation, field_renders, laser, particle, particle_state, laboratory, &lua_state, output_dir);
+	
+	
+	// Executing response analyses simulations
+	for (ResponseAnalysis analysis: response_analyses)
+	{
+		Particle 		tmp_particle 		= particle;
+		ParticleState	tmp_particle_state	= particle_state;
+		Pulse			tmp_laser			= laser;
+		
+		simulate(simulation, field_renders, tmp_laser, tmp_particle, tmp_particle_state, laboratory, &lua_state, output_dir);
+		
+	}
 	
 
 }

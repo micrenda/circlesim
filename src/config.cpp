@@ -142,7 +142,7 @@ bool wrong_param(string param, string message)
 //}
 
 
-void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, ParticleState& particle_state)
+void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, ParticleStateGlobal& state_global)
 {
 	// Setting the position of the particle relative to selected node
 	
@@ -155,9 +155,8 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	
 	
 	// Initializing POSITION 
-	double rel_pos_x;
-	double rel_pos_y;
-	double rel_pos_z;
+	ParticleStateLocal state_local;
+	
 	
 	if (parameters.has_position_sphe && parameters.has_position_cart)
 	{
@@ -165,24 +164,19 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	}
 	else if (parameters.has_position_sphe)
 	{
-
 		spherical_to_cartesian(
-			parameters.initial_position_module,
+			parameters.initial_position_module / AU_LENGTH,
 			parameters.initial_position_theta,
 			parameters.initial_position_phi,
-			rel_pos_x,
-			rel_pos_y,
-			rel_pos_z);
-		
-		
-		rotate_spherical(rel_pos_x, rel_pos_y, rel_pos_z, parameters.initial_position_theta, parameters.initial_position_phi);
-		
+			state_local.position_x,
+			state_local.position_y,
+			state_local.position_z);
 	}
 	else if (parameters.has_position_cart)
 	{
-		rel_pos_x	= parameters.initial_position_x / AU_LENGTH;
-		rel_pos_y	= parameters.initial_position_y / AU_LENGTH;
-		rel_pos_z	= parameters.initial_position_z / AU_LENGTH;
+		state_local.position_x	= parameters.initial_position_x / AU_LENGTH;
+		state_local.position_y	= parameters.initial_position_y / AU_LENGTH;
+		state_local.position_z	= parameters.initial_position_z / AU_LENGTH;
 	}
 	else
 	{
@@ -191,10 +185,6 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	
 	
 	// Initializing MOMENTUM 
-	double rel_mom_x;
-	double rel_mom_y;
-	double rel_mom_z;
-	
 	if (parameters.has_momentum_sphe && parameters.has_momentum_cart)
 	{
 		wrong_param("initial_momentum", "You must to specify one of spherical or cartesian momentum. You can not specify both.\n");
@@ -202,34 +192,30 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	else if (parameters.has_momentum_sphe)
 	{
 		spherical_to_cartesian(
-			parameters.initial_momentum_module,
+			parameters.initial_momentum_module / AU_MOMENTUM,
 			parameters.initial_momentum_theta,
 			parameters.initial_momentum_phi,
-			rel_mom_x,
-			rel_mom_y,
-			rel_mom_z);
-			
-		rotate_spherical(rel_mom_x, rel_mom_y, rel_mom_z, parameters.initial_momentum_theta, parameters.initial_momentum_phi);
+			state_local.momentum_x,
+			state_local.momentum_y,
+			state_local.momentum_z);
 	}
 	else if (parameters.has_momentum_cart)
 	{
-		rel_mom_x	= parameters.initial_momentum_x / AU_MOMENTUM;
-		rel_mom_y	= parameters.initial_momentum_y / AU_MOMENTUM;
-		rel_mom_z	= parameters.initial_momentum_z / AU_MOMENTUM;
+		state_local.momentum_x	= parameters.initial_momentum_x / AU_MOMENTUM;
+		state_local.momentum_y	= parameters.initial_momentum_y / AU_MOMENTUM;
+		state_local.momentum_z	= parameters.initial_momentum_z / AU_MOMENTUM;
 	}
 	else
 	{
 		wrong_param("initial_momentum", "You must to specify an initial momentum (cartesian or spherical).\n");
 	}	
 		
-		
-		
 	
 	// Converting to global state
-	state_local_to_global(particle_state, first_node, rel_pos_x, rel_pos_y, rel_pos_z, rel_mom_x, rel_mom_y, rel_mom_z);
+	state_local_to_global(state_global, state_local, first_node);
 }
 
-void read_config_renders(Setting* field_renders_config, set<FieldRender*>& renders, lua::State* lua_state)
+void read_config_renders(Setting* field_renders_config, set<FieldRender>& renders, lua::State* lua_state)
 {
 	try 
 	{
@@ -237,24 +223,24 @@ void read_config_renders(Setting* field_renders_config, set<FieldRender*>& rende
 		{
 			Setting& render_config = (*field_renders_config)[i];
 			
-			FieldRender* render = new FieldRender;
+			FieldRender render;
 			
-			render->id 		= string(render_config.getName());
+			render.id 		= string(render_config.getName());
 			
-			render->count	= 0;
-			while (render_config.exists((bo::format("title_%u") % (render->count+1)).str()))
+			render.count	= 0;
+			while (render_config.exists((bo::format("title_%u") % (render.count+1)).str()))
 			{
-				render->titles.push_back(render_config[(bo::format("title_%u") % (render->count+1)).str()]);
-				render->count++;
+				render.titles.push_back(render_config[(bo::format("title_%u") % (render.count+1)).str()]);
+				render.count++;
 			}
 			
-			if (render->count == 0)
+			if (render.count == 0)
 			{
-				printf("Unable to find '%s' parameter in render section '%s'\n", "title_1", render->id.c_str());
+				printf("Unable to find '%s' parameter in render section '%s'\n", "title_1", render.id.c_str());
 				exit(-1);
 			}
 			
-			if (render->count > 8)
+			if (render.count > 8)
 			{
 				printf("Unfortunatly we can currently support up to 8 sub-renders. If you need more, contact the developer.\n");
 				exit(-1);
@@ -263,61 +249,61 @@ void read_config_renders(Setting* field_renders_config, set<FieldRender*>& rende
 			
 			if (render_config.exists("colors"))
 			{
-				for (unsigned short c = 0; c < render->count; c++)
-					render->colors.push_back(render_config["colors"]);	
+				for (unsigned short c = 0; c < render.count; c++)
+					render.colors.push_back(render_config["colors"]);	
 			}
 			else
 			{
-				for (unsigned short c = 0; c < render->count; c++)
+				for (unsigned short c = 0; c < render.count; c++)
 				{
 					string color_id = (bo::format("color_%u") % (c+1)).str();
 					if (render_config.exists(color_id))
-						render->colors.push_back(render_config[color_id]);
+						render.colors.push_back(render_config[color_id]);
 					else
 						missing_param(color_id);
 				}
 			}
 			
 			
-			if (render_config.exists("enabled")) render->enabled = (bool)render_config["enabled"]; else missing_param("enabled");
+			if (render_config.exists("enabled")) render.enabled = (bool)render_config["enabled"]; else missing_param("enabled");
 			
 			string plane;
 			if (render_config.exists("plane"))	plane = (const char *) render_config["plane"]; else missing_param("plane");
 			
 			if (plane == "xy")
-				render->plane = XY;
+				render.plane = XY;
 			if (plane == "xz")
-				render->plane = XZ;
+				render.plane = XZ;
 			if (plane == "yz")
-				render->plane = YZ;
+				render.plane = YZ;
 
-			if (render_config.exists("axis_cut")) 			render->axis_cut 		= (double)render_config["axis_cut"] 			/ AU_LENGTH;	else render->axis_cut = 0;
-			if (render_config.exists("space_resolution")) 	render->space_resolution	= (double)render_config["space_resolution"] / AU_LENGTH;	else missing_param("space_resolution");
+			if (render_config.exists("axis_cut")) 			render.axis_cut 		= (double)render_config["axis_cut"] 			/ AU_LENGTH;	else render.axis_cut = 0;
+			if (render_config.exists("space_resolution")) 	render.space_resolution	= (double)render_config["space_resolution"] / AU_LENGTH;	else missing_param("space_resolution");
 			
-			if (render_config.exists("space_size_x"))		render->space_size_x 	= (double)render_config["space_size_x"] 		/ AU_LENGTH; 	else missing_param("space_size_x");
-			if (render_config.exists("space_size_y"))		render->space_size_y 	= (double)render_config["space_size_y"] 		/ AU_LENGTH; 	else missing_param("space_size_y");
-			if (render_config.exists("space_size_z"))		render->space_size_z 	= (double)render_config["space_size_z"] 		/ AU_LENGTH; 	else missing_param("space_size_z");
+			if (render_config.exists("space_size_x"))		render.space_size_x 	= (double)render_config["space_size_x"] 		/ AU_LENGTH; 	else missing_param("space_size_x");
+			if (render_config.exists("space_size_y"))		render.space_size_y 	= (double)render_config["space_size_y"] 		/ AU_LENGTH; 	else missing_param("space_size_y");
+			if (render_config.exists("space_size_z"))		render.space_size_z 	= (double)render_config["space_size_z"] 		/ AU_LENGTH; 	else missing_param("space_size_z");
 			
-			if (render_config.exists("time_resolution"))	render->time_resolution = (double)render_config["time_resolution"]	/ AU_TIME; 		else missing_param("time_resolution");
-			if (render_config.exists("time_start"))			render->time_start 		= (double)render_config["time_start"]		/ AU_TIME; 		else missing_param("time_start");
-			if (render_config.exists("time_end"))			render->time_end 		= (double)render_config["time_end"]			/ AU_TIME; 		else missing_param("time_end");
+			if (render_config.exists("time_resolution"))	render.time_resolution = (double)render_config["time_resolution"]	/ AU_TIME; 		else missing_param("time_resolution");
+			if (render_config.exists("time_start"))			render.time_start 		= (double)render_config["time_start"]		/ AU_TIME; 		else missing_param("time_start");
+			if (render_config.exists("time_end"))			render.time_end 		= (double)render_config["time_end"]			/ AU_TIME; 		else missing_param("time_end");
 			
-			if (render_config.exists("movie_length"))		render->movie_length 	= (double)render_config["movie_length"] 		/ AU_TIME; 		else missing_param("movie_length");
+			if (render_config.exists("movie_length"))		render.movie_length 	= (double)render_config["movie_length"] 		/ AU_TIME; 		else missing_param("movie_length");
 
 			if (!render_config.exists("formula")) missing_param("formula");
 			
-			render->func_formula_name = (bo::format("func_field_render_%s") % render->id).str();
-			string s = (bo::format("function %s(D, t, x, y, z)\n") % render->func_formula_name).str();
+			render.func_formula_name = (bo::format("func_field_render_%s") % render.id).str();
+			string s = (bo::format("function %s(D, t, x, y, z)\n") % render.func_formula_name).str();
 			s += "    -- Injecting default variables\n";
-			s += (bo::format("    dx = %.16E\n") % (render->space_resolution / 1000 * AU_LENGTH)).str();
-			s += (bo::format("    dy = %.16E\n") % (render->space_resolution / 1000 * AU_LENGTH)).str();
-			s += (bo::format("    dz = %.16E\n") % (render->space_resolution / 1000 * AU_LENGTH)).str();
+			s += (bo::format("    dx = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+			s += (bo::format("    dy = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+			s += (bo::format("    dz = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
 			
-			s += (bo::format("    size_x   = %.16E\n") % (render->space_size_x * AU_LENGTH)).str();
-			s += (bo::format("    size_y   = %.16E\n") % (render->space_size_y * AU_LENGTH)).str();
-			s += (bo::format("    size_z   = %.16E\n") % (render->space_size_z * AU_LENGTH)).str();
+			s += (bo::format("    size_x   = %.16E\n") % (render.space_size_x * AU_LENGTH)).str();
+			s += (bo::format("    size_y   = %.16E\n") % (render.space_size_y * AU_LENGTH)).str();
+			s += (bo::format("    size_z   = %.16E\n") % (render.space_size_z * AU_LENGTH)).str();
 			
-			s += (bo::format("    dt = %.16E\n") % (render->time_resolution  / 1000 * AU_TIME)).str();
+			s += (bo::format("    dt = %.16E\n") % (render.time_resolution  / 1000 * AU_TIME)).str();
 			s += "    -- completed\n\n";
 			
 			string formula = render_config["formula"];
@@ -330,10 +316,10 @@ void read_config_renders(Setting* field_renders_config, set<FieldRender*>& rende
 			}
 			catch (lua::LoadError& e)
 			{
-				check_lua_error(e, render->func_formula_name, s);
+				check_lua_error(e, render.func_formula_name, s);
 			}
 			
-			printf((bo::format("Render field %s LUA function:\n") % render->id).str().c_str());
+			printf((bo::format("Render field %s LUA function:\n") % render.id).str().c_str());
 			printf("--------------------------------------------------------\n");
 			printf("%s\n", s.c_str());
 			printf("--------------------------------------------------------\n");
@@ -356,9 +342,10 @@ void read_config(
 	Simulation& simulation,
 	Pulse& laser,
 	Particle& particle,
-	ParticleState& particle_state,
+	ParticleStateGlobal& particle_state,
 	Laboratory& laboratory,
-	set<FieldRender*>& field_renders,
+	set<FieldRender>&      field_renders,
+	set<ResponseAnalysis>& response_analyses,
 	lua::State* lua_state)
 {
 	Parameters parameters;
@@ -366,11 +353,11 @@ void read_config(
 	Config* config = new Config;
 	
 	
-	bo::unordered_map<string, int> 	  laser_field_param_map_int;
-	bo::unordered_map<string, long>   laser_field_param_map_int64;
-	bo::unordered_map<string, double> laser_field_param_map_float;
-	bo::unordered_map<string, string> laser_field_param_map_string;
-	bo::unordered_map<string, bool>	  laser_field_param_map_boolean;
+	map<string, int>	laser_field_param_map_int;
+	map<string, long>   laser_field_param_map_int64;
+	map<string, double> laser_field_param_map_float;
+	map<string, string>	laser_field_param_map_string;
+	map<string, bool>	laser_field_param_map_boolean;
 
 	// Read the file. If there is an error, report it and exit.
 	try 
@@ -380,12 +367,10 @@ void read_config(
 		Setting&  config_simulation	 		= config->lookup("simulation");
 		Setting&  config_laser 				= config->lookup("laser");
 		Setting&  config_particle 			= config->lookup("particle");
-		//Setting&  config_accellerator 		= config->lookup("accellerator");
 		Setting&  config_laboratory 		= config->lookup("laboratory");
-		//Setting&  config_output				= config->lookup("output");
+		Setting&  config_response_analyses	= config->lookup("response_analyses");
 
 		config_laser.lookupValue			("duration",  	parameters.pulse_duration)							|| missing_param("duration (laser)");
-		
 		config_laser.lookupValue			("func_fields",	parameters.func_fields)								|| missing_param("func_fields");
 		
 		static const bo::regex e("^func_param_([A-Za-z\\_0-9]+)$");
@@ -535,6 +520,64 @@ void read_config(
 			}
 		}
 		
+		static const bo::regex e_resp1("^analysis\\_([0-9]+)$");
+		static const bo::regex e_resp2("^\\s*analyze\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+when\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+changes\\s+by\\s+([0-9\\.]+)\\%\\s+in\\s+([0-9]+)\\s+steps\\s*$");
+		
+		for (int i = 0; i < config_response_analyses.getLength(); i++)
+		{
+			Setting& config_analysis = config_response_analyses[i];
+			
+			string analysis_name = config_analysis.getName();
+			bo::match_results<string::const_iterator> what1;
+			if (bo::regex_match(analysis_name, what1, e_resp1))
+			{
+				string analysis_expression = config_analysis;
+				
+				bo::match_results<string::const_iterator> what2;
+				if (bo::regex_match(analysis_expression, what2, e_resp2))
+				{
+					ResponseAnalysis response_analysis;
+					response_analysis.id = stoi(what1[1]);
+					
+					response_analysis.response_attribute	= what2[1];
+					response_analysis.modifing_object		= what2[2];
+					response_analysis.modifing_attribute	= what2[3];
+					response_analysis.change_range			= stod(what2[4]) / 100.d;
+					response_analysis.change_steps			= stoi(what2[5]);
+					
+					if (what2[6] == "linearly")
+						response_analysis.change_mode		= LINEAR;
+					else if (what2[6] == "randomly")
+						response_analysis.change_mode		= RANDOM;
+					else
+					{
+						printf("ERROR - Wrong value for '%s' expression. Allowed mode are: linerly or randomly.\n", config_analysis.getName());
+						exit(-1);
+						return;	
+					}
+					
+					response_analyses.insert(response_analysis);
+				}
+				else
+				{
+					printf("ERROR - Wrong format for '%s' parameter.\n", config_analysis.getName());
+					printf("Allowed format are:\n");
+					printf("  analyze particle <attribute> when <object> <attribute> linearly changes by <p>%% in <n> steps\n");
+					printf("  analyze particle <attribute> when <object> <attribute> randomly changes by <p>%% in <n> steps\n");
+					
+					exit(-1);
+					return;
+				}
+			}
+			else
+			{
+				printf("ERROR - Wrong '%s' parameter name. Allowed format is: analysis_<1-9999>\n", config_analysis.getName());
+				exit(-1);
+				return;
+			}
+			
+		}
+		
 	}
 	catch (ParseException& e)  
 	{
@@ -556,6 +599,11 @@ void read_config(
 	
 	laser.duration						= parameters.pulse_duration 		/ AU_TIME;
 	
+	laser.params_int		= laser_field_param_map_int;
+	laser.params_int64		= laser_field_param_map_int64;
+	laser.params_float		= laser_field_param_map_float;
+	laser.params_string		= laser_field_param_map_string;
+	laser.params_boolean	= laser_field_param_map_boolean;
 	
 	// Loading the common functins. Loading and evaluating so remain availabe to the other LUA scripts
 	lua_state->doString(parameters.func_commons);
@@ -564,19 +612,19 @@ void read_config(
 	
 	string s = "function func_fields(D, t, x, y, z)\n";
 	s += "    -- Injecting external variables\n";
-	for (bo::unordered_map<string,int>::iterator	entry = laser_field_param_map_int.begin(); entry != laser_field_param_map_int.end(); ++entry) 
+	for (map<string,int>::iterator	entry = laser.params_int.begin(); entry != laser.params_int.end(); ++entry) 
 		s += (bo::format("    % -12s\t= %d\n") 		% entry->first % entry->second).str();
-	for (bo::unordered_map<string,long>::iterator	entry = laser_field_param_map_int64.begin(); entry != laser_field_param_map_int64.end(); ++entry) 
+	for (map<string,long>::iterator	entry = laser.params_int64.begin(); entry != laser.params_int64.end(); ++entry) 
 		s += (bo::format("    % -12s\t= %l\n") 		% entry->first % entry->second).str();
-	for (bo::unordered_map<string,double>::iterator	entry = laser_field_param_map_float.begin(); entry != laser_field_param_map_float.end(); ++entry) 
+	for (map<string,double>::iterator	entry = laser.params_float.begin(); entry != laser.params_float.end(); ++entry) 
 		s += (bo::format("    % -12s\t= %.16E\n") 	% entry->first % entry->second).str();
-	for (bo::unordered_map<string,string>::iterator	entry = laser_field_param_map_string.begin(); entry != laser_field_param_map_string.end(); ++entry)
+	for (map<string,string>::iterator	entry = laser.params_string.begin(); entry != laser.params_string.end(); ++entry)
 	{
 		string value = entry->second;
 		bo::replace_all(value, "\"", "\\\"");
 		s += (bo::format("    % -12s\t= %s\n") 		% entry->first % value).str();
 	}
-	for (bo::unordered_map<string,bool>::iterator	entry = laser_field_param_map_boolean.begin(); entry != laser_field_param_map_boolean.end(); ++entry) 
+	for (map<string,bool>::iterator	entry = laser.params_boolean.begin(); entry != laser.params_boolean.end(); ++entry) 
 		s += (bo::format("    % -12s\t= %s\n") 		% entry->first % (entry->second ? "true" : "false")).str();
 	s += "    -- completed\n\n";
 	

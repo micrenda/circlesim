@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <boost/regex.hpp>
 #include <string>
 #include "type.hpp"
 #include "plot.hpp"
@@ -52,8 +51,10 @@ void plot_interaction_files(fs::path output_dir)
 }
 
 
-void plot_field_render(string axis1, string axis2, unsigned int nt, FieldRender& field_render, vector<RenderLimit>& render_limits, fs::path output_dir)
+void plot_field_render(FieldRenderResult& field_render_result, fs::path output_dir)
 {
+	FieldRender& field_render = field_render_result.render;
+	
 	for (unsigned short c = 0; c < field_render.count; c++)
 	{
 		string basename_global =  (bo::format("field_render_%s_%u") % field_render.id % c).str();
@@ -72,7 +73,7 @@ void plot_field_render(string axis1, string axis2, unsigned int nt, FieldRender&
 		fprintf(file_ct, "xyz-map\n");
 		fprintf(file_ct, "new-zaxis zvalues /location right /bar_size=6mm\n");
 		
-		RenderLimit render_limit = render_limits[c];
+		FieldRenderResultLimit& render_limit = field_render_result.limits[c];
 		string color_range = field_render.colors[c];
 		bo::replace_all(color_range, "min_abs", (bo::format("%E") % render_limit.value_min_abs).str());
 		bo::replace_all(color_range, "max_abs", (bo::format("%E") % render_limit.value_max_abs).str());
@@ -82,12 +83,10 @@ void plot_field_render(string axis1, string axis2, unsigned int nt, FieldRender&
 		
 		fprintf(file_ct, "plot @'$2:$3:$%u'  /color-map \"%s\" /zaxis zvalues\n", 4+c, color_range.c_str());
 		fprintf(file_ct, "\n");
-		fprintf(file_ct, "xlabel '$%s$ [$m$]'\n", axis1.c_str());
-		fprintf(file_ct, "ylabel '$%s$ [$m$]'\n", axis2.c_str());
+		fprintf(file_ct, "xlabel '$%s$ [$m$]'\n", field_render_result.axis1_label.c_str());
+		fprintf(file_ct, "ylabel '$%s$ [$m$]'\n", field_render_result.axis2_label.c_str());
 		
 		fclose(file_ct);
-		
-		
 		
 		// Writing shell file that will create the movie
 		fs::path filename_sh = output_dir / fs::path((bo::format("%s.sh") % basename_global).str());
@@ -96,7 +95,7 @@ void plot_field_render(string axis1, string axis2, unsigned int nt, FieldRender&
 		fprintf(file_sh, "\n");
 		
 		fprintf(file_sh, "echo \"Running ctioga2 ...\"\n");
-		for (unsigned int t = 0; t < nt; t++)
+		for (unsigned int t = 0; t < field_render_result.nt; t++)
 		{
 			string basename_time = (bo::format("%s_t%u") % basename_global % t).str();
 			fprintf(file_sh, "ctioga2 --text-separator \\; --load 'field_render_%s_t%u.csv' -f '%s'  --name '%s'\n", field_render.id.c_str() , t, filename_ct.filename().string().c_str(), basename_time.c_str());
@@ -104,7 +103,7 @@ void plot_field_render(string axis1, string axis2, unsigned int nt, FieldRender&
 		fprintf(file_sh, "\n");
 		
 		fprintf(file_sh, "echo \"Running pdftoppm ...\"\n");
-		for (unsigned int t = 0; t < nt; t++)
+		for (unsigned int t = 0; t < field_render_result.nt; t++)
 		{
 			string basename_time = (bo::format("%s_t%u") % basename_global % t).str();
 			fprintf(file_sh, (bo::format("pdftoppm -png -scale-to 1080 -singlefile '%s.pdf' '%s'\n") % basename_time % basename_time).str().c_str());
@@ -116,10 +115,9 @@ void plot_field_render(string axis1, string axis2, unsigned int nt, FieldRender&
 
 
 		
-		double framerate = ceil(nt / (field_render.movie_length * AU_TIME));
+		double framerate = ceil(field_render_result.nt / (field_render.movie_length * AU_TIME));
 		
 		fprintf(file_sh, "echo \"Running %s ...\"\n", ffmpeg_name.c_str());
-		// \"
 		fprintf(file_sh, "%s -framerate %.5f -loglevel error -i '%s_t%%d.png' -c:v libx264 -r 30 '%s.mp4'", ffmpeg_name.c_str(), framerate, basename_global.c_str(),/* w, h,*/ basename_global.c_str());
 		fprintf(file_sh, "\n");
 		fprintf(file_sh, (bo::format("rm %s_t*.png\n") % basename_global).str().c_str());

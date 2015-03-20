@@ -8,6 +8,7 @@ long double vector_module(long double x1,	long double x2,	long double x3);
 
 
 double energy_to_momentum(double rest_mass, double energy);
+double momentum_to_energy(double rest_mass, double momentum);
 
 void spherical_to_cartesian(double rho, double theta, double phi, double& x, double& y, double& z);
 void cartesian_to_spherical(double x, double y, double z, double& theta, double& phi);
@@ -15,11 +16,8 @@ void cartesian_to_spherical(double x, double y, double z, double& theta, double&
 void rotate_spherical	(double& x, double& y, double& z, double theta, double phi);
 void rotate_euler		(double& x, double& y, double& z, double alpha, double beta, double gamma);
 
-void state_global_to_local(ParticleState& state, Node& node, double local_position_x, double local_position_y, double local_position_z);
-void state_local_to_global(ParticleState& state, Node& node, double local_position_x, double local_position_y, double local_position_z);
-
-void state_global_to_local(	ParticleState& state, 	Node& node,	double& local_position_x,	double& local_position_y,	double& local_position_z,	double& local_momentum_x,	double& local_momentum_y,	double& local_momentum_z);
-void state_local_to_global(	ParticleState& state,	Node& node, double  local_position_x, 	double  local_position_y, 	double  local_position_z,	double  local_momentum_x,	double  local_momentum_y,	double  local_momentum_z);
+void state_global_to_local(ParticleStateLocal&  state_local,  ParticleStateGlobal& state_global, Node& node);
+void state_local_to_global(ParticleStateGlobal& state_global, ParticleStateLocal&  state_local,  Node& node);
 
 void check_lua_error(char** lua_msg);
 

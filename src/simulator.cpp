@@ -11,7 +11,7 @@
 
 
 
-bool is_in_influence_radius(ParticleState& state, Node& node, double laser_influence_radius)
+bool is_in_influence_radius(ParticleStateGlobal& state, Node& node, double laser_influence_radius)
 {
 	return vector_module(
 			state.position_x - node.position_x,
@@ -19,7 +19,7 @@ bool is_in_influence_radius(ParticleState& state, Node& node, double laser_influ
 			state.position_z - node.position_z) <= laser_influence_radius;
 }
 
-int get_near_node_id(ParticleState& state, Laboratory& laboratory, double laser_influence_radius)
+int get_near_node_id(ParticleStateGlobal& state, Laboratory& laboratory, double laser_influence_radius)
 {
 	for (unsigned int r = 0; r < laboratory.nodes.size(); r++)
 	{
@@ -150,26 +150,14 @@ void simulate_laser(
 	Pulse& laser,
 	Node& node,
 	Particle& particle,
-	ParticleState& state,
+	ParticleStateLocal& state,
 	long double& time_current,
 	unsigned int interaction,
-	lua::State* lua_state,
-	ofstream& stream_particle,
-	ofstream& stream_interaction, 
-	ofstream& stream_particle_field)
+	lua::State* lua_state)
 {
 	// Trasforming global coordinates to local coordinates
 	
-	double local_pos_x;
-	double local_pos_y; 
-	double local_pos_z; 
-	
-	double local_mom_x;
-	double local_mom_y; 
-	double local_mom_z; 
-	
-	state_global_to_local(state, node, local_pos_x, local_pos_y, local_pos_z, local_mom_x, local_mom_y, local_mom_z);
-	
+
 	gsl_odeiv_custom_params params;
 	params.laser 	= &laser;
 	params.particle	= &particle;
@@ -183,12 +171,12 @@ void simulate_laser(
 
 	
 	double y[6];
-	y[0] = local_pos_x;
-	y[1] = local_pos_y;
-	y[2] = local_pos_z;
-	y[3] = local_mom_x;
-	y[4] = local_mom_y;
-	y[5] = local_mom_z;
+	y[0] = state.position_x;
+	y[1] = state.position_y;
+	y[2] = state.position_z;
+	y[3] = state.momentum_x;
+	y[4] = state.momentum_y;
+	y[5] = state.momentum_z;
 	
 	long double time_start = time_current;
 	
@@ -211,8 +199,14 @@ void simulate_laser(
 		
 		// Update the states
 		time_current = time_start + (local_time_current - local_time_start) ;
-		state_local_to_global(state, node, y[0], y[1], y[2], y[3], y[4], y[5]);
 		
+		
+		state.position_x = y[0];
+		state.position_y = y[1];
+		state.position_z = y[2];
+		state.momentum_x = y[3];
+		state.momentum_y = y[4];
+		state.momentum_z = y[5];
 		
 		// Print the particle state (global position)
 		write_particle(stream_particle, time_current, state);
@@ -221,12 +215,7 @@ void simulate_laser(
 		// Print the particle interaction (local position, fields, etc)
 		calculate_fields(time_current*C0, y[0], y[1], y[2], laser, field, lua_state);
 		write_interaction(stream_interaction, time_current, y[0], y[1], y[2], y[3], y[4], y[5], field);
-		
-		// print the field in several points
-		calculate_fields(time_current*C0, 0, 0, 0, laser, field, lua_state);
-		write_particle_field(stream_particle_field, time_current, 0, 0, 0, field);
-		
-		
+
 		// Checking if we are outside the laser influence radius.
 		if (is_in_influence_radius(state, node, simulation.laser_influence_radius))
 			break;
@@ -241,7 +230,7 @@ void simulate_laser(
 }
 
 
-void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& particle, ParticleState& state, long double& time_current_p, lua::State* lua_state, ofstream& stream_particle)
+void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& particle, ParticleStateGlobal& state, long double& time_current_p, lua::State* lua_state, ofstream& stream_particle)
 {
 	
 	
@@ -322,7 +311,7 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 
 }
 
-void update_limits(RenderLimit& limit, double value)
+void update_limits(FieldRenderResultLimit& limit, double value)
 {
 	if (value < limit.value_min) limit.value_min = value;
 	if (value > limit.value_max) limit.value_max = value;
@@ -332,8 +321,18 @@ void update_limits(RenderLimit& limit, double value)
 }
 
 
-void calculate_field_map(FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, lua::State* lua_state, fs::path output_dir)
+void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, lua::State* lua_state, fs::path output_dir)
 {
+	
+	// Initializing field_render_result
+	
+	field_render_result.node 		= node;
+	field_render_result.interaction	= interaction;
+	
+	field_render_result.render = field_render;
+	
+
+	
 	//lua_state->set("field_c_wrapper", [laser, lua_state] (double time, double pos_x, double pos_y, double pos_z) -> tuple<double, double, double, double, double, double>
 	//{
 		//Field field_value;
@@ -371,8 +370,13 @@ void calculate_field_map(FieldRender& field_render, unsigned int interaction, in
 		//value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = field_c_wrapper(t, x, y, z)  
 		//return { e_x = value_e_x, e_y = value_e_y, e_z = value_e_z, b_x = value_b_x, b_y = value_b_y, b_z = value_b_z }          
 	//end";
-	double start_t	= field_render.time_start;
-	double end_t	= field_render.time_end;
+
+	
+	field_render_result.time_start = field_render.time_start;
+	field_render_result.time_end   = field_render.time_end;
+	
+	double& start_t = field_render_result.time_start;
+	double& end_t   = field_render_result.time_end;
 	
 	
 	string wrapper  = "";
@@ -402,42 +406,33 @@ void calculate_field_map(FieldRender& field_render, unsigned int interaction, in
 	unsigned int nj = field_render.space_size_y / field_render.space_resolution;
 	unsigned int nk = field_render.space_size_z / field_render.space_resolution;
 	
-	double**** space;
+	field_render_result.nt = nt;
 	
-	string axis1;
-	string axis2;
-	
-	unsigned int n_a;
-	unsigned int n_b;
-	double len_a;
-	double len_b;
-	
-	
-	vector<RenderLimit> render_limits;
+	double****& space = field_render_result.values;
 	
 	for (unsigned short c = 0; c < field_render.count; c++)
 	{
-		RenderLimit render_limit;
+		FieldRenderResultLimit render_limit;
 		render_limit.value_min = +INFINITY;
 		render_limit.value_max = -INFINITY;
 		render_limit.value_min_abs = +INFINITY;
 		render_limit.value_max_abs = 0;
-		render_limits.push_back(render_limit);
+		
+		field_render_result.limits.push_back(render_limit);
 	}
 
 	space = new double***[nt];
-	
 	
 	// Creating space arrays with the field for the entire duration
 	switch(field_render.plane)
 	{
 		case XY:
-			axis1 = "x";
-			axis2 = "y";
-			n_a = ni;
-			n_b = nj;
-			len_a = field_render.space_size_x;
-			len_b = field_render.space_size_y;
+			field_render_result.axis1_label = "x";
+			field_render_result.axis2_label = "y";
+			field_render_result.na = ni;
+			field_render_result.nb = nj;
+			field_render_result.length_a = field_render.space_size_x;
+			field_render_result.length_b = field_render.space_size_y;
 		
 			for (unsigned int t = 0; t < nt; t++)
 			{
@@ -471,42 +466,42 @@ void calculate_field_map(FieldRender& field_render, unsigned int interaction, in
 							{
 								case 0:
 									space[t][i][j][c] = v0;
-									update_limits(render_limits[c], v0);
+									update_limits(field_render_result.limits[c], v0);
 								break;
 								
 								case 1:
 									space[t][i][j][c] = v1;
-									update_limits(render_limits[c], v1);
+									update_limits(field_render_result.limits[c], v1);
 								break;
 								
 								case 2:
 									space[t][i][j][c] = v2;
-									update_limits(render_limits[c], v2);
+									update_limits(field_render_result.limits[c], v2);
 								break;
 								
 								case 3:
 									space[t][i][j][c] = v3;
-									update_limits(render_limits[c], v3);
+									update_limits(field_render_result.limits[c], v3);
 								break;
 								
 								case 4:
 									space[t][i][j][c] = v4;
-									update_limits(render_limits[c], v4);
+									update_limits(field_render_result.limits[c], v4);
 								break;
 								
 								case 5:
 									space[t][i][j][c] = v5;
-									update_limits(render_limits[c], v5);
+									update_limits(field_render_result.limits[c], v5);
 								break;
 								
 								case 6:
 									space[t][i][j][c] = v6;
-									update_limits(render_limits[c], v6);
+									update_limits(field_render_result.limits[c], v6);
 								break;
 								
 								case 7:
 									space[t][i][j][c] = v7;
-									update_limits(render_limits[c], v7);
+									update_limits(field_render_result.limits[c], v7);
 								break;
 							}
 						}
@@ -516,12 +511,12 @@ void calculate_field_map(FieldRender& field_render, unsigned int interaction, in
 		break;
 		
 		case XZ:
-			axis1 = "x";
-			axis2 = "z";
-			n_a = ni;
-			n_b = nk;
-			len_a = field_render.space_size_x;
-			len_b = field_render.space_size_z;
+			field_render_result.axis1_label = "x";
+			field_render_result.axis2_label = "z";
+			field_render_result.na = ni;
+			field_render_result.nb = nk;
+			field_render_result.length_a = field_render.space_size_x;
+			field_render_result.length_b = field_render.space_size_z;
 		
 			for (unsigned int t = 0; t < nt; t++)
 			{
@@ -555,42 +550,42 @@ void calculate_field_map(FieldRender& field_render, unsigned int interaction, in
 							{
 								case 0:
 									space[t][i][k][c] = v0;
-									update_limits(render_limits[c], v0);
+									update_limits(field_render_result.limits[c], v0);
 								break;
 								
 								case 1:
 									space[t][i][k][c] = v1;
-									update_limits(render_limits[c], v1);
+									update_limits(field_render_result.limits[c], v1);
 								break;
 								
 								case 2:
 									space[t][i][k][c] = v2;
-									update_limits(render_limits[c], v2);
+									update_limits(field_render_result.limits[c], v2);
 								break;
 								
 								case 3:
 									space[t][i][k][c] = v3;
-									update_limits(render_limits[c], v3);
+									update_limits(field_render_result.limits[c], v3);
 								break;
 								
 								case 4:
 									space[t][i][k][c] = v4;
-									update_limits(render_limits[c], v4);
+									update_limits(field_render_result.limits[c], v4);
 								break;
 								
 								case 5:
 									space[t][i][k][c] = v5;
-									update_limits(render_limits[c], v5);
+									update_limits(field_render_result.limits[c], v5);
 								break;
 								
 								case 6:
 									space[t][i][k][c] = v6;
-									update_limits(render_limits[c], v6);
+									update_limits(field_render_result.limits[c], v6);
 								break;
 								
 								case 7:
 									space[t][i][k][c] = v7;
-									update_limits(render_limits[c], v7);
+									update_limits(field_render_result.limits[c], v7);
 								break;
 							}
 						}
@@ -600,12 +595,12 @@ void calculate_field_map(FieldRender& field_render, unsigned int interaction, in
 		break;
 		
 		case YZ:
-			axis1 = "y";
-			axis2 = "z";
-			n_a = nj;
-			n_b = nk;
-			len_a = field_render.space_size_y;
-			len_b = field_render.space_size_z;
+			field_render_result.axis1_label = "y";
+			field_render_result.axis2_label = "z";
+			field_render_result.na = nj;
+			field_render_result.nb = nk;
+			field_render_result.length_a = field_render.space_size_y;
+			field_render_result.length_b = field_render.space_size_z;
 		
 			for (unsigned int t = 0; t < nt; t++)
 			{
@@ -639,42 +634,42 @@ void calculate_field_map(FieldRender& field_render, unsigned int interaction, in
 							{
 								case 0:
 									space[t][j][k][c] = v0;
-									update_limits(render_limits[c], v0);
+									update_limits(field_render_result.limits[c], v0);
 								break;
 								
 								case 1:
 									space[t][j][k][c] = v1;
-									update_limits(render_limits[c], v1);
+									update_limits(field_render_result.limits[c], v1);
 								break;
 								
 								case 2:
 									space[t][j][k][c] = v2;
-									update_limits(render_limits[c], v2);
+									update_limits(field_render_result.limits[c], v2);
 								break;
 								
 								case 3:
 									space[t][j][k][c] = v3;
-									update_limits(render_limits[c], v3);
+									update_limits(field_render_result.limits[c], v3);
 								break;
 								
 								case 4:
 									space[t][j][k][c] = v4;
-									update_limits(render_limits[c], v4);
+									update_limits(field_render_result.limits[c], v4);
 								break;
 								
 								case 5:
 									space[t][j][k][c] = v5;
-									update_limits(render_limits[c], v5);
+									update_limits(field_render_result.limits[c], v5);
 								break;
 								
 								case 6:
 									space[t][j][k][c] = v6;
-									update_limits(render_limits[c], v6);
+									update_limits(field_render_result.limits[c], v6);
 								break;
 								
 								case 7:
 									space[t][j][k][c] = v7;
-									update_limits(render_limits[c], v7);
+									update_limits(field_render_result.limits[c], v7);
 								break;
 							}
 						}
@@ -686,17 +681,17 @@ void calculate_field_map(FieldRender& field_render, unsigned int interaction, in
 	}
 	
 	// Writing space array into a csv file
-	export_field_render(nt, n_a, n_b, start_t, end_t, len_a, len_b, field_render, space, axis1, axis2, output_dir);
+	export_field_render(field_render_result, output_dir);
 	
 	// Creating files needed to create the video
-	plot_field_render(axis1, axis2, nt, field_render, render_limits, output_dir);
+	plot_field_render(field_render_result, output_dir);
 
 	// Freeing the allocated memory
-	for (unsigned int s1 = 0; s1 < nt; s1++)
+	for (unsigned int s1 = 0; s1 < field_render_result.nt; s1++)
 	{
-		for (unsigned int s2 = 0; s2 < n_a; s2++)
+		for (unsigned int s2 = 0; s2 < field_render_result.na; s2++)
 		{
-			for (unsigned int s3 = 0; s3 < n_b; s3++)
+			for (unsigned int s3 = 0; s3 < field_render_result.nb; s3++)
 			{
 				delete space[s1][s2][s3];
 			}
@@ -707,24 +702,38 @@ void calculate_field_map(FieldRender& field_render, unsigned int interaction, in
 	delete space;
 }	
 
-void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& laser, Particle& particle, ParticleState& particle_state, Laboratory& laboratory, lua::State* lua_state, fs::path& output_dir)
+void simulate (
+	Simulation& simulation,
+	Pulse& laser,
+	Particle& particle,
+	ParticleStateGlobal& particle_state,
+	Laboratory& laboratory,
+	
+	function_node on_node_enter,
+	function_node on_node_time,
+	function_node on_node_exit,
+	
+	function_free on_free_enter,
+	function_free on_free_time,
+	function_free on_free_exit,
+	
+	lua::State* lua_state)
 {
 	
-	printf("Simulation duration: %f s\n", simulation.duration * AU_TIME);
+	//printf("Simulation duration: %f s\n", simulation.duration * AU_TIME);
 	
 	
 	RangeMode 	  current_range = FREE;
 	unsigned int  current_interaction = 0;
 	int 		  current_node = -1;
 	
-	fs::path int_output_dir;
+	//fs::path int_output_dir;
 	
-	ofstream stream_particle;
-	ofstream stream_interaction;
-	ofstream stream_particle_field;
+	//ofstream stream_particle;
+	//ofstream stream_interaction;
 	
-	stream_particle.open(get_filename_particle(output_dir));
-	setup_particle(stream_particle);
+	//stream_particle.open(get_filename_particle(output_dir));
+	//setup_particle(stream_particle);
 	
 	long double time_current = 0;
 	while (time_current < simulation.duration)
@@ -739,22 +748,22 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 		if (current_range == LASER && new_node < 0 )
 		{
 			stream_interaction.close();
-			stream_particle_field.close();
 			
 			
-			plot_interaction_files	(int_output_dir);
+			on_node_exit(simulation, laser, particle, particle_state, laboratory, current_node, long double time_global, double time_local);
 			
-
-			set<FieldRender*>::iterator render_iterator;
-			for (render_iterator = field_renders.begin(); render_iterator != field_renders.end(); ++render_iterator)
-			{
-				FieldRender* render = *render_iterator;
-				
-				if (render->enabled)
-				{
-					calculate_field_map (*render,  current_interaction, current_node, laser, lua_state, int_output_dir);
-				}
-			}
+			
+			
+			on_free_enter(simulation, laser, particle, particle_state, Laboratory& laboratory,             long double time_global);
+			// plot_interaction_files	(int_output_dir);
+			
+			//for (FieldRender render: field_renders)
+			//{
+			//	if (render.enabled)
+			//	{
+					//calculate_field_map (render,  current_interaction, current_node, laser, lua_state, int_output_dir);
+			//	}
+			//}
 			
 			current_range = FREE;
 			current_node  = -1;
@@ -769,10 +778,8 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 			fs::create_directories(int_output_dir);
 			
 			stream_interaction.open   (get_filename_interaction		(int_output_dir));
-			stream_particle_field.open(get_filename_particle_field	(int_output_dir));
 			
 			setup_interaction(stream_interaction);
-			setup_interaction(stream_particle_field);
 		}
 		
 		
@@ -787,10 +794,7 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 				particle_state,
 				time_current,
 				current_interaction,
-				lua_state,
-				stream_particle,
-				stream_interaction, 
-				stream_particle_field);	
+				lua_state);	
 		}
 		else
 		{
@@ -800,8 +804,7 @@ void simulate (Simulation& simulation, set<FieldRender*>& field_renders, Pulse& 
 				particle,
 				particle_state,
 				time_current,
-				lua_state, 
-				stream_particle);
+				lua_state);
 		}
 	}
 	

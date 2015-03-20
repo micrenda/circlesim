@@ -14,6 +14,7 @@
 				'src/plot.cpp',
 				'src/simulator.cpp',
 				'src/util.cpp'
+				'src/response.cpp'
 			],
 		
 			'libraries': 	['-fopenmp', '-lgsl', '-lgslcblas', '-lconfig++', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-llua5.2', '-larmadillo' , '-ldl'],	
