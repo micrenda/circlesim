@@ -9,6 +9,7 @@
 #include "config.hpp"
 #include "simulator.hpp"
 #include "output.hpp"
+#include "response.hpp"
 
 extern string exe_path;
 extern string exe_name;
@@ -157,7 +158,7 @@ int main(int argc, char *argv[])
 	Pulse				laser;
 	Particle			particle;
 	Laboratory 			laboratory;
-	ParticleState		particle_state;
+	ParticleStateGlobal		particle_state;
 	set<FieldRender>		field_renders;
 	set<ResponseAnalysis>	response_analyses;
 	
@@ -213,18 +214,68 @@ int main(int argc, char *argv[])
 		write_node(stream_node, node);
 	stream_node.close();
 	
-	// Executing main simulation
-	simulate(simulation, field_renders, laser, particle, particle_state, laboratory, &lua_state, output_dir);
+	// Setting up particle stream
 	
+	ofstream stream_particle;
+	ofstream stream_interaction;
+	fs::path output_interaction_dir;
+	
+	
+	stream_particle.open(get_filename_particle(output_dir));
+	setup_particle(stream_particle);
+	
+	
+	
+	ofstream stream_interaction;
+	
+	FunctionNodeEnter        on_node_enter			= [](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local)
+	{
+			output_interaction_dir = output_dir / fs::path((bo::format("i%un%u") % current_interaction % node.id).str());
+			
+			fs::create_directories(int_output_dir);
+			stream_interaction.open   (get_filename_interaction(output_interaction_dir));
+			setup_interaction(stream_interaction);
+		
+	};
+	
+	FunctionNodeTimeProgress on_node_time_progress	= [](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local, Field& field)
+	{
+		printf("\rSimulating: %3.4f%%", (double)time_current / simulation.duration * 100);
+		fflush(stdout);
+	};
+	
+	FunctionNodeExit         on_node_exit			= [](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local)
+	{
+		stream_interaction.close();
+		plot_interaction_files(output_interaction_dir);
+	};
+	
+	FunctionFreeEnter        on_free_enter			= [](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)
+	{};
+	
+	FunctionFreeTimeProgress on_free_time_progress	= [](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)
+	{};
+	
+	FunctionFreeExit         on_free_exit			= [](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)
+	{};
+	
+	
+	// Executing main simulation
+	simulate (simulation, laser, particle, particle_state, laboratory,
+				on_node_enter, on_node_time_progress, on_node_exit,
+				on_free_enter, on_free_time_progress, on_free_exit,
+				&lua_state);
+	
+	stream_particle.close();
 	
 	// Executing response analyses simulations
 	for (ResponseAnalysis analysis: response_analyses)
 	{
-		Particle 		tmp_particle 		= particle;
-		ParticleState	tmp_particle_state	= particle_state;
-		Pulse			tmp_laser			= laser;
+		Particle 			tmp_particle 		= particle;
+		ParticleStateGlobal	tmp_particle_state	= particle_state;
+		Pulse				tmp_laser			= laser;
 		
-		simulate(simulation, field_renders, tmp_laser, tmp_particle, tmp_particle_state, laboratory, &lua_state, output_dir);
+		//simulate(simulation, field_renders, tmp_laser, tmp_particle, tmp_particle_state, laboratory, &lua_state);
 		
 	}
 	

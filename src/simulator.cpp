@@ -19,6 +19,11 @@ bool is_in_influence_radius(ParticleStateGlobal& state, Node& node, double laser
 			state.position_z - node.position_z) <= laser_influence_radius;
 }
 
+bool is_in_influence_radius(ParticleStateLocal& state, double laser_influence_radius)
+{
+	return vector_module(state.position_x, state.position_y, state.position_z) <= laser_influence_radius;
+}
+
 int get_near_node_id(ParticleStateGlobal& state, Laboratory& laboratory, double laser_influence_radius)
 {
 	for (unsigned int r = 0; r < laboratory.nodes.size(); r++)
@@ -145,14 +150,15 @@ int gsl_odeiv_func_free(double t, const double y[], double f[], void *params)
 }
 
 
-void simulate_laser(
+void simulate_node(
 	Simulation& simulation, 
 	Pulse& laser,
 	Node& node,
 	Particle& particle,
 	ParticleStateLocal& state,
-	long double& time_current,
+	double&  local_time_current,
 	unsigned int interaction,
+	FunctionNodeTimeProgress& on_node_time_progress,
 	lua::State* lua_state)
 {
 	// Trasforming global coordinates to local coordinates
@@ -178,15 +184,8 @@ void simulate_laser(
 	y[4] = state.momentum_y;
 	y[5] = state.momentum_z;
 	
-	long double time_start = time_current;
 	
-	// local time: time ranging in interval ±laser.duration/2
-	
-	double local_time_start 	= -laser.duration/2;
-	double local_time_end   	= +laser.duration/2;
-	double local_time_current	=  local_time_start;
-	
-	while(local_time_current < local_time_end)
+	while(true)
 	{
 		
 		double local_time_limit		= local_time_current + simulation.time_resolution_laser;
@@ -197,9 +196,6 @@ void simulate_laser(
 			gsl_odeiv_evolve_apply(evolve, control, steps, &system, &local_time_current, local_time_limit, &local_time_step, y);
 		}
 		
-		// Update the states
-		time_current = time_start + (local_time_current - local_time_start) ;
-		
 		
 		state.position_x = y[0];
 		state.position_y = y[1];
@@ -208,16 +204,17 @@ void simulate_laser(
 		state.momentum_y = y[4];
 		state.momentum_z = y[5];
 		
-		// Print the particle state (global position)
-		write_particle(stream_particle, time_current, state);
-		
 		Field field;
 		// Print the particle interaction (local position, fields, etc)
-		calculate_fields(time_current*C0, y[0], y[1], y[2], laser, field, lua_state);
-		write_interaction(stream_interaction, time_current, y[0], y[1], y[2], y[3], y[4], y[5], field);
-
+		calculate_fields(local_time_current*C0, y[0], y[1], y[2], laser, field, lua_state);
+		
+		on_node_time_progress(simulation, laser, particle, state, node, local_time_current, field);
+		//TODO:
+		//write_particle(stream_particle, time_current, state);
+		//write_interaction(stream_interaction, time_current, y[0], y[1], y[2], y[3], y[4], y[5], field);
+		
 		// Checking if we are outside the laser influence radius.
-		if (is_in_influence_radius(state, node, simulation.laser_influence_radius))
+		if (is_in_influence_radius(state, simulation.laser_influence_radius))
 			break;
 		
 	}
@@ -230,7 +227,7 @@ void simulate_laser(
 }
 
 
-void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& particle, ParticleStateGlobal& state, long double& time_current_p, lua::State* lua_state, ofstream& stream_particle)
+void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& particle, ParticleStateGlobal& state, long double& time_current_p, FunctionFreeTimeProgress& on_free_time_progress, lua::State* lua_state)
 {
 	
 	
@@ -294,7 +291,8 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 		state.momentum_z = local_mom_z;
 		
 		// Print the state
-		write_particle(stream_particle, time_current, state);
+		//TODO:
+		//write_particle(stream_particle, time_current, state);
 		
 		// Checking if we are in a range of a laser.
 		if (get_near_node_id(state, laboratory, simulation.laser_influence_radius) > 0)
@@ -706,16 +704,16 @@ void simulate (
 	Simulation& simulation,
 	Pulse& laser,
 	Particle& particle,
-	ParticleStateGlobal& particle_state,
+	ParticleStateGlobal& particle_state_global,
 	Laboratory& laboratory,
 	
-	function_node on_node_enter,
-	function_node on_node_time,
-	function_node on_node_exit,
+	FunctionNodeEnter&        on_node_enter,
+	FunctionNodeTimeProgress& on_node_time_progress,
+	FunctionNodeExit&         on_node_exit,
 	
-	function_free on_free_enter,
-	function_free on_free_time,
-	function_free on_free_exit,
+	FunctionFreeEnter&        on_free_enter,
+	FunctionFreeTimeProgress& on_free_time_progress,
+	FunctionFreeExit&         on_free_exit,
 	
 	lua::State* lua_state)
 {
@@ -729,33 +727,31 @@ void simulate (
 	
 	//fs::path int_output_dir;
 	
-	//ofstream stream_particle;
-	//ofstream stream_interaction;
+
 	
-	//stream_particle.open(get_filename_particle(output_dir));
-	//setup_particle(stream_particle);
+	long double time_current_global = 0;
+	double      time_current_local;
 	
-	long double time_current = 0;
-	while (time_current < simulation.duration)
+	ParticleStateLocal particle_state_local;
+	
+	     
+	while (time_current_global < simulation.duration)
 	{
-		printf("\rSimulating: %3.4f%%", (double)time_current / simulation.duration * 100);
-		fflush(stdout);
+		
 		
 		// Identifing if our particle is inside the laser action range or outside.
 		// If outside we use the free motion laws, if inside we calculate the integration between the laser and the particle	
-		int new_node = get_near_node_id(particle_state, laboratory, simulation.laser_influence_radius);
+		int new_node = get_near_node_id(particle_state_global, laboratory, simulation.laser_influence_radius);
 		
 		if (current_range == LASER && new_node < 0 )
 		{
-			stream_interaction.close();
+			//TODO:
 			
+			Node& node = laboratory.nodes[current_node];
+			on_node_exit (simulation, laser, particle, particle_state_local,  node,         time_current_local);
+			state_local_to_global(particle_state_global, particle_state_local, node);
+			on_free_enter(simulation, particle, particle_state_global, laboratory,   time_current_global);
 			
-			on_node_exit(simulation, laser, particle, particle_state, laboratory, current_node, long double time_global, double time_local);
-			
-			
-			
-			on_free_enter(simulation, laser, particle, particle_state, Laboratory& laboratory,             long double time_global);
-			// plot_interaction_files	(int_output_dir);
 			
 			//for (FieldRender render: field_renders)
 			//{
@@ -767,48 +763,35 @@ void simulate (
 			
 			current_range = FREE;
 			current_node  = -1;
+			
 			current_interaction++;
 		}
 		else if (current_range == FREE && new_node != current_node)
 		{
+			on_free_exit(simulation, particle, particle_state_global, laboratory, time_current_global);
+			
 			current_range = LASER;
 			current_node = new_node; 
+			Node& node = laboratory.nodes[current_node];
 			
-			int_output_dir = output_dir / fs::path((bo::format("i%un%u") % current_interaction % current_node).str());
-			fs::create_directories(int_output_dir);
-			
-			stream_interaction.open   (get_filename_interaction		(int_output_dir));
-			
-			setup_interaction(stream_interaction);
+			state_global_to_local(particle_state_local, particle_state_global, node);
+			on_node_enter(simulation, laser, particle,  particle_state_local,  node, time_current_global);
 		}
 		
 		
 		if (current_range == LASER)
 		{
 			Node& node = laboratory.nodes[current_node];
-			simulate_laser(
-				simulation,
-				laser,
-				node,
-				particle,
-				particle_state,
-				time_current,
-				current_interaction,
-				lua_state);	
+			simulate_node(simulation, laser, node, particle, particle_state_local, time_current_local, current_interaction, on_node_time_progress, lua_state);	
+			state_local_to_global(particle_state_global, particle_state_local, node);
 		}
 		else
 		{
-			simulate_free(
-				simulation,
-				laboratory,
-				particle,
-				particle_state,
-				time_current,
-				lua_state);
+			simulate_free(simulation, laboratory, particle, particle_state_global,        time_current_global,                     on_free_time_progress, lua_state);
 		}
 	}
 	
-	printf("\n");
+	//printf("\n");
 }
 
 

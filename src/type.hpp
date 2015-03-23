@@ -79,14 +79,14 @@ typedef struct Parameters
 	double initial_position_x;
 	double initial_position_y;
 	double initial_position_z;
-	double initial_position_module;
+	double initial_position_rho;
 	double initial_position_theta;
 	double initial_position_phi;
 	
 	double initial_momentum_x;
 	double initial_momentum_y;
 	double initial_momentum_z;
-	double initial_momentum_module;
+	double initial_momentum_rho;
 	double initial_momentum_theta;
 	double initial_momentum_phi;
 
@@ -113,11 +113,11 @@ typedef struct Pulse
 {
 	double				duration;		// pulse duration
 
-	map<string, int> 	  params_int;
-	map<string, long>   params_int64;
+	map<string, int>	params_int;
+	map<string, long>	params_int64;
 	map<string, double> params_float;
 	map<string, string> params_string;
-	map<string, bool>	  params_boolean;
+	map<string, bool>	params_boolean;
 	
 	int					func_fields;	// coockie of LUA function
 } Pulse;
@@ -356,8 +356,13 @@ typedef struct FieldRenderResult
 } FieldRenderResultItem;
 
 
-typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node,             double time_local)>		FunctionNode;
-typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)>	FunctionFree;
+typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local)>					FunctionNodeEnter; 
+typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local)>					FunctionNodeExit; 
+typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local, Field& field)>		FunctionNodeTimeProgress;
+typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)>	FunctionFreeEnter;
+typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 	FunctionFreeExit;
+typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 	FunctionFreeTimeProgress;
+
 
 inline bool operator<(const FieldRender& lhs, 		const FieldRender& rhs) 		{ return lhs.id <  rhs.id; }
 inline bool operator<(const ResponseAnalysis& lhs, 	const ResponseAnalysis& rhs)	{ return lhs.id <  rhs.id; }

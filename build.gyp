@@ -13,7 +13,7 @@
 				'src/output.cpp',
 				'src/plot.cpp',
 				'src/simulator.cpp',
-				'src/util.cpp'
+				'src/util.cpp',
 				'src/response.cpp'
 			],
 		

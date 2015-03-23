@@ -165,7 +165,7 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	else if (parameters.has_position_sphe)
 	{
 		spherical_to_cartesian(
-			parameters.initial_position_module / AU_LENGTH,
+			parameters.initial_position_rho / AU_LENGTH,
 			parameters.initial_position_theta,
 			parameters.initial_position_phi,
 			state_local.position_x,
@@ -192,7 +192,7 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	else if (parameters.has_momentum_sphe)
 	{
 		spherical_to_cartesian(
-			parameters.initial_momentum_module / AU_MOMENTUM,
+			parameters.initial_momentum_rho / AU_MOMENTUM,
 			parameters.initial_momentum_theta,
 			parameters.initial_momentum_phi,
 			state_local.momentum_x,
@@ -419,9 +419,9 @@ void read_config(
 		config_particle.lookupValue			("initial_reference_node",  parameters.initial_reference_node)	|| missing_param("initial_reference_node");
 
 		parameters.has_position_cart = config_particle.exists("initial_position_x") 		&& config_particle.exists("initial_position_y") 	&& config_particle.exists("initial_position_z");
-		parameters.has_position_sphe = config_particle.exists("initial_position_module") 	&& config_particle.exists("initial_position_theta")	&& config_particle.exists("initial_position_phi");
+		parameters.has_position_sphe = config_particle.exists("initial_position_rho") 		&& config_particle.exists("initial_position_theta")	&& config_particle.exists("initial_position_phi");
 		parameters.has_momentum_cart = config_particle.exists("initial_momentum_x") 		&& config_particle.exists("initial_momentum_y") 	&& config_particle.exists("initial_momentum_z");
-		parameters.has_momentum_sphe = config_particle.exists("initial_momentum_module") 	&& config_particle.exists("initial_momentum_theta")	&& config_particle.exists("initial_momentum_phi");
+		parameters.has_momentum_sphe = config_particle.exists("initial_momentum_rho") 		&& config_particle.exists("initial_momentum_theta")	&& config_particle.exists("initial_momentum_phi");
 
 		if (parameters.has_position_cart)
 		{
@@ -432,7 +432,7 @@ void read_config(
 		
 		if (parameters.has_position_sphe)
 		{
-			config_particle.lookupValue	("initial_position_module",		parameters.initial_position_module)	|| missing_param("initial_position_module");
+			config_particle.lookupValue	("initial_position_rho",		parameters.initial_position_rho)	|| missing_param("initial_position_rho");
 			config_particle.lookupValue	("initial_position_theta",		parameters.initial_position_theta)	|| missing_param("initial_position_theta");
 			config_particle.lookupValue	("initial_position_phi",  		parameters.initial_position_phi)	|| missing_param("initial_position_phi");
 		}
@@ -446,7 +446,7 @@ void read_config(
 		
 		if (parameters.has_momentum_sphe)
 		{
-			config_particle.lookupValue	("initial_momentum_module",		parameters.initial_momentum_module)	|| missing_param("initial_momentum_module");
+			config_particle.lookupValue	("initial_momentum_rho",		parameters.initial_momentum_rho)	|| missing_param("initial_momentum_rho");
 			config_particle.lookupValue	("initial_momentum_theta",		parameters.initial_momentum_theta)	|| missing_param("initial_momentum_theta");
 			config_particle.lookupValue	("initial_momentum_phi",  		parameters.initial_momentum_phi)	|| missing_param("initial_momentum_phi");
 		}
