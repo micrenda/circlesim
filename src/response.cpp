@@ -9,7 +9,79 @@ void error_attribute_unknown(string object, string attribute)
 	exit(-1);	
 }
 
-double get_attribute(Node& node, Particle& particle, ParticleStateLocal& particle_state, Pulse& laser, string object, string attribute)
+string get_conversion_si_unit(string object, string attribute)
+{
+	if (object == "particle")
+	{
+
+		if (attribute == "position_x" || attribute == "position_y" || attribute == "position_z")
+			return "m";
+		else if (attribute == "position_phi" || attribute == "position_theta") 
+			return "rad";
+		else if (attribute == "position_rho")
+			return "m";
+		else if (attribute == "momentum_x" || attribute == "momentum_y" || attribute == "momentum_z")
+			return "Ns";
+		else if (attribute == "momentum_phi" || attribute == "momentum_theta")
+			return "rad";
+		else if (attribute == "momentum_rho")
+			return "Ns";
+		else if (attribute == "energy")
+			return "J";
+		else if (attribute == "rest_mass")
+			return "Kg";
+		else if (attribute == "charge")
+			return "C";
+	}
+	else if (object == "laser")
+	{
+		if (attribute == "duration")
+			return "s";
+		else
+			return "arbitrary";
+	}
+	
+	error_attribute_unknown(object, attribute);
+	return "unknown";	
+}
+
+double get_conversion_si_value(string object, string attribute)
+{
+	if (object == "particle")
+	{
+
+		if (attribute == "position_x" || attribute == "position_y" || attribute == "position_z")
+			return AU_LENGTH;
+		else if (attribute == "position_phi" || attribute == "position_theta") 
+			return 1.d;
+		else if (attribute == "position_rho")
+			return AU_LENGTH;
+		else if (attribute == "momentum_x" || attribute == "momentum_y" || attribute == "momentum_z")
+			return AU_MOMENTUM;
+		else if (attribute == "momentum_phi" || attribute == "momentum_theta")
+			return 1.d;
+		else if (attribute == "momentum_rho")
+			return AU_MOMENTUM;
+		else if (attribute == "energy")
+			return AU_ENERGY;
+		else if (attribute == "rest_mass")
+			return AU_MASS;
+		else if (attribute == "charge")
+			return AU_CHARGE;
+	}
+	else if (object == "laser")
+	{
+		if (attribute == "duration")
+			return AU_TIME;
+		else
+			return 1.d;
+	}
+	
+	error_attribute_unknown(object, attribute);
+	return 0.d;	
+}
+
+double get_attribute(Particle& particle, ParticleStateGlobal& particle_state, Pulse& laser, string object, string attribute)
 {
 	if (object == "particle")
 	{
@@ -22,10 +94,10 @@ double get_attribute(Node& node, Particle& particle, ParticleStateLocal& particl
 			return particle_state.position_z;
 		else if (attribute == "position_phi" || attribute == "position_theta") 
 		{
-			double position_theta;
-			double position_phi;
+			long double position_theta;
+			long double position_phi;
 			
-			cartesian_to_spherical(particle_state.position_x,	particle_state.position_y, particle_state.position_z, position_theta, position_phi);
+			cartesian_to_spherical<long double>(particle_state.position_x,	particle_state.position_y, particle_state.position_z, position_theta, position_phi);
 			
 			if (attribute == "position_phi")
 				return position_phi;
@@ -61,7 +133,7 @@ double get_attribute(Node& node, Particle& particle, ParticleStateLocal& particl
 		else if (attribute == "charge")
 			 return particle.charge;
 	}
-	else if (object == "particle")
+	else if (object == "laser")
 	{
 		if (attribute == "duration")
 			return laser.duration;
@@ -73,7 +145,7 @@ double get_attribute(Node& node, Particle& particle, ParticleStateLocal& particl
 	return 0.d;
 }
 
-void set_attribute(Particle& particle, ParticleStateLocal& particle_state, Pulse& laser, string object, string attribute, double new_value)
+void set_attribute(Particle& particle, ParticleStateGlobal& particle_state, Pulse& laser, string object, string attribute, double new_value)
 {
 	if (object == "particle")
 	{
@@ -86,11 +158,11 @@ void set_attribute(Particle& particle, ParticleStateLocal& particle_state, Pulse
 			particle_state.position_z = new_value;
 		else if (attribute == "position_phi" || attribute == "position_theta" || attribute == "position_rho") 
 		{
-			double position_theta;
-			double position_phi;
-			double position_rho;
+			long double position_theta;
+			long double position_phi;
+			long double position_rho;
 			
-			cartesian_to_spherical(particle_state.position_x,	particle_state.position_y, particle_state.position_z, position_theta, position_phi);
+			cartesian_to_spherical<long double>(particle_state.position_x,	particle_state.position_y, particle_state.position_z, position_theta, position_phi);
 			position_rho = vector_module(particle_state.position_x,	particle_state.position_y, particle_state.position_z);
 			
 			if (attribute == "position_phi")
@@ -112,12 +184,12 @@ void set_attribute(Particle& particle, ParticleStateLocal& particle_state, Pulse
 			particle_state.momentum_z = new_value;
 		else if (attribute == "momentum_phi" || attribute == "momentum_theta" || attribute == "momentum_rho" || attribute == "energy")
 		{
-			double momentum_rho;
-			double momentum_theta;
-			double momentum_phi;
+			long double momentum_rho;
+			long double momentum_theta;
+			long double momentum_phi;
 			
-			cartesian_to_spherical(particle_state.momentum_x,	particle_state.momentum_y, particle_state.momentum_z, momentum_theta, momentum_phi);
-			momentum_rho = vector_module(particle_state.position_x,	particle_state.position_y, particle_state.position_z);
+			cartesian_to_spherical<long double>(particle_state.momentum_x,	particle_state.momentum_y, particle_state.momentum_z, momentum_theta, momentum_phi);
+			momentum_rho = vector_module<long double>(particle_state.position_x,	particle_state.position_y, particle_state.position_z);
 			
 			if (attribute == "momentum_phi")
 				momentum_phi		= new_value;

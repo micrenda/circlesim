@@ -191,7 +191,7 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	}
 	else if (parameters.has_momentum_sphe)
 	{
-		spherical_to_cartesian(
+		spherical_to_cartesian<double>(
 			parameters.initial_momentum_rho / AU_MOMENTUM,
 			parameters.initial_momentum_theta,
 			parameters.initial_momentum_phi,
@@ -337,6 +337,33 @@ void read_config_renders(Setting* field_renders_config, set<FieldRender>& render
 	}
 }
 
+double get_conversion_si(string type)
+{
+	if (type == "MASS") 				return AU_MASS;
+	if (type == "LENGTH")				return AU_LENGTH;
+	if (type == "CHARGE")				return AU_CHARGE;
+	if (type == "ENERGY")				return AU_ENERGY;
+	if (type == "TIME")					return AU_TIME;
+	if (type == "FREQUENCY")			return 1.d;
+	if (type == "PULSATION")			return 1.d;
+	if (type == "SPEED")				return AU_SPEED;
+	if (type == "FORCE")				return AU_FORCE;
+	if (type == "ELECTRIC_FIELD")		return AU_ELECTRIC_FIELD;
+	if (type == "ELECTRIC_POTENTIAL")	return AU_ELECTRIC_POTENTIAL;
+	if (type == "MOMENTUM")				return AU_MOMENTUM;
+	if (type == "MAGNETIC_FIELD")		return AU_MAGNETIC_FIELD;
+	if (type == "ANGLE")				return 1.d;
+	if (type == "PERCENTUAL")			return 1.d;
+	if (type == "PURE_FLOAT")			return 1.d;
+	if (type == "PURE_INT")				return 1.d;
+	if (type == "IGNORE")				return 1.d;
+	if (type == "IGNORE_START")			return 1.d;
+	if (type == "IGNORE_END")			return 1.d;
+	
+	printf("Unable to find the conversion for unit: %s\n", type.c_str());
+	exit(-1);
+}
+
 void read_config(
 	fs::path& cfg_file,
 	Simulation& simulation,
@@ -351,7 +378,6 @@ void read_config(
 	Parameters parameters;
 	
 	Config* config = new Config;
-	
 	
 	map<string, int>	laser_field_param_map_int;
 	map<string, long>   laser_field_param_map_int64;
@@ -384,7 +410,7 @@ void read_config(
 				switch (setting.getType())
 				{
 					case Setting::TypeInt:
-						laser_field_param_map_int[what[1]] 		= setting;
+						laser_field_param_map_int[what[1]] = setting;
 					break;
 					
 					case Setting::TypeInt64:
@@ -499,9 +525,9 @@ void read_config(
 				node_setting.lookupValue("rotation_theta", theta) || missing_param((bo::format("node_%d->rotation_theta") % node.id).str());
 				node_setting.lookupValue("rotation_phi",   phi)   || missing_param((bo::format("node_%d->rotation_phi"  ) % node.id).str());
 				
-				rotate_spherical(node.axis(0,0), node.axis(1,0), node.axis(2,0), theta, phi);
-				rotate_spherical(node.axis(0,1), node.axis(1,1), node.axis(2,1), theta, phi);
-				rotate_spherical(node.axis(0,2), node.axis(1,2), node.axis(2,2), theta, phi);
+				rotate_spherical<double>(node.axis(0,0), node.axis(1,0), node.axis(2,0), theta, phi);
+				rotate_spherical<double>(node.axis(0,1), node.axis(1,1), node.axis(2,1), theta, phi);
+				rotate_spherical<double>(node.axis(0,2), node.axis(1,2), node.axis(2,2), theta, phi);
 				
 				// setting to zero all the versor components where abs(v) < 1E-15
 				// We do this because these values are likely created by cos(π/2) != 0 and sin(0) != 0 functions
@@ -539,11 +565,12 @@ void read_config(
 					ResponseAnalysis response_analysis;
 					response_analysis.id = stoi(what1[1]);
 					
-					response_analysis.response_attribute	= what2[1];
-					response_analysis.modifing_object		= what2[2];
-					response_analysis.modifing_attribute	= what2[3];
-					response_analysis.change_range			= stod(what2[4]) / 100.d;
-					response_analysis.change_steps			= stoi(what2[5]);
+					response_analysis.object_out	= what2[1];
+					response_analysis.attribute_out	= what2[2];
+					response_analysis.object_in		= what2[3];
+					response_analysis.attribute_in	= what2[4];
+					response_analysis.change_range	= stod(what2[5]) / 100.d;
+					response_analysis.change_steps	= stoi(what2[6]);
 					
 					if (what2[6] == "linearly")
 						response_analysis.change_mode		= LINEAR;
@@ -599,11 +626,12 @@ void read_config(
 	
 	laser.duration						= parameters.pulse_duration 		/ AU_TIME;
 	
-	laser.params_int		= laser_field_param_map_int;
+	
 	laser.params_int64		= laser_field_param_map_int64;
 	laser.params_float		= laser_field_param_map_float;
 	laser.params_string		= laser_field_param_map_string;
 	laser.params_boolean	= laser_field_param_map_boolean;
+	
 	
 	// Loading the common functins. Loading and evaluating so remain availabe to the other LUA scripts
 	lua_state->doString(parameters.func_commons);

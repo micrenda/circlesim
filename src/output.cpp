@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "response.hpp"
 #include "util.hpp"
 #include "type.hpp"
 
@@ -65,6 +66,36 @@ void setup_interaction(ofstream& stream)
 		<< "field_b_z"			 	<< endl;
 }
 
+
+void setup_response_analysis(ofstream& stream, ResponseAnalysis& response_analysis)
+{
+	stream.setf(ios::scientific);
+	stream.precision(16);
+	
+	stream
+		<< "#"
+		<< (bo::format("%s_%s (%%)")    % response_analysis.object_in  % response_analysis.attribute_in ).str()	<< ";"
+		<< (bo::format("%s_%s (value)") % response_analysis.object_in  % response_analysis.attribute_in ).str() << ";" 
+		<< (bo::format("%s_%s (%%)")    % response_analysis.object_out % response_analysis.attribute_out).str()	<< ";"
+		<< (bo::format("%s_%s (value)") % response_analysis.object_out % response_analysis.attribute_out).str()	<<  endl;
+}
+
+
+void write_response_analysis(ofstream& stream, ResponseAnalysis& response_analysis, double perc_in, double value_in, double perc_out, double value_out)
+{
+	double unit_in  = get_conversion_si_value(response_analysis.object_in,  response_analysis.attribute_in);
+	double unit_out = get_conversion_si_value(response_analysis.object_out, response_analysis.attribute_out);
+	
+	stream
+		<< "#"
+		<< perc_in				<< ";"
+		<< value_in * unit_in 	<< ";" 
+		<< perc_out				<< ";"
+		<< value_out * unit_out	<<  endl;
+}
+
+
+		
 
 
 string get_filename_particle(fs::path output_dir)

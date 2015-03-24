@@ -113,6 +113,8 @@ typedef struct Pulse
 {
 	double				duration;		// pulse duration
 
+
+	// These are the only parameter that are not converted to A.U. (the main rule is that all values inside the program must be converted to A.U.)
 	map<string, int>	params_int;
 	map<string, long>	params_int64;
 	map<string, double> params_float;
@@ -205,10 +207,15 @@ typedef struct Laboratory
 typedef struct ResponseAnalysis
 {
 	unsigned int	id;
-	string 			response_attribute;
 	
-	string 			modifing_object;
-	string 			modifing_attribute;
+	double			conversion_in;
+	double			conversion_out;
+	
+	string 			object_in;
+	string 			object_out;
+	
+	string 			attribute_in;
+	string 			attribute_out;
 	
 	double 			change_range;
 	double 			change_steps;
@@ -337,6 +344,7 @@ typedef struct FieldRenderResult
 	
 	
 } FieldRenderResultItem;
+
 
 
 typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int interaction, Node& node, double time_local)>					FunctionNodeEnter; 

@@ -153,7 +153,6 @@ int main(int argc, char *argv[])
 	// Create a new lua state
 	lua::State		lua_state;
 
-	
 	Simulation			simulation;
 	Pulse				laser;
 	Particle			particle;
@@ -161,7 +160,6 @@ int main(int argc, char *argv[])
 	ParticleStateGlobal		particle_state;
 	set<FieldRender>		field_renders;
 	set<ResponseAnalysis>	response_analyses;
-	
 	
 	// Convert the config file to a SI compliant version
 	fs::path cfg_file_si_tmp = fs::temp_directory_path() / fs::unique_path();
@@ -215,8 +213,6 @@ int main(int argc, char *argv[])
 	ofstream stream_particle;
 	ofstream stream_interaction;
 
-	
-	
 	stream_particle.open(get_filename_particle(output_dir));
 	setup_particle(stream_particle);
 	
@@ -239,29 +235,46 @@ int main(int argc, char *argv[])
 	{
 		stream_interaction.close();
 		plot_interaction_files(output_interaction_dir);
+		
+		// Creating field renders
+		for (FieldRender field_render: field_renders)
+		{
+			if (field_render.enabled)
+			{
+				FieldRenderResult field_render_result;
+				calculate_field_map(field_render_result, field_render, current_interaction, node.id,  laser, &lua_state, output_interaction_dir);
+			}
+		}
 	};
 	
 	FunctionFreeEnter        on_free_enter			= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
-	{};
+	{
+		
+	};
 	
 	FunctionFreeTimeProgress on_free_time_progress	= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
 	{
 		printf("\rSimulating free: %3.4f%%", (double) time_global / simulation.duration * 100);
 		fflush(stdout);
+		
+		write_particle(stream_particle, time_global, particle_state);
+		
 	};
 	
 	FunctionFreeExit         on_free_exit			= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
-	{};
+	{
+		
+	};
 	
 	
-	vector<SimluationResultFreeSummary> summariesFree;
-	vector<SimluationResultNodeSummary> summariesNode;
+	vector<SimluationResultFreeSummary> summaries_free;
+	vector<SimluationResultNodeSummary> summaries_node;
 	
 	// Executing main simulation
 	simulate (simulation, laser, particle, particle_state, laboratory,
 				on_node_enter, on_node_time_progress, on_node_exit,
 				on_free_enter, on_free_time_progress, on_free_exit,
-				summariesFree, summariesNode,
+				summaries_free, summaries_node,
 				&lua_state);
 	
 	stream_particle.close();
@@ -269,13 +282,40 @@ int main(int argc, char *argv[])
 	// Executing response analyses simulations
 	for (ResponseAnalysis analysis: response_analyses)
 	{
-		Particle 			tmp_particle 		= particle;
-		ParticleStateGlobal	tmp_particle_state	= particle_state;
-		Pulse				tmp_laser			= laser;
+		fs::path output_response_dir = output_dir / fs::path("analyses") / fs::path((bo::format("response_%u") % analysis.id).str());
+		fs::create_directories(output_response_dir);
 		
-		//simulate(simulation, field_renders, tmp_laser, tmp_particle, tmp_particle_state, laboratory, &lua_state);
+		Particle 			an_particle 		= particle;
+		ParticleStateGlobal	an_particle_state	= particle_state;
+		Pulse				an_laser			= laser;
 		
+		double base_value_in  = get_attribute(particle, particle_state, laser, analysis.object_in,  analysis.attribute_in);
+		double base_value_out = get_attribute(particle, particle_state, laser, analysis.object_out, analysis.attribute_out);
+		
+		ofstream stream_response_analysis;
+		stream_node.open(get_filename_node(output_dir));
+		for (unsigned int s = 0; s < analysis.change_steps; s++)
+		{
+			double delta_in = analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
+			double value_in = base_value_in * (1.0 - delta_in);
+			
+			set_attribute(an_particle, an_particle_state, an_laser, analysis.object_in, analysis.attribute_in, value_in);
+			
+			
+			vector<SimluationResultFreeSummary> an_summaries_free;
+			vector<SimluationResultNodeSummary> an_summaries_node;
+			
+			simulate (simulation, an_laser, an_particle, an_particle_state, laboratory,
+				on_node_enter, on_node_time_progress, on_node_exit,
+				on_free_enter, on_free_time_progress, on_free_exit,
+				an_summaries_free, an_summaries_node,
+				&lua_state);
+				
+			double value_out = get_attribute(particle, particle_state, laser, analysis.object_out, analysis.attribute_out);
+			double delta_out = 1.0 - value_out / base_value_out;
+			
+			write_response_analysis(stream_response_analysis, analysis, delta_in, value_in, delta_out, value_out);
+		}
+		stream_node.close();
 	}
-	
-
 }

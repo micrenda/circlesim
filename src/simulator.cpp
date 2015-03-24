@@ -239,10 +239,10 @@ void simulate_node(
 }
 
 
-void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& particle, ParticleStateGlobal& state, double& time_current, FunctionFreeTimeProgress& on_free_time_progress, SimluationResultFreeSummary& summary, lua::State* lua_state)
+void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& particle, ParticleStateGlobal& state, long double& global_time_current, FunctionFreeTimeProgress& on_free_time_progress, SimluationResultFreeSummary& summary, lua::State* lua_state)
 {
 	
-	summary.time_enter = time_current;
+	summary.time_enter = global_time_current;
 	
 	// Trasforming global coordinates to local coordinates
 	// We use the starting position of the particle as origin for the new reference system
@@ -252,10 +252,12 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 	long double origin_x = state.position_x;
 	long double origin_y = state.position_y;
 	long double origin_z = state.position_z;
+	long double origin_t = global_time_current;
 	
 	double local_pos_x = state.position_x - origin_x; // = 0
 	double local_pos_y = state.position_y - origin_y; // = 0
 	double local_pos_z = state.position_z - origin_z; // = 0
+	double local_t     = global_time_current - origin_t; // = 0
 	
 	double local_mom_x = state.momentum_x;
 	double local_mom_y = state.momentum_y;
@@ -283,14 +285,14 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 
 
 	
-	while(time_current < simulation.duration)
+	while(global_time_current < simulation.duration)
 	{
-		double local_time_limit		= time_current + simulation.time_resolution_free;
+		double local_time_limit		= local_t + simulation.time_resolution_free;
 		double local_time_step		= simulation.time_resolution_free / 100;
 		
-		while (time_current < local_time_limit)
+		while (local_t < local_time_limit)
 		{
-			gsl_odeiv_evolve_apply(evolve, control, steps, &system, &time_current, local_time_limit, &local_time_step, y);
+			gsl_odeiv_evolve_apply(evolve, control, steps, &system, &local_t, local_time_limit, &local_time_step, y);
 		}
 		
 		// Update the state
@@ -301,15 +303,13 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 		state.momentum_y = local_mom_y;
 		state.momentum_z = local_mom_z;
 		
+		global_time_current = origin_t + local_t;
+		
 		
 		SimluationResultFreeItem result;
-		result.time		= time_current;
+		result.time		= global_time_current;
 		result.state	= state;
 		summary.items.push_back(result);
-		
-		// Print the state
-		//TODO:
-		//write_particle(stream_particle, time_current, state);
 		
 		// Checking if we are in a range of a laser.
 		if (get_near_node_id(state, laboratory, simulation.laser_influence_radius) > 0)
@@ -322,7 +322,7 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 	gsl_odeiv_step_free(steps);
 	
 	
-	summary.time_exit = time_current;
+	summary.time_exit = global_time_current;
 
 }
 
@@ -732,54 +732,33 @@ void simulate (
 	FunctionFreeTimeProgress& on_free_time_progress,
 	FunctionFreeExit&         on_free_exit,
 	
-	vector<SimluationResultFreeSummary> summariesFree,
-	vector<SimluationResultNodeSummary> summariesNode,
+	vector<SimluationResultFreeSummary> summaries_free,
+	vector<SimluationResultNodeSummary> summaries_node,
 	
 	lua::State* lua_state)
 {
-	
-	//printf("Simulation duration: %f s\n", simulation.duration * AU_TIME);
-	
 	
 	RangeMode 	  current_range = FREE;
 	unsigned int  current_interaction = 0;
 	int 		  current_node = -1;
 	
-	//fs::path int_output_dir;
-	
-
-	
-	double time_current_global = 0;
-	double time_current_local;
+	long double time_current_global = 0;
+	double      time_current_local;
 	
 	ParticleStateLocal particle_state_local;
 	
-	     
 	while (time_current_global < simulation.duration)
 	{
-		
-		
 		// Identifing if our particle is inside the laser action range or outside.
 		// If outside we use the free motion laws, if inside we calculate the integration between the laser and the particle	
 		int new_node = get_near_node_id(particle_state_global, laboratory, simulation.laser_influence_radius);
 		
 		if (current_range == LASER && new_node < 0 )
 		{
-			//TODO:
-			
 			Node& node = laboratory.nodes[current_node];
 			on_node_exit (simulation, laser, particle, particle_state_local, current_interaction, node, time_current_local);
 			state_local_to_global(particle_state_global, particle_state_local, node);
 			on_free_enter(simulation, particle, particle_state_global, laboratory,   time_current_global);
-			
-			
-			//for (FieldRender render: field_renders)
-			//{
-			//	if (render.enabled)
-			//	{
-					//calculate_field_map (render,  current_interaction, current_node, laser, lua_state, int_output_dir);
-			//	}
-			//}
 			
 			current_range = FREE;
 			current_node  = -1;
@@ -801,23 +780,20 @@ void simulate (
 		
 		if (current_range == LASER)
 		{
-			
 			Node& node = laboratory.nodes[current_node];
 			
 			SimluationResultNodeSummary summary;
 			simulate_node(simulation, laser, node, particle, particle_state_local, time_current_local, current_interaction, on_node_time_progress, summary, lua_state);
-			summariesNode.push_back(summary);	
+			summaries_node.push_back(summary);	
 			state_local_to_global(particle_state_global, particle_state_local, node);
 		}
 		else
 		{
 			SimluationResultFreeSummary summary;
 			simulate_free(simulation, laboratory, particle, particle_state_global, time_current_global, on_free_time_progress, summary, lua_state);
-			summariesFree.push_back(summary);
+			summaries_free.push_back(summary);
 		}
 	}
-	
-	//printf("\n");
 }
 
 

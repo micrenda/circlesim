@@ -20,3 +20,5 @@ void simulate (
 	vector<SimluationResultNodeSummary> summariesNode,
 	
 	lua::State* lua_state);
+
+void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, lua::State* lua_state, fs::path output_dir);
