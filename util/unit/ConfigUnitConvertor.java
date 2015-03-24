@@ -553,7 +553,7 @@ public class ConfigUnitConvertor
 				long oldValue = Long.parseLong(expValue);
 				long newValue = oldValue * 10 ^ prefixMatch.power;
 				output.add(String.format("# converted %s from %d %s (%s) to %d", "integer", oldValue, prefixMatch.symbol, prefixMatch.name, newValue));
-				output.add(String.format("%s\t\t = %d", newValue));
+				output.add(String.format("%s\t\t = %d", expKey, newValue));
 				
 			}
 			else if (currentTemplate == ValueType.PURE_FLOAT && prefixMatch != null)

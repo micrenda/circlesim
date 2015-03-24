@@ -396,8 +396,8 @@ void read_config(
 		Setting&  config_laboratory 		= config->lookup("laboratory");
 		Setting&  config_response_analyses	= config->lookup("response_analyses");
 
-		config_laser.lookupValue			("duration",  	parameters.pulse_duration)							|| missing_param("duration (laser)");
-		config_laser.lookupValue			("func_fields",	parameters.func_fields)								|| missing_param("func_fields");
+		config_laser.lookupValue			("duration",  	parameters.pulse_duration)	|| missing_param("duration (laser)");
+		config_laser.lookupValue			("func_fields",	parameters.func_fields)		|| missing_param("func_fields");
 		
 		static const bo::regex e("^func_param_([A-Za-z\\_0-9]+)$");
 		for (int i = 0; i < config_simulation.getLength(); i++)
@@ -569,12 +569,9 @@ void read_config(
 					response_analysis.attribute_out	= what2[2];
 					response_analysis.object_in		= what2[3];
 					response_analysis.attribute_in	= what2[4];
-					response_analysis.change_range	= stod(what2[5]) / 100.d;
-					response_analysis.change_steps	= stoi(what2[6]);
-					
-					if (what2[6] == "linearly")
+					if (what2[5] == "linearly")
 						response_analysis.change_mode		= LINEAR;
-					else if (what2[6] == "randomly")
+					else if (what2[5] == "randomly")
 						response_analysis.change_mode		= RANDOM;
 					else
 					{
@@ -582,7 +579,8 @@ void read_config(
 						exit(-1);
 						return;	
 					}
-					
+					response_analysis.change_range	= stod(what2[6]) / 100.d;
+					response_analysis.change_steps	= stoi(what2[7]);
 					response_analyses.insert(response_analysis);
 				}
 				else
