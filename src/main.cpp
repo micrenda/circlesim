@@ -6,6 +6,7 @@
 #include <LuaState.h>
 #include "main.hpp"
 #include "type.hpp"
+#include "plot.hpp"
 #include "config.hpp"
 #include "simulator.hpp"
 #include "output.hpp"
@@ -48,7 +49,6 @@ int lua_error_handler(lua_State* L)
    lua_pushstring(L, msg.str().c_str());
    return 1;
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -178,12 +178,9 @@ int main(int argc, char *argv[])
 	
 	read_config(cfg_file_si_tmp, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, &lua_state);
 	
-	
-	
-	
-	
 	// Creating output directory
 	fs::path output_dir;
+	fs::path output_interaction_dir;
 	
 	unsigned int i = 1;
 	do
@@ -215,55 +212,56 @@ int main(int argc, char *argv[])
 	stream_node.close();
 	
 	// Setting up particle stream
-	
 	ofstream stream_particle;
 	ofstream stream_interaction;
-	fs::path output_interaction_dir;
+
 	
 	
 	stream_particle.open(get_filename_particle(output_dir));
 	setup_particle(stream_particle);
 	
-	
-	
-	ofstream stream_interaction;
-	
-	FunctionNodeEnter        on_node_enter			= [](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local)
+	FunctionNodeEnter        on_node_enter			= [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local) mutable 
 	{
-			output_interaction_dir = output_dir / fs::path((bo::format("i%un%u") % current_interaction % node.id).str());
-			
-			fs::create_directories(int_output_dir);
-			stream_interaction.open   (get_filename_interaction(output_interaction_dir));
-			setup_interaction(stream_interaction);
+		output_interaction_dir = output_dir / fs::path((bo::format("i%un%u") % current_interaction % node.id).str());
+		fs::create_directories(output_interaction_dir);
+		stream_interaction.open(get_filename_interaction(output_interaction_dir));
+		setup_interaction(stream_interaction);
 		
 	};
 	
-	FunctionNodeTimeProgress on_node_time_progress	= [](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local, Field& field)
+	FunctionNodeTimeProgress on_node_time_progress	= [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local, Field& field) mutable
 	{
-		printf("\rSimulating: %3.4f%%", (double)time_current / simulation.duration * 100);
+		printf("\rSimulating node %u: %.10f", current_interaction, time_local * AU_TIME);
 		fflush(stdout);
 	};
 	
-	FunctionNodeExit         on_node_exit			= [](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local)
+	FunctionNodeExit         on_node_exit			= [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local) mutable
 	{
 		stream_interaction.close();
 		plot_interaction_files(output_interaction_dir);
 	};
 	
-	FunctionFreeEnter        on_free_enter			= [](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)
+	FunctionFreeEnter        on_free_enter			= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
 	{};
 	
-	FunctionFreeTimeProgress on_free_time_progress	= [](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)
+	FunctionFreeTimeProgress on_free_time_progress	= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
+	{
+		printf("\rSimulating free: %3.4f%%", (double) time_global / simulation.duration * 100);
+		fflush(stdout);
+	};
+	
+	FunctionFreeExit         on_free_exit			= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
 	{};
 	
-	FunctionFreeExit         on_free_exit			= [](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)
-	{};
 	
+	vector<SimluationResultFreeSummary> summariesFree;
+	vector<SimluationResultNodeSummary> summariesNode;
 	
 	// Executing main simulation
 	simulate (simulation, laser, particle, particle_state, laboratory,
 				on_node_enter, on_node_time_progress, on_node_exit,
 				on_free_enter, on_free_time_progress, on_free_exit,
+				summariesFree, summariesNode,
 				&lua_state);
 	
 	stream_particle.close();

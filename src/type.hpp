@@ -220,32 +220,24 @@ typedef struct ResponseAnalysis
  * This struct contains the result of simulation in a laser
  * All values here are local values
  */
-typedef struct SimluationResultLaserItem
+typedef struct SimluationResultNodeItem
 {
 	double time;
-	
-	double position_x;
-	double position_y;
-	double position_z;
-	
-	double momentum_x;
-	double momentum_y;
-	double momentum_z;
-	
+	ParticleStateLocal state;
 	Field  field; // field at position
 	
 } SimluationResultLaserItem;
 
-typedef struct SimluationResultLaserSummary
+typedef struct SimluationResultNodeSummary
 {
 	Node   node;
 	
 	double time_enter;
 	double time_exit;
 	
-	vector<SimluationResultLaserItem> items;
+	vector<SimluationResultNodeItem> items;
 	
-} SimluationResultLaserSummary;
+} SimluationResultNodeSummary;
 
 /**
  * This struct contains the result of simulation outside the laser fields
@@ -253,17 +245,8 @@ typedef struct SimluationResultLaserSummary
  */
 typedef struct SimluationResultFreeItem
 {
-	double time;
-	
-	double position_x;
-	double position_y;
-	double position_z;
-	
-	double momentum_x;
-	double momentum_y;
-	double momentum_z;
-	
-	Field  field; // field at position
+	long double time;
+	ParticleStateGlobal state;
 	
 } SimluationResultFreeItem;
 
@@ -356,9 +339,9 @@ typedef struct FieldRenderResult
 } FieldRenderResultItem;
 
 
-typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local)>					FunctionNodeEnter; 
-typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local)>					FunctionNodeExit; 
-typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, Node& node, double time_local, Field& field)>		FunctionNodeTimeProgress;
+typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int interaction, Node& node, double time_local)>					FunctionNodeEnter; 
+typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int interaction, Node& node, double time_local)>					FunctionNodeExit; 
+typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int interaction, Node& node, double time_local, Field& field)>		FunctionNodeTimeProgress;
 typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)>	FunctionFreeEnter;
 typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 	FunctionFreeExit;
 typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 	FunctionFreeTimeProgress;
