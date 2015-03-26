@@ -3,6 +3,8 @@
 #include "util.hpp"
 #include "type.hpp"
 
+extern string ffmpeg_name;
+
 void setup_particle(ofstream& stream)
 {
 	stream.setf(ios::scientific);
@@ -215,45 +217,132 @@ void write_node(ofstream& stream, Node& node)
 		<< node.axis(2,2)				<< endl;
 }
 
-void export_field_render(FieldRenderResult& field_render_result, fs::path output_dir)
+void save_field_render_data(FieldRenderResult& field_render_result, FieldRenderData& field_render_data, fs::path output_dir)
 {
 	
-	unsigned int& nt = field_render_result.nt;
-	unsigned int& na = field_render_result.na;
-	unsigned int& nb = field_render_result.nb;
+	unsigned int t  = field_render_data.t;
+	unsigned int na = field_render_result.na;
+	unsigned int nb = field_render_result.nb;
 
 	FieldRender& field_render = field_render_result.render;
 
-	
-	
-	#pragma omp parallel for shared(field_render_result)
-	for (unsigned int t = 0; t < nt; t++)
+	FILE* file_csv=fopen((output_dir / fs::path((bo::format("field_render_%s_t%u.csv") % field_render.id % t).str())).string().c_str(), "w");
+
+	fprintf(file_csv, (bo::format("#time;%s;%s") % field_render_result.axis1_label % field_render_result.axis2_label).str().c_str());
+	for (unsigned short c = 0; c < field_render.count; c++)
+		fprintf(file_csv, (bo::format(";value_%u") % c).str().c_str());
+	fprintf(file_csv, "\n");
+
+	double time = field_render_result.time_start + t * (field_render_result.time_end - field_render_result.time_start);
+
+	for (unsigned int a = 0; a < na; a++)
 	{
-		FILE* file_csv=fopen((output_dir / fs::path((bo::format("field_render_%s_t%u.csv") % field_render.id % t).str())).string().c_str(), "w");
-	
-		fprintf(file_csv, (bo::format("#time;%s;%s") % field_render_result.axis1_label % field_render_result.axis2_label).str().c_str());
-		for (unsigned short c = 0; c < field_render.count; c++)
-			fprintf(file_csv, (bo::format(";value_%u") % c).str().c_str());
-		fprintf(file_csv, "\n");
-	
-		double time = field_render_result.time_start + t * (field_render_result.time_end - field_render_result.time_start);
-		
-		for (unsigned int a = 0; a < na; a++)
+		double pos_a = -field_render_result.length_a/2 + field_render_result.length_a / na * a;
+		for (unsigned int b = 0; b < nb; b++)
 		{
-			double pos_a = -field_render_result.length_a/2 + field_render_result.length_a / na * a;
-			for (unsigned int b = 0; b < nb; b++)
-			{
-				double pos_b = -field_render_result.length_b/2 + field_render_result.length_b / nb * b;
-				fprintf(file_csv, "%.16E;%.16E;%.16E", time * AU_TIME, pos_a * AU_LENGTH, pos_b * AU_LENGTH);
+			double pos_b = -field_render_result.length_b/2 + field_render_result.length_b / nb * b;
+			fprintf(file_csv, "%.16E;%.16E;%.16E", time * AU_TIME, pos_a * AU_LENGTH, pos_b * AU_LENGTH);
+			
+			for (unsigned short c = 0; c < field_render.count; c++)
+				fprintf(file_csv, ";%.16E", field_render_data.values[a][b][c]);
 				
-				for (unsigned short c = 0; c < field_render.count; c++)
-					fprintf(file_csv, ";%.16E", field_render_result.values[t][a][b][c]);
-					
-				fprintf(file_csv, "\n");
-			}
+			fprintf(file_csv, "\n");
 		}
+	}
+
+	fclose(file_csv);
+	
+}
+
+
+void save_field_render_ct2(FieldRenderResult& field_render_result, fs::path output_dir)
+{
+	FieldRender& field_render = field_render_result.render;
+	
+	for (unsigned short c = 0; c < field_render.count; c++)
+	{
+		string basename_global =  (bo::format("field_render_%s_%u") % field_render.id % c).str();
 		
-		fclose(file_csv);
+		fs::path filename_ct = output_dir / fs::path((bo::format("%s.ct2") % basename_global).str());
+		
+		FILE* file_ct = fopen(filename_ct.string().c_str(), "w");
+		
+		// Writing ctioga2 files
+		fprintf(file_ct, "title '%s'\n", field_render.titles[c].c_str());
+		fprintf(file_ct, "text-separator ;\n");
+		fprintf(file_ct, "\n");
+		fprintf(file_ct, "z_min = %.16E\n", 0.0); // TODO: add value
+		fprintf(file_ct, "z_max = %.16E\n", 100.0); // TODO: add value
+		fprintf(file_ct, "\n");
+		fprintf(file_ct, "xyz-map\n");
+		fprintf(file_ct, "new-zaxis zvalues /location right /bar_size=6mm\n");
+		
+		FieldRenderResultLimit& render_limit = field_render_result.limits[c];
+		string color_range = field_render.colors[c];
+		bo::replace_all(color_range, "min_abs", (bo::format("%E") % render_limit.value_min_abs).str());
+		bo::replace_all(color_range, "max_abs", (bo::format("%E") % render_limit.value_max_abs).str());
+		bo::replace_all(color_range, "min", 	(bo::format("%E") % render_limit.value_min).str());
+		bo::replace_all(color_range, "max", 	(bo::format("%E") % render_limit.value_max).str());
+
+		
+		fprintf(file_ct, "plot @'$2:$3:$%u'  /color-map \"%s\" /zaxis zvalues\n", 4+c, color_range.c_str());
+		fprintf(file_ct, "\n");
+		fprintf(file_ct, "xlabel '$%s$ [$m$]'\n", field_render_result.axis1_label.c_str());
+		fprintf(file_ct, "ylabel '$%s$ [$m$]'\n", field_render_result.axis2_label.c_str());
+		
+		fclose(file_ct);
+	}
+}
+
+
+void save_field_render_sh(FieldRenderResult& field_render_result, fs::path output_dir)
+{
+	FieldRender& field_render = field_render_result.render;
+	
+	for (unsigned short c = 0; c < field_render.count; c++)
+	{
+		string basename_global =  (bo::format("field_render_%s_%u") % field_render.id % c).str();
+
+		fs::path filename_ct = output_dir / fs::path((bo::format("%s.ct2") % basename_global).str());
+		
+		// Writing shell file that will create the movie
+		fs::path filename_sh = output_dir / fs::path((bo::format("%s.sh") % basename_global).str());
+		FILE* file_sh = fopen(filename_sh.string().c_str(), "w");
+		fprintf(file_sh, "#!/bin/sh\n");
+		fprintf(file_sh, "\n");
+		
+		fprintf(file_sh, "echo \"Running ctioga2 ...\"\n");
+		for (unsigned int t = 0; t < field_render_result.nt; t++)
+		{
+			string basename_time = (bo::format("%s_t%u") % basename_global % t).str();
+			fprintf(file_sh, "ctioga2 --text-separator \\; --load 'field_render_%s_t%u.csv' -f '%s'  --name '%s'\n", field_render.id.c_str() , t, filename_ct.filename().string().c_str(), basename_time.c_str());
+		}
+		fprintf(file_sh, "\n");
+		
+		fprintf(file_sh, "echo \"Running pdftoppm ...\"\n");
+		for (unsigned int t = 0; t < field_render_result.nt; t++)
+		{
+			string basename_time = (bo::format("%s_t%u") % basename_global % t).str();
+			fprintf(file_sh, (bo::format("pdftoppm -png -scale-to 1080 -singlefile '%s.pdf' '%s'\n") % basename_time % basename_time).str().c_str());
+		}
+		fprintf(file_sh, "\n");
+		fprintf(file_sh, (bo::format("rm %s_t*.pdf\n") % basename_global).str().c_str());
+		fprintf(file_sh, "\n");
+
+
+
+		
+		double framerate = ceil(field_render_result.nt / (field_render.movie_length * AU_TIME));
+		
+		fprintf(file_sh, "echo \"Running %s ...\"\n", ffmpeg_name.c_str());
+		fprintf(file_sh, "%s -framerate %.5f -loglevel error -i '%s_t%%d.png' -c:v libx264 -r 30 '%s.mp4'", ffmpeg_name.c_str(), framerate, basename_global.c_str(),/* w, h,*/ basename_global.c_str());
+		fprintf(file_sh, "\n");
+		fprintf(file_sh, (bo::format("rm %s_t*.png\n") % basename_global).str().c_str());
+		fprintf(file_sh, "\n");
+		fprintf(file_sh, "echo \"done\"\n");
+		fclose(file_sh);
+		
+		system((bo::format("chmod a+x %s") % filename_sh.string()).str().c_str());
 	}
 }
 

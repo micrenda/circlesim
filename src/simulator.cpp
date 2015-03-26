@@ -424,8 +424,7 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 	
 	field_render_result.nt = nt;
 	
-	double****& space = field_render_result.values;
-	
+
 	for (unsigned short c = 0; c < field_render.count; c++)
 	{
 		FieldRenderResultLimit render_limit;
@@ -437,7 +436,7 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 		field_render_result.limits.push_back(render_limit);
 	}
 
-	space = new double***[nt];
+	
 	
 	// Creating space arrays with the field for the entire duration
 	switch(field_render.plane)
@@ -454,19 +453,23 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			{
 				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
 				fflush(stdout);
-				space[t] = new double**[ni];
+				
 				
 				double time = start_t + t * field_render.time_resolution;
 				
-				#pragma omp parallel for shared(space, lua_state)
+				FieldRenderData data;
+				data.t = t;
+				data.values = new double**[ni];
+				
+				#pragma omp parallel for shared(data, lua_state)
 				for (unsigned int i = 0; i < ni; i++)
 				{
 					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
-					space[t][i] = new double*[nj];
+					data.values[i] = new double*[nj];
 					for (unsigned int j = 0; j < nj; j++)
 					{
 						double y = -field_render.space_size_y/2 + field_render.space_resolution * j;
-						space[t][i][j] = new double[field_render.count];
+						data.values[i][j] = new double[field_render.count];
 						
 						double v0,v1,v2,v3,v4,v5,v6,v7;
 						
@@ -481,48 +484,61 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 							switch(c)
 							{
 								case 0:
-									space[t][i][j][c] = v0;
+									data.values[i][j][c] = v0;
 									update_limits(field_render_result.limits[c], v0);
 								break;
 								
 								case 1:
-									space[t][i][j][c] = v1;
+									data.values[i][j][c] = v1;
 									update_limits(field_render_result.limits[c], v1);
 								break;
 								
 								case 2:
-									space[t][i][j][c] = v2;
+									data.values[i][j][c] = v2;
 									update_limits(field_render_result.limits[c], v2);
 								break;
 								
 								case 3:
-									space[t][i][j][c] = v3;
+									data.values[i][j][c] = v3;
 									update_limits(field_render_result.limits[c], v3);
 								break;
 								
 								case 4:
-									space[t][i][j][c] = v4;
+									data.values[i][j][c] = v4;
 									update_limits(field_render_result.limits[c], v4);
 								break;
 								
 								case 5:
-									space[t][i][j][c] = v5;
+									data.values[i][j][c] = v5;
 									update_limits(field_render_result.limits[c], v5);
 								break;
 								
 								case 6:
-									space[t][i][j][c] = v6;
+									data.values[i][j][c] = v6;
 									update_limits(field_render_result.limits[c], v6);
 								break;
 								
 								case 7:
-									space[t][i][j][c] = v7;
+									data.values[i][j][c] = v7;
 									update_limits(field_render_result.limits[c], v7);
 								break;
 							}
 						}
 					}
 				}
+				
+				save_field_render_data(field_render_result, data, output_dir);
+				
+				// Freeing the allocated memory
+				for (unsigned int s2 = 0; s2 < field_render_result.na; s2++)
+				{
+					for (unsigned int s3 = 0; s3 < field_render_result.nb; s3++)
+					{
+						delete [] data.values[s2][s3];
+					}
+					delete [] data.values[s2];
+				}
+				delete []  data.values;
 			}
 		break;
 		
@@ -538,19 +554,22 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			{
 				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
 				fflush(stdout);
-				space[t] = new double**[ni];
 				
 				double time = start_t + t * field_render.time_resolution;
 				
-				#pragma omp parallel for shared(space, lua_state)
+				FieldRenderData data;
+				data.t = t;
+				data.values = new double**[ni];
+				
+				#pragma omp parallel for shared(data, lua_state)
 				for (unsigned int i = 0; i < ni; i++)
 				{
 					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
-					space[t][i] = new double*[nk];
+					data.values[i] = new double*[nk];
 					for (unsigned int k = 0; k < nk; k++)
 					{
 						double z = -field_render.space_size_z/2 + field_render.space_resolution * k;
-						space[t][i][k] = new double[field_render.count];
+						data.values[i][k] = new double[field_render.count];
 						
 						double v0,v1,v2,v3,v4,v5,v6,v7;
 						
@@ -565,48 +584,61 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 							switch(c)
 							{
 								case 0:
-									space[t][i][k][c] = v0;
+									data.values[i][k][c] = v0;
 									update_limits(field_render_result.limits[c], v0);
 								break;
 								
 								case 1:
-									space[t][i][k][c] = v1;
+									data.values[i][k][c] = v1;
 									update_limits(field_render_result.limits[c], v1);
 								break;
 								
 								case 2:
-									space[t][i][k][c] = v2;
+									data.values[i][k][c] = v2;
 									update_limits(field_render_result.limits[c], v2);
 								break;
 								
 								case 3:
-									space[t][i][k][c] = v3;
+									data.values[i][k][c] = v3;
 									update_limits(field_render_result.limits[c], v3);
 								break;
 								
 								case 4:
-									space[t][i][k][c] = v4;
+									data.values[i][k][c] = v4;
 									update_limits(field_render_result.limits[c], v4);
 								break;
 								
 								case 5:
-									space[t][i][k][c] = v5;
+									data.values[i][k][c] = v5;
 									update_limits(field_render_result.limits[c], v5);
 								break;
 								
 								case 6:
-									space[t][i][k][c] = v6;
+									data.values[i][k][c] = v6;
 									update_limits(field_render_result.limits[c], v6);
 								break;
 								
 								case 7:
-									space[t][i][k][c] = v7;
+									data.values[i][k][c] = v7;
 									update_limits(field_render_result.limits[c], v7);
 								break;
 							}
 						}
 					}
 				}
+				
+				save_field_render_data(field_render_result, data, output_dir);
+				
+				// Freeing the allocated memory
+				for (unsigned int s2 = 0; s2 < field_render_result.na; s2++)
+				{
+					for (unsigned int s3 = 0; s3 < field_render_result.nb; s3++)
+					{
+						delete [] data.values[s2][s3];
+					}
+					delete [] data.values[s2];
+				}
+				delete [] data.values;
 			}
 		break;
 		
@@ -622,19 +654,22 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			{
 				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
 				fflush(stdout);
-				space[t] = new double**[nj];
 				
 				double time = start_t + t * field_render.time_resolution;
 				
-				#pragma omp parallel for shared(space, lua_state)
+				FieldRenderData data;
+				data.t = t;
+				data.values = new double**[nj];
+				
+				#pragma omp parallel for shared(data, lua_state)
 				for (unsigned int j = 0; j < nj; j++)
 				{
 					double y = -field_render.space_size_y/2 + field_render.space_resolution * j;
-					space[t][j] = new double*[nk];
+					data.values[j] = new double*[nk];
 					for (unsigned int k = 0; k < nk; k++)
 					{
 						double z = -field_render.space_size_z/2 + field_render.space_resolution * k;
-						space[t][j][k] = new double[field_render.count];
+						data.values[j][k] = new double[field_render.count];
 						
 						double v0,v1,v2,v3,v4,v5,v6,v7;
 						
@@ -649,73 +684,68 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 							switch(c)
 							{
 								case 0:
-									space[t][j][k][c] = v0;
+									data.values[j][k][c] = v0;
 									update_limits(field_render_result.limits[c], v0);
 								break;
 								
 								case 1:
-									space[t][j][k][c] = v1;
+									data.values[j][k][c] = v1;
 									update_limits(field_render_result.limits[c], v1);
 								break;
 								
 								case 2:
-									space[t][j][k][c] = v2;
+									data.values[j][k][c] = v2;
 									update_limits(field_render_result.limits[c], v2);
 								break;
 								
 								case 3:
-									space[t][j][k][c] = v3;
+									data.values[j][k][c] = v3;
 									update_limits(field_render_result.limits[c], v3);
 								break;
 								
 								case 4:
-									space[t][j][k][c] = v4;
+									data.values[j][k][c] = v4;
 									update_limits(field_render_result.limits[c], v4);
 								break;
 								
 								case 5:
-									space[t][j][k][c] = v5;
+									data.values[j][k][c] = v5;
 									update_limits(field_render_result.limits[c], v5);
 								break;
 								
 								case 6:
-									space[t][j][k][c] = v6;
+									data.values[j][k][c] = v6;
 									update_limits(field_render_result.limits[c], v6);
 								break;
 								
 								case 7:
-									space[t][j][k][c] = v7;
+									data.values[j][k][c] = v7;
 									update_limits(field_render_result.limits[c], v7);
 								break;
 							}
 						}
 					}
 				}
+				save_field_render_data(field_render_result, data, output_dir);
+				
+				// Freeing the allocated memory
+				for (unsigned int s2 = 0; s2 < field_render_result.na; s2++)
+				{
+					for (unsigned int s3 = 0; s3 < field_render_result.nb; s3++)
+					{
+						delete [] data.values[s2][s3];
+					}
+					delete [] data.values[s2];
+				}
+				delete [] data.values;
 			}
 		break;
 		
 	}
 	
-	// Writing space array into a csv file
-	export_field_render(field_render_result, output_dir);
-	
 	// Creating files needed to create the video
-	plot_field_render(field_render_result, output_dir);
-
-	// Freeing the allocated memory
-	for (unsigned int s1 = 0; s1 < field_render_result.nt; s1++)
-	{
-		for (unsigned int s2 = 0; s2 < field_render_result.na; s2++)
-		{
-			for (unsigned int s3 = 0; s3 < field_render_result.nb; s3++)
-			{
-				delete space[s1][s2][s3];
-			}
-			delete space[s1][s2];
-		}
-		delete space[s1];
-	}
-	delete space;
+	save_field_render_ct2(field_render_result, output_dir);
+	save_field_render_sh(field_render_result, output_dir);
 }	
 	
 void simulate (

@@ -359,7 +359,7 @@ typedef function<void(Simulation& simulation, 				Particle& particle, ParticleSt
 typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 	FunctionFreeExit;
 typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 	FunctionFreeTimeProgress;
 
-typedef function<void(unsigned int time_id, double time_localm FieldRenderResult render_result)> 	FunctionFieldRenderCalculated;
+typedef function<void(double time_local, FieldRenderResult render_result)> 	FunctionFieldRenderCalculated;
 
 
 inline bool operator<(const FieldRender& lhs, 		const FieldRender& rhs) 		{ return lhs.id <  rhs.id; }
