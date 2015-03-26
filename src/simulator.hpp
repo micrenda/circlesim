@@ -21,4 +21,14 @@ void simulate (
 	
 	lua::State* lua_state);
 
+void simulate (
+	Simulation& simulation,
+	Pulse& laser,
+	Particle& particle,
+	ParticleStateGlobal& particle_state_global,
+	Laboratory& laboratory,
+	vector<SimluationResultFreeSummary> summaries_free,
+	vector<SimluationResultNodeSummary> summaries_node,
+	lua::State* lua_state);
+	
 void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, lua::State* lua_state, fs::path output_dir);

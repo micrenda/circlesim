@@ -8,6 +8,6 @@ void read_config(
 	Particle& particle,
 	ParticleStateGlobal& particle_state,
 	Laboratory& laboratory,
-	set<FieldRender>&      field_renders,
-	set<ResponseAnalysis>& response_analyses,
+	vector<FieldRender>&      field_renders,
+	vector<ResponseAnalysis>& response_analyses,
 	lua::State* lua_state);

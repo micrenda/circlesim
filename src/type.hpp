@@ -208,18 +208,17 @@ typedef struct ResponseAnalysis
 {
 	unsigned int	id;
 	
-	double			conversion_in;
-	double			conversion_out;
-	
 	string 			object_in;
-	string 			object_out;
-	
 	string 			attribute_in;
-	string 			attribute_out;
+	
+	vector<string> 	object_out;
+	vector<string>	attribute_out;
 	
 	double 			change_range;
 	double 			change_steps;
+	
 	ChangeMode		change_mode;
+	
 } ResponseAnalysis;
 
 
@@ -326,16 +325,6 @@ typedef struct FieldRenderResult
 	double time_end;
 	
 	/**
-	 * This is a 4-dimensional array where we have:
-	 * values[time][axis1][axis2][subrender]
-	 * 
-	 *   time: 		nt
-	 *   axis1:		na
-	 *   axis2:		nb
-	 *   subrender:	render.count
-	 */
-	double**** 						values;
-	/**
 	 * This array contains the min and max values of the value in values.
 	 * 
 	 * limits[subrender]
@@ -343,7 +332,23 @@ typedef struct FieldRenderResult
 	vector<FieldRenderResultLimit>	limits;
 	
 	
-} FieldRenderResultItem;
+} FieldRenderResult;
+
+typedef struct FieldRenderData
+{
+	unsigned int t;
+	
+	/**
+	 * This is a 3-dimensional array where we have:
+	 * values[axis1][axis2][subrender]
+	 * 
+	 *   axis1:		na
+	 *   axis2:		nb
+	 *   subrender:	render.count
+	 */
+	double*** 						values;
+
+} FieldRenderData;
 
 
 
@@ -353,6 +358,8 @@ typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, 
 typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)>	FunctionFreeEnter;
 typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 	FunctionFreeExit;
 typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 	FunctionFreeTimeProgress;
+
+typedef function<void(unsigned int time_id, double time_localm FieldRenderResult render_result)> 	FunctionFieldRenderCalculated;
 
 
 inline bool operator<(const FieldRender& lhs, 		const FieldRender& rhs) 		{ return lhs.id <  rhs.id; }

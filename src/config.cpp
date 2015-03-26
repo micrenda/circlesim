@@ -215,7 +215,7 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	state_local_to_global(state_global, state_local, first_node);
 }
 
-void read_config_renders(Setting* field_renders_config, set<FieldRender>& renders, lua::State* lua_state)
+void read_config_renders(Setting* field_renders_config, vector<FieldRender>& renders, lua::State* lua_state)
 {
 	try 
 	{
@@ -325,7 +325,7 @@ void read_config_renders(Setting* field_renders_config, set<FieldRender>& render
 			printf("--------------------------------------------------------\n");
 
 
-			renders.insert(render);
+			renders.push_back(render);
 		}
 		
 	}
@@ -371,8 +371,8 @@ void read_config(
 	Particle& particle,
 	ParticleStateGlobal& particle_state,
 	Laboratory& laboratory,
-	set<FieldRender>&      field_renders,
-	set<ResponseAnalysis>& response_analyses,
+	vector<FieldRender>&      field_renders,
+	vector<ResponseAnalysis>& response_analyses,
 	lua::State* lua_state)
 {
 	Parameters parameters;
@@ -547,7 +547,7 @@ void read_config(
 		}
 		
 		static const bo::regex e_resp1("^analysis\\_([0-9]+)$");
-		static const bo::regex e_resp2("^\\s*analyze\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+when\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+changes\\s+by\\s+([0-9\\.]+)\\%\\s+in\\s+([0-9]+)\\s+steps\\s*$");
+		static const bo::regex e_resp2("^\\s*analyze\\s+([a-zA-Z\\_\\s,]+)\\s+when\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+changes\\s+by\\s+([0-9\\.]+)\\%\\s+in\\s+([0-9]+)\\s+steps\\s*$");
 		
 		for (int i = 0; i < config_response_analyses.getLength(); i++)
 		{
@@ -565,23 +565,66 @@ void read_config(
 					ResponseAnalysis response_analysis;
 					response_analysis.id = stoi(what1[1]);
 					
-					response_analysis.object_out	= what2[1];
-					response_analysis.attribute_out	= what2[2];
-					response_analysis.object_in		= what2[3];
-					response_analysis.attribute_in	= what2[4];
-					if (what2[5] == "linearly")
+					string last_object = "";
+					
+					string tokens_str = what2[1];
+					vector<string> tokens;
+					
+					bo::split(tokens, tokens_str, bo::is_any_of(","));
+					for (string token: tokens)
+					{
+						vector<string> parts;
+						// removing duplicated spaces and cleaning
+						token = bo::regex_replace(token, bo::regex("[[:blank:]]{2,}"), " ");
+						token = bo::regex_replace(token, bo::regex("^[[:blank:]]"),    "");
+						token = bo::regex_replace(token, bo::regex("[[:blank:]]$"),    "");
+						
+						bo::split(parts, token, bo::is_any_of(" "));
+						
+						if (parts.size() == 2)
+						{
+							last_object = parts[0];
+							response_analysis.object_out.push_back(parts[0]);
+							response_analysis.attribute_out.push_back(parts[1]);
+						}
+						else if (parts.size() == 1)
+						{
+							if (last_object != "")
+							{
+								response_analysis.object_out.push_back(last_object);
+								response_analysis.attribute_out.push_back(parts[0]);
+							}
+							else
+							{
+								printf("ERROR - Error parsing token '%s'. The first token must be <object> <attribute> while the next tokens can omit the <object> part.\n", token.c_str());
+								exit(-1);
+								return;	
+							}
+						}
+						else
+						{
+							printf("ERROR - Error parsing token '%s'. Expected format <object> <attribute>\n", token.c_str());
+							exit(-1);
+							return;	
+						}
+					}
+					
+					response_analysis.object_in		= what2[2];
+					response_analysis.attribute_in	= what2[3];
+					
+					if (what2[4] == "linearly")
 						response_analysis.change_mode		= LINEAR;
-					else if (what2[5] == "randomly")
+					else if (what2[4] == "randomly")
 						response_analysis.change_mode		= RANDOM;
 					else
 					{
-						printf("ERROR - Wrong value for '%s' expression. Allowed mode are: linerly or randomly.\n", config_analysis.getName());
+						printf("ERROR - Wrong value for '%s' expression. Allowed mode are: 'linerly' or 'randomly' but '%s' was found.\n", config_analysis.getName(), string(what2[4]).c_str());
 						exit(-1);
 						return;	
 					}
-					response_analysis.change_range	= stod(what2[6]) / 100.d;
-					response_analysis.change_steps	= stoi(what2[7]);
-					response_analyses.insert(response_analysis);
+					response_analysis.change_range	= stod(what2[5]) / 100.d;
+					response_analysis.change_steps	= stoi(what2[6]);
+					response_analyses.push_back(response_analysis);
 				}
 				else
 				{

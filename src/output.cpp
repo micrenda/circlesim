@@ -74,29 +74,46 @@ void setup_response_analysis(ofstream& stream, ResponseAnalysis& response_analys
 	
 	stream
 		<< "#"
-		<< (bo::format("%s_%s (%%)")    % response_analysis.object_in  % response_analysis.attribute_in ).str()	<< ";"
-		<< (bo::format("%s_%s (value)") % response_analysis.object_in  % response_analysis.attribute_in ).str() << ";" 
-		<< (bo::format("%s_%s (%%)")    % response_analysis.object_out % response_analysis.attribute_out).str()	<< ";"
-		<< (bo::format("%s_%s (value)") % response_analysis.object_out % response_analysis.attribute_out).str()	<<  endl;
+		<< (bo::format("in_%s_%s_perc (%%)")   % response_analysis.object_in  % response_analysis.attribute_in ).str()	<< ";"
+		<< (bo::format("in_%s_%s_delta (%s)")  % response_analysis.object_in  % response_analysis.attribute_in  % get_conversion_si_unit(response_analysis.object_in,  response_analysis.attribute_in )).str() << ";" 
+		<< (bo::format("in_%s_%s_abs (%s)")    % response_analysis.object_in  % response_analysis.attribute_in  % get_conversion_si_unit(response_analysis.object_in,  response_analysis.attribute_in )).str() << ";" ;
+	
+	for (unsigned int o = 0; o < response_analysis.attribute_out.size(); o++)
+	{
+		string object_out    = response_analysis.object_out[o];
+		string attribute_out = response_analysis.attribute_out[o];
+		
+		stream
+			<< (bo::format("out_%s_%s_perc (%%)")  % object_out % attribute_out).str()	<< ";"
+			<< (bo::format("out_%s_%s_delta (%s)") % object_out % attribute_out % get_conversion_si_unit(object_out, attribute_out)).str() <<  ";"
+			<< (bo::format("out_%s_%s_abs (%s)")   % object_out % attribute_out % get_conversion_si_unit(object_out, attribute_out)).str() <<  ";";
+	}
+	stream << endl;
 }
 
 
-void write_response_analysis(ofstream& stream, ResponseAnalysis& response_analysis, double perc_in, double value_in, double perc_out, double value_out)
+void write_response_analysis(ofstream& stream, ResponseAnalysis& response_analysis, double perc_in,  double delta_in, double value_in, vector<double> perc_out, vector<double> delta_out, vector<double> value_out)
 {
 	double unit_in  = get_conversion_si_value(response_analysis.object_in,  response_analysis.attribute_in);
-	double unit_out = get_conversion_si_value(response_analysis.object_out, response_analysis.attribute_out);
+	
 	
 	stream
-		<< "#"
 		<< perc_in				<< ";"
-		<< value_in * unit_in 	<< ";" 
-		<< perc_out				<< ";"
-		<< value_out * unit_out	<<  endl;
-}
-
-
+		<< delta_in * unit_in 	<< ";" 
+		<< value_in * unit_in 	<< ";";
 		
-
+	for (unsigned int o = 0; o < response_analysis.attribute_out.size(); o++)
+	{
+		double unit_out = get_conversion_si_value(response_analysis.object_out[o], response_analysis.attribute_out[o]);
+		
+		stream
+			<< perc_out[o]				<< ";"
+			<< delta_out[o] * unit_out	<< ";"
+			<< value_out[o] * unit_out	<< ";";
+	}
+	
+	stream << endl;
+}
 
 string get_filename_particle(fs::path output_dir)
 {
@@ -136,12 +153,7 @@ void write_particle(ofstream& stream, double current_time, ParticleStateGlobal& 
 void write_interaction(
 	ofstream& stream, 
 	double current_time, 
-	double rel_pos_x, 
-	double rel_pos_y, 
-	double rel_pos_z, 
-	double rel_mom_x, 
-	double rel_mom_y, 
-	double rel_mom_z,
+	ParticleStateLocal& particle_state,
 	Field& field)
 {
 	
@@ -154,33 +166,33 @@ void write_interaction(
 	double rel_mom_phi;
 	
 	
-	rel_pos_rho = vector_module(rel_pos_x, rel_pos_y, rel_pos_z);
-	cartesian_to_spherical(rel_pos_x, rel_pos_y, rel_pos_z, rel_pos_theta, rel_pos_phi);
+	rel_pos_rho = vector_module(particle_state.position_x, particle_state.position_y, particle_state.position_z);
+	cartesian_to_spherical(particle_state.position_x, particle_state.position_y, particle_state.position_z, rel_pos_theta, rel_pos_phi);
 	
-	rel_mom_rho = vector_module(rel_mom_x, rel_mom_y, rel_mom_z);
-	cartesian_to_spherical(rel_mom_x, rel_mom_y, rel_mom_z, rel_mom_theta, rel_mom_phi);
+	rel_mom_rho = vector_module(particle_state.momentum_x, particle_state.momentum_y, particle_state.momentum_z);
+	cartesian_to_spherical(particle_state.momentum_x, particle_state.momentum_y, particle_state.momentum_z, rel_mom_theta, rel_mom_phi);
 	
 	stream
-		<< current_time	* AU_TIME			<< ";"
-		<< rel_pos_x    * AU_LENGTH 		<< ";" 
-		<< rel_pos_y    * AU_LENGTH 		<< ";" 
-		<< rel_pos_z    * AU_LENGTH 		<< ";" 
-		<< rel_pos_rho  * AU_LENGTH 		<< ";" 
-		<< rel_pos_theta 					<< ";" 
-		<< rel_pos_phi			 			<< ";" 
-		<< rel_mom_x 	* AU_MOMENTUM		<< ";" 
-		<< rel_mom_y 	* AU_MOMENTUM		<< ";" 
-		<< rel_mom_z 	* AU_MOMENTUM		<< ";" 
-		<< rel_mom_rho 	* AU_MOMENTUM		<< ";" 
-		<< rel_mom_theta					<< ";" 
-		<< rel_mom_phi 						<< ";"
-		<< field.e_x	* AU_ELECTRIC_FIELD	<< ";"
-		<< field.e_y 	* AU_ELECTRIC_FIELD	<< ";"
-		<< field.e_z 	* AU_ELECTRIC_FIELD	<< ";"
-		<< field.b_x 	* AU_MAGNETIC_FIELD	<< ";"
-		<< field.b_y 	* AU_MAGNETIC_FIELD	<< ";"
-		<< field.b_z 	* AU_MAGNETIC_FIELD	<< ";"
-		<< rel_mom_phi 						<< endl;
+		<< current_time	* AU_TIME							<< ";"
+		<< particle_state.position_x    * AU_LENGTH 		<< ";" 
+		<< particle_state.position_y    * AU_LENGTH 		<< ";" 
+		<< particle_state.position_z    * AU_LENGTH 		<< ";" 
+		<< rel_pos_rho  				* AU_LENGTH 		<< ";" 
+		<< rel_pos_theta 									<< ";" 
+		<< rel_pos_phi			 							<< ";" 
+		<< particle_state.momentum_x 	* AU_MOMENTUM		<< ";" 
+		<< particle_state.momentum_y 	* AU_MOMENTUM		<< ";" 
+		<< particle_state.momentum_z 	* AU_MOMENTUM		<< ";" 
+		<< rel_mom_rho 					* AU_MOMENTUM		<< ";" 
+		<< rel_mom_theta									<< ";" 
+		<< rel_mom_phi 										<< ";"
+		<< field.e_x					* AU_ELECTRIC_FIELD	<< ";"
+		<< field.e_y 					* AU_ELECTRIC_FIELD	<< ";"
+		<< field.e_z 					* AU_ELECTRIC_FIELD	<< ";"
+		<< field.b_x 					* AU_MAGNETIC_FIELD	<< ";"
+		<< field.b_y 					* AU_MAGNETIC_FIELD	<< ";"
+		<< field.b_z 					* AU_MAGNETIC_FIELD	<< ";"
+		<< rel_mom_phi 										<< endl;
 }
 
 
@@ -243,4 +255,87 @@ void export_field_render(FieldRenderResult& field_render_result, fs::path output
 		
 		fclose(file_csv);
 	}
+}
+
+void save_response_analysis_ct2(ResponseAnalysis& response_analysis, fs::path output_dir)
+{
+	string object_in     = response_analysis.object_in;
+	string attribute_in  = response_analysis.attribute_in;
+	
+	for (unsigned int o = 0; o < response_analysis.attribute_out.size(); o++)
+	{
+		string object_out    = response_analysis.object_out[o];
+		string attribute_out = response_analysis.attribute_out[o];
+		
+		unsigned int offset = (1+o) * 3;
+		//------------------------------------------------------------------
+		ofstream s1;
+		s1.open((output_dir / fs::path((bo::format("response_%s_%s_perc.ct2") % object_out % attribute_out).str())).string());
+		
+		string xlabel2 = (bo::format("in %s %s [\\%%]")  % object_in  % attribute_in).str();
+		string ylabel2 = (bo::format("out %s %s [\\%%]") % object_out % attribute_out).str();
+		bo::replace_all(xlabel2, "_", " ");
+		bo::replace_all(ylabel2, "_", " ");
+		
+		s1 << bo::format("title 'Response perc %u'") % response_analysis.id << endl;
+		s1 << bo::format("name 'response_%s_%s_perc'") % object_out % attribute_out << endl;
+		s1 << bo::format("xlabel '%s'") % xlabel2 << endl;
+		s1 << bo::format("ylabel '%s'") % ylabel2 << endl;
+		s1 << "plot @$1*100:$" << offset + 1 << "*100" << endl;
+		s1.close();
+		
+		//------------------------------------------------------------------
+		ofstream s2;
+		s2.open((output_dir / fs::path((bo::format("response_%s_%s_delta.ct2") % object_out % attribute_out).str())).string());
+		
+		string xlabel1 = (bo::format("in %s %s [%s]")  % object_in  % attribute_in  % get_conversion_si_unit(object_in,  attribute_in )).str();
+		string ylabel1 = (bo::format("out %s %s [%s]") % object_out % attribute_out % get_conversion_si_unit(object_out, attribute_out)).str();
+		bo::replace_all(xlabel1, "_", " ");
+		bo::replace_all(ylabel1, "_", " ");
+		
+		s2 << bo::format("title 'Response delta %u'") % response_analysis.id << endl;
+		s2 << bo::format("name 'response_%s_%s_delta'") % object_out % attribute_out << endl;
+		s2 << bo::format("xlabel '%s'") % xlabel1 << endl;
+		s2 << bo::format("ylabel '%s'") % ylabel1 << endl;
+		s2 << "plot @2:" << offset + 2 << endl;
+		s2.close();
+		
+		//------------------------------------------------------------------
+		ofstream s3;
+		s3.open((output_dir / fs::path((bo::format("response_%s_%s_abs.ct2") % object_out % attribute_out).str())).string());
+		
+		string xlabel3 = (bo::format("in %s %s [%s]")  % object_in  % attribute_in  % get_conversion_si_unit(object_in,  attribute_in )).str();
+		string ylabel3 = (bo::format("out %s %s [%s]") % object_out % attribute_out % get_conversion_si_unit(object_out, attribute_out)).str();
+		bo::replace_all(xlabel3, "_", " ");
+		bo::replace_all(ylabel3, "_", " ");
+		
+		s3 << bo::format("title 'Response abs %u'") % response_analysis.id << endl;
+		s3 << bo::format("name 'response_%s_%s_abs'") % object_out % attribute_out << endl;
+		s3 << bo::format("xlabel '%s'") % xlabel3 << endl;
+		s3 << bo::format("ylabel '%s'") % ylabel3 << endl;
+		s3 << "plot @3:" << offset + 3 << endl;
+		s3.close();
+	}
+}
+
+void save_response_analysis_sh(ResponseAnalysis& response_analysis, fs::path output_dir)
+{
+	fs::path f = (output_dir / fs::path("response.sh"));
+	ofstream s;
+	s.open(f.string());
+	
+	s << "#!/bin/sh" << endl << endl;
+	s << "echo \"Running ctioga2 ...\"" << endl;
+	
+	for (unsigned int o = 0; o < response_analysis.attribute_out.size(); o++)
+	{
+		string object_out    = response_analysis.object_out[o];
+		string attribute_out = response_analysis.attribute_out[o];
+		
+		s << bo::format("ctioga2 --text-separator \\; --load 'response.csv' -f 'response_%s_%s_delta.ct2'") % object_out % attribute_out << endl;
+		s << bo::format("ctioga2 --text-separator \\; --load 'response.csv' -f 'response_%s_%s_perc.ct2'" ) % object_out % attribute_out << endl;
+		s << bo::format("ctioga2 --text-separator \\; --load 'response.csv' -f 'response_%s_%s_abs.ct2'"  ) % object_out % attribute_out << endl;
+	}
+	
+	system((bo::format("chmod a+x %s") % f.string()).str().c_str());	
 }
