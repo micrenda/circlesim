@@ -396,7 +396,6 @@ void read_config(
 		Setting&  config_laboratory 		= config->lookup("laboratory");
 		Setting&  config_response_analyses	= config->lookup("response_analyses");
 
-		config_laser.lookupValue			("duration",  	parameters.pulse_duration)	|| missing_param("duration (laser)");
 		config_laser.lookupValue			("func_fields",	parameters.func_fields)		|| missing_param("func_fields");
 		
 		static const bo::regex e("^func_param_([A-Za-z\\_0-9]+)$");
@@ -664,9 +663,7 @@ void read_config(
 	simulation.time_resolution_free		= parameters.time_resolution_free	/ AU_TIME;
 	simulation.laser_influence_radius	= parameters.laser_influence_radius	/ AU_LENGTH;
 	simulation.duration					= parameters.simulation_duration 	/ AU_TIME;
-	
-	laser.duration						= parameters.pulse_duration 		/ AU_TIME;
-	
+
 	
 	laser.params_int64		= laser_field_param_map_int64;
 	laser.params_float		= laser_field_param_map_float;
@@ -679,7 +676,7 @@ void read_config(
 	//check_lua_error(lua_state, err, "func_commons", parameters.func_commons);
 	// Loading other lua scripts
 	
-	string s = "function func_fields(D, t, x, y, z)\n";
+	string s = "function func_fields(t, x, y, z)\n";
 	s += "    -- Injecting external variables\n";
 	for (map<string,int>::iterator	entry = laser.params_int.begin(); entry != laser.params_int.end(); ++entry) 
 		s += (bo::format("    % -12s\t= %d\n") 		% entry->first % entry->second).str();

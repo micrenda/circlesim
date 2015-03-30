@@ -61,8 +61,6 @@ typedef struct Parameters
 	double 			error_abs;
 	double 			error_rel;
 
-	double pulse_duration;	
-
 	string func_commons;
 	string func_fields;
 
@@ -111,8 +109,6 @@ typedef struct Simulation
 
 typedef struct Pulse
 {
-	double				duration;		// pulse duration
-
 
 	// These are the only parameter that are not converted to A.U. (the main rule is that all values inside the program must be converted to A.U.)
 	map<string, int>	params_int;

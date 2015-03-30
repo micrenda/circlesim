@@ -51,8 +51,6 @@ void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, co
 {
 	//TODO: These values must be cached because does not change between the execution of calculate fiels (or neither in all simulation)
 	
-  
-	double param_duration		=	laser.duration	* AU_TIME;
 	double param_time			=	pos_t/C0		* AU_TIME;
 	double param_x				=	pos_x 			* AU_LENGTH;
 	double param_y				=	pos_y 			* AU_LENGTH;
@@ -64,7 +62,7 @@ void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, co
 	#pragma omp critical (lua_fields)
 	{
 		// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
-		lua::tie(e1, e2, e3, b1, b2, b3) = (*lua_state)["func_fields"](param_duration, param_time, param_x, param_y, param_z);
+		lua::tie(e1, e2, e3, b1, b2, b3) = (*lua_state)["func_fields"](param_time, param_x, param_y, param_z);
 	}
 	
 	field.e_x = e1 / AU_ELECTRIC_FIELD; 
@@ -396,9 +394,8 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 	
 	
 	string wrapper  = "";
-	wrapper += "function field(t, x, y, z)\n";
-	wrapper += (bo::format("   D=%.16E\n") % (laser.duration * AU_TIME)).str();             
-	wrapper += "   value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = func_fields(D, t, x, y, z)\n";
+	wrapper += "function field(t, x, y, z)\n";            
+	wrapper += "   value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = func_fields(t, x, y, z)\n";
 	wrapper += "   return { e_x = value_e_x, e_y = value_e_y, e_z = value_e_z, b_x = value_b_x, b_y = value_b_y, b_z = value_b_z }\n";
 	wrapper += "end";
 	
@@ -476,7 +473,7 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 						// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
 						#pragma omp critical (lua_field_render)
 						{
-						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time * AU_TIME, x * AU_LENGTH, y * AU_LENGTH, field_render.axis_cut * AU_LENGTH);
+						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](time * AU_TIME, x * AU_LENGTH, y * AU_LENGTH, field_render.axis_cut * AU_LENGTH);
 						}
 						
 						for (unsigned short c = 0; c < field_render.count; c++)
@@ -576,7 +573,7 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 						// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
 						#pragma omp critical (lua_field_render)
 						{
-						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time * AU_TIME, x * AU_LENGTH, field_render.axis_cut * AU_LENGTH, z * AU_LENGTH);
+						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](time * AU_TIME, x * AU_LENGTH, field_render.axis_cut * AU_LENGTH, z * AU_LENGTH);
 						}
 						
 						for (unsigned short c = 0; c < field_render.count; c++)
@@ -676,7 +673,7 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 						// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
 						#pragma omp critical (lua_field_render)
 						{
-						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](laser.duration, time * AU_TIME, field_render.axis_cut * AU_LENGTH, y * AU_LENGTH, z * AU_LENGTH);
+						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](time * AU_TIME, field_render.axis_cut * AU_LENGTH, y * AU_LENGTH, z * AU_LENGTH);
 						}
 						
 						for (unsigned short c = 0; c < field_render.count; c++)

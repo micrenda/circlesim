@@ -135,9 +135,7 @@ double get_attribute(Particle& particle, ParticleStateGlobal& particle_state, Pu
 	}
 	else if (object == "laser")
 	{
-		if (attribute == "duration")
-			return laser.duration;
-		else if (laser.params_float.find(attribute) != laser.params_float.end())
+		if (laser.params_float.find(attribute) != laser.params_float.end())
 			return laser.params_float[attribute];
 	}
 	
@@ -213,9 +211,7 @@ void set_attribute(Particle& particle, ParticleStateGlobal& particle_state, Puls
 	}
 	else if (object == "laser")
 	{
-		if (attribute == "duration")
-			laser.duration = new_value;
-		else if (laser.params_float.find(attribute) != laser.params_float.end())
+		if (laser.params_float.find(attribute) != laser.params_float.end())
 			laser.params_float[attribute] = new_value;
 		else
 			error_attribute_unknown(object, attribute);
