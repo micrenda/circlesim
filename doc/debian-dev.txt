@@ -1,7 +1,7 @@
 # Packages to be installed to use circlesim
 
 BUILD:
-	build-essentials
+	build-essential
 	gyp
 	libgsl0-dev
 	libconfig++-dev
@@ -18,5 +18,5 @@ EXECUTION:
 PLOTTING:
 	ctioga2
 	libav-tools | ffmpeg
-	pdftoppm
+	poppler-utils
 	
