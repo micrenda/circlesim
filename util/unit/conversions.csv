@@ -61,8 +61,6 @@ ELECTRIC_POTENTIAL	, au,		-2.72013883718225E1	, atomic unit			, AU	,
 
 MOMENTUM			, Nm/s,		1E0					, Newton meter / second	, SI	,
 MOMENTUM			, au,		1.99285168402348E-24, atomic unit			, AU	,
-MOMENTUM			, eV,		1.60217733000000E-19, electron volt			, 		,
-
 	
 MAGNETIC_FIELD		, T,		1E0					, Tesla					, SI	,
 MAGNETIC_FIELD		, G,		1E-4				, Gauss					, 		,

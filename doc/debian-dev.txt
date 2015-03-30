@@ -10,6 +10,7 @@ BUILD:
 	libboost-regex1.55-dev
 	libarmadillo-dev
 	liblua5.1-0-dev
+	libpng++-dev
 
 EXECUTION:
 	java >= 6

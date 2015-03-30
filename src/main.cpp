@@ -11,6 +11,7 @@
 #include "simulator.hpp"
 #include "output.hpp"
 #include "response.hpp"
+#include "labmap.hpp"
 
 extern string exe_path;
 extern string exe_name;
@@ -281,6 +282,11 @@ int main(int argc, char *argv[])
 				&lua_state);
 	
 	stream_particle.close();
+	
+	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 2, output_dir);
+	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 3, output_dir);
+	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 2, 3, output_dir);
+	
 	
 	
 

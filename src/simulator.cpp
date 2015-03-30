@@ -294,12 +294,12 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 		}
 		
 		// Update the state
-		state.position_x = origin_x + local_pos_x;
-		state.position_y = origin_y + local_pos_y;
-		state.position_z = origin_z + local_pos_z;
-		state.momentum_x = local_mom_x;
-		state.momentum_y = local_mom_y;
-		state.momentum_z = local_mom_z;
+		state.position_x = origin_x + y[0];
+		state.position_y = origin_y + y[1];
+		state.position_z = origin_z + y[2];
+		state.momentum_x = y[3];
+		state.momentum_y = y[4];
+		state.momentum_z = y[5];
 		
 		global_time_current = origin_t + local_t;
 		
@@ -760,8 +760,8 @@ void simulate (
 	FunctionFreeTimeProgress& on_free_time_progress,
 	FunctionFreeExit&         on_free_exit,
 	
-	vector<SimluationResultFreeSummary> summaries_free,
-	vector<SimluationResultNodeSummary> summaries_node,
+	vector<SimluationResultFreeSummary>& summaries_free,
+	vector<SimluationResultNodeSummary>& summaries_node,
 	
 	lua::State* lua_state)
 {
@@ -836,8 +836,8 @@ void simulate (
 	Particle& particle,
 	ParticleStateGlobal& particle_state_global,
 	Laboratory& laboratory,
-	vector<SimluationResultFreeSummary> summaries_free,
-	vector<SimluationResultNodeSummary> summaries_node,
+	vector<SimluationResultFreeSummary>& summaries_free,
+	vector<SimluationResultNodeSummary>& summaries_node,
 	lua::State* lua_state)
 {
 	

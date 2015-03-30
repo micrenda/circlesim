@@ -14,10 +14,11 @@
 				'src/plot.cpp',
 				'src/simulator.cpp',
 				'src/util.cpp',
-				'src/response.cpp'
+				'src/response.cpp',
+				'src/labmap.cpp'
 			],
 		
-			'libraries': 	['-fopenmp', '-lgsl', '-lgslcblas', '-lconfig++', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-llua5.2', '-larmadillo' , '-ldl'],	
+			'libraries': 	['-fopenmp', '-lgsl', '-lgslcblas', '-lconfig++', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-llua5.2', '-larmadillo' , '-ldl', '-lpng12'],	
 			'include_dirs': ['util/LuaState/include/'],
 			
 			
@@ -30,6 +31,7 @@
 						'include_dirs':
 						[
 							'/usr/include/lua5.2/',
+							'/usr/include/libpng12/',
 						],
 						
 					}

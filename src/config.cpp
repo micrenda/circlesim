@@ -143,7 +143,7 @@ bool wrong_param(string param, string message)
 //}
 
 
-void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, ParticleStateGlobal& state_global)
+void init_position_and_momentum(Parameters& parameters, Particle& particle, Laboratory& laboratory, ParticleStateGlobal& state_global)
 {
 	// Setting the position of the particle relative to selected node
 	
@@ -186,9 +186,20 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 	
 	
 	// Initializing MOMENTUM 
-	if (parameters.has_momentum_sphe && parameters.has_momentum_cart)
+	short count = 0;
+	
+	if (parameters.has_momentum_sphe) 	count++;
+	if (parameters.has_momentum_cart) 	count++;
+	if (parameters.has_energy_sphe) 	count++;
+	if (parameters.has_energy_cart) 	count++;
+	
+	if (count > 1)
 	{
-		wrong_param("initial_momentum", "You must to specify one of spherical or cartesian momentum. You can not specify both.\n");
+		wrong_param("initial_momentum", "You must to specify one of: spherical momentum, cartesian momentum, spherical energy, cartesian energy. You can not specify more of them in the same time.\n");
+	}
+	else if (count == 0)
+	{
+		wrong_param("initial_momentum", "You must to specify an initial momentum (cartesian or spherical) or an initial energy (cartesian or spherical).\n");
 	}
 	else if (parameters.has_momentum_sphe)
 	{
@@ -206,10 +217,26 @@ void init_position_and_momentum(Parameters& parameters, Laboratory& laboratory, 
 		state_local.momentum_y	= parameters.initial_momentum_y / AU_MOMENTUM;
 		state_local.momentum_z	= parameters.initial_momentum_z / AU_MOMENTUM;
 	}
-	else
+	else if (parameters.has_energy_sphe)
 	{
-		wrong_param("initial_momentum", "You must to specify an initial momentum (cartesian or spherical).\n");
-	}	
+		double momentum_rho 	= energy_to_momentum(particle.rest_mass, parameters.initial_energy_rho / AU_ENERGY);
+		double momentum_theta	= parameters.initial_momentum_theta;
+		double momentum_phi		= parameters.initial_momentum_phi;
+		
+		spherical_to_cartesian<double>(
+			momentum_rho,
+			momentum_theta,
+			momentum_phi,
+			state_local.momentum_x,
+			state_local.momentum_y,
+			state_local.momentum_z);
+	}
+	else if (parameters.has_energy_cart)
+	{
+		state_local.momentum_x = energy_to_momentum(particle.rest_mass, parameters.initial_energy_x / AU_ENERGY);
+		state_local.momentum_y = energy_to_momentum(particle.rest_mass, parameters.initial_energy_y / AU_ENERGY);
+		state_local.momentum_z = energy_to_momentum(particle.rest_mass, parameters.initial_energy_z / AU_ENERGY);
+	}
 		
 	
 	// Converting to global state
@@ -448,6 +475,8 @@ void read_config(
 		parameters.has_position_sphe = config_particle.exists("initial_position_rho") 		&& config_particle.exists("initial_position_theta")	&& config_particle.exists("initial_position_phi");
 		parameters.has_momentum_cart = config_particle.exists("initial_momentum_x") 		&& config_particle.exists("initial_momentum_y") 	&& config_particle.exists("initial_momentum_z");
 		parameters.has_momentum_sphe = config_particle.exists("initial_momentum_rho") 		&& config_particle.exists("initial_momentum_theta")	&& config_particle.exists("initial_momentum_phi");
+		parameters.has_energy_cart   = config_particle.exists("initial_energy_x") 			&& config_particle.exists("initial_energy_y") 		&& config_particle.exists("initial_energy_z");
+		parameters.has_energy_sphe   = config_particle.exists("initial_energy_rho") 		&& config_particle.exists("initial_energy_theta")	&& config_particle.exists("initial_energy_phi");
 
 		if (parameters.has_position_cart)
 		{
@@ -476,16 +505,32 @@ void read_config(
 			config_particle.lookupValue	("initial_momentum_theta",		parameters.initial_momentum_theta)	|| missing_param("initial_momentum_theta");
 			config_particle.lookupValue	("initial_momentum_phi",  		parameters.initial_momentum_phi)	|| missing_param("initial_momentum_phi");
 		}
+		
+		if (parameters.has_energy_cart)
+		{
+			config_particle.lookupValue	("initial_energy_x",  		parameters.initial_energy_x)	|| missing_param("initial_energy_x");
+			config_particle.lookupValue	("initial_energy_y",  		parameters.initial_energy_y)	|| missing_param("initial_energy_y");
+			config_particle.lookupValue	("initial_energy_z",  		parameters.initial_energy_z)	|| missing_param("initial_energy_z");
+		}
+		
+		if (parameters.has_energy_sphe)
+		{
+			config_particle.lookupValue	("initial_energy_rho",		parameters.initial_energy_rho)	|| missing_param("initial_energy_rho");
+			config_particle.lookupValue	("initial_energy_theta",	parameters.initial_energy_theta)|| missing_param("initial_energy_theta");
+			config_particle.lookupValue	("initial_energy_phi",  	parameters.initial_energy_phi)	|| missing_param("initial_energy_phi");
+		}
 
 
-		config_simulation.lookupValue		("basename",  				parameters.basename)				|| missing_param("basename");
-		config_simulation.lookupValue		("error_abs",  				parameters.error_abs)				|| missing_param("error_abs");
-		config_simulation.lookupValue		("error_rel",  				parameters.error_rel)				|| missing_param("error_rel");
-		config_simulation.lookupValue		("time_resolution_laser",	parameters.time_resolution_laser)	|| missing_param("time_resolution_laser");
-		config_simulation.lookupValue		("time_resolution_free",	parameters.time_resolution_free)	|| missing_param("time_resolution_free");
-		config_simulation.lookupValue		("duration",  				parameters.simulation_duration)		|| missing_param("duration (simulation)");
-		config_simulation.lookupValue		("laser_influence_radius",  parameters.laser_influence_radius)	|| missing_param("laser_influence_radius");
-		config_simulation.lookupValue		("func_commons",  			parameters.func_commons)			|| missing_param("func_commons");
+
+		config_simulation.lookupValue	("basename",  				parameters.basename)				|| missing_param("basename");
+		config_simulation.lookupValue	("error_abs",  				parameters.error_abs)				|| missing_param("error_abs");
+		config_simulation.lookupValue	("error_rel",  				parameters.error_rel)				|| missing_param("error_rel");
+		config_simulation.lookupValue	("time_resolution_laser",	parameters.time_resolution_laser)	|| missing_param("time_resolution_laser");
+		config_simulation.lookupValue	("time_resolution_free",	parameters.time_resolution_free)	|| missing_param("time_resolution_free");
+		config_simulation.lookupValue	("duration",  				parameters.simulation_duration)		|| missing_param("duration (simulation)");
+		config_simulation.lookupValue	("laser_influence_radius",  parameters.laser_influence_radius)	|| missing_param("laser_influence_radius");
+		config_simulation.lookupValue	("max_labmap_size",  		parameters.max_labmap_size)			|| missing_param("max_labmap_size");
+		config_simulation.lookupValue	("func_commons",  			parameters.func_commons)			|| missing_param("func_commons");
 
 
 		
@@ -676,6 +721,7 @@ void read_config(
 	simulation.time_resolution_laser	= parameters.time_resolution_laser	/ AU_TIME;
 	simulation.time_resolution_free		= parameters.time_resolution_free	/ AU_TIME;
 	simulation.laser_influence_radius	= parameters.laser_influence_radius	/ AU_LENGTH;
+	simulation.max_labmap_size			= parameters.max_labmap_size;
 	simulation.duration					= parameters.simulation_duration 	/ AU_TIME;
 
 	
@@ -734,5 +780,5 @@ void read_config(
 	delete config;
 	
 	//init_nodes(accellerator);
-	init_position_and_momentum(parameters, laboratory, particle_state);
+	init_position_and_momentum(parameters, particle, laboratory, particle_state);
 }

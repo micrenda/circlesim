@@ -61,6 +61,8 @@ typedef struct Parameters
 
 	double 			error_abs;
 	double 			error_rel;
+	
+	unsigned int 	max_labmap_size;
 
 	string func_commons;
 	string func_fields;
@@ -74,6 +76,8 @@ typedef struct Parameters
 	bool has_position_sphe;
 	bool has_momentum_cart;
 	bool has_momentum_sphe;
+	bool has_energy_cart;
+	bool has_energy_sphe;
 	
 	double initial_position_x;
 	double initial_position_y;
@@ -88,6 +92,14 @@ typedef struct Parameters
 	double initial_momentum_rho;
 	double initial_momentum_theta;
 	double initial_momentum_phi;
+	
+	
+	double initial_energy_x;
+	double initial_energy_y;
+	double initial_energy_z;
+	double initial_energy_rho;
+	double initial_energy_theta;
+	double initial_energy_phi;
 
 	unsigned int 	nodes;
 
@@ -105,6 +117,8 @@ typedef struct Simulation
 	
 	double 			error_abs;
 	double 			error_rel;
+	
+	unsigned int 	max_labmap_size;
 	
 } Simulation;
 
