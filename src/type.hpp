@@ -21,6 +21,7 @@ typedef enum {FREE, LASER}				 		RangeMode;
 typedef enum {TURN_ON, CONSTANT, TURN_OFF} 		TimingMode;
 typedef enum {XY, XZ, YZ} 						Plane;
 typedef enum {LINEAR, RANDOM} 					ChangeMode;
+typedef enum {PERCENTUAL, ABSOLUTE} 			ValueMode;
 
 #define pow2(a) ((a) * (a)) 
 #define pow3(a) ((a) * (a) * (a)) 
@@ -214,7 +215,7 @@ typedef struct ResponseAnalysis
 	double 			change_steps;
 	
 	ChangeMode		change_mode;
-	
+	ValueMode		value_mode;
 } ResponseAnalysis;
 
 

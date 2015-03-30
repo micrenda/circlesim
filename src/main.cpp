@@ -311,9 +311,23 @@ int main(int argc, char *argv[])
 		for (unsigned int s = 0; s < analysis.change_steps; s++)
 		{
 			
-			double perc_in  = -analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
-			double delta_in = base_value_in * perc_in;
-			double value_in = base_value_in + delta_in;
+			double perc_in;
+			double delta_in;
+			double value_in;
+			
+			if (analysis.value_mode == PERCENTUAL)
+			{
+				perc_in  = -analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
+				delta_in = base_value_in * perc_in;
+				value_in = base_value_in + delta_in;
+			}
+			else
+			{
+				delta_in = -analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
+				perc_in  = delta_in / base_value_in;
+				value_in = base_value_in + delta_in;
+			}
+			
 			
 			set_attribute(an_particle, an_particle_state, an_laser, analysis.object_in, analysis.attribute_in, value_in);
 			

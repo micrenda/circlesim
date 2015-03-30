@@ -9,6 +9,7 @@
 #include "type.hpp"
 #include "util.hpp"
 #include "le.h"
+#include "response.hpp"
 
 using namespace libconfig;
 
@@ -399,7 +400,7 @@ void read_config(
 		config_laser.lookupValue			("func_fields",	parameters.func_fields)		|| missing_param("func_fields");
 		
 		static const bo::regex e("^func_param_([A-Za-z\\_0-9]+)$");
-		for (int i = 0; i < config_simulation.getLength(); i++)
+		for (int i = 0; i < config_laser.getLength(); i++)
 		{
 			Setting& setting = config_laser[i];
 			
@@ -546,7 +547,7 @@ void read_config(
 		}
 		
 		static const bo::regex e_resp1("^analysis\\_([0-9]+)$");
-		static const bo::regex e_resp2("^\\s*analyze\\s+([a-zA-Z\\_\\s,]+)\\s+when\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+changes\\s+by\\s+([0-9\\.]+)\\%\\s+in\\s+([0-9]+)\\s+steps\\s*$");
+		static const bo::regex e_resp2("^\\s*analyze\\s+([a-zA-Z\\_\\s,]+)\\s+when\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+changes\\s+by\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s*(\\%?)\\s+in\\s+([0-9]+)\\s+steps\\s*$");
 		
 		for (int i = 0; i < config_response_analyses.getLength(); i++)
 		{
@@ -621,17 +622,30 @@ void read_config(
 						exit(-1);
 						return;	
 					}
-					response_analysis.change_range	= stod(what2[5]) / 100.d;
-					response_analysis.change_steps	= stoi(what2[6]);
+					
+					
+					if (what2[7] == "%")
+					{
+						response_analysis.value_mode    = PERCENTUAL;
+						response_analysis.change_range	= stod(what2[5]) / 100.d;
+					}
+					else
+					{
+						response_analysis.value_mode    = ABSOLUTE;
+						response_analysis.change_range	= stod(what2[5]) / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
+					}
+					
+					response_analysis.change_steps	= stoi(what2[8]);
 					response_analyses.push_back(response_analysis);
 				}
 				else
 				{
 					printf("ERROR - Wrong format for '%s' parameter.\n", config_analysis.getName());
 					printf("Allowed format are:\n");
-					printf("  analyze particle <attribute> when <object> <attribute> linearly changes by <p>%% in <n> steps\n");
-					printf("  analyze particle <attribute> when <object> <attribute> randomly changes by <p>%% in <n> steps\n");
-					
+					printf("  analyze particle <attribute> when <object> <attribute> linearly changes by <value> in <n> steps\n");
+					printf("  analyze particle <attribute> when <object> <attribute> randomly changes by <value> in <n> steps\n");
+					printf("Provided format was:\n");
+					printf("  %s\n", analysis_expression.c_str());
 					exit(-1);
 					return;
 				}
