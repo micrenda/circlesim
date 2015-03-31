@@ -230,6 +230,53 @@ string get_axis(short id)
 	}
 }
 
+void draw_free(image<rgb_pixel> frame_base, SimluationResultFreeSummary& summary_free, LabSize& lab_size, int count_i, int count_j, short axis_1, short axis_2, long unsigned int& t, fs::path output_dir)
+{
+	for (SimluationResultFreeItem& item: summary_free.items)
+	{
+		image<rgb_pixel> frame(count_i, count_j);
+		
+		for (int i = 0; i < count_i; i++)
+			for (int j = 0; j < count_j; j++)
+				frame[j][i] = frame_base[j][i];
+				
+		draw_particle(frame, count_i, count_j, item.state, lab_size, axis_1, axis_2);
+		
+		frame.write((output_dir / fs::path((bo::format("labmap_%s%s_t%u.png") % get_axis(axis_1) % get_axis(axis_2) % t).str())).string());
+		
+		t++;
+	}
+}
+
+void draw_node(image<rgb_pixel> frame_base, SimluationResultNodeSummary& summary_node, LabSize& lab_size, int count_i, int count_j, short axis_1, short axis_2, double dt, long unsigned int& t, fs::path output_dir)
+{
+	double last_time  = summary_node.items.front().time;
+
+	for (SimluationResultNodeItem& item: summary_node.items)
+	{
+		double current_time = item.time - last_time;
+		
+		if (current_time >= dt)
+		{
+			image<rgb_pixel> frame(count_i, count_j);
+			
+			for (int i = 0; i < count_i; i++)
+				for (int j = 0; j < count_j; j++)
+					frame[j][i] = frame_base[j][i];
+					
+			ParticleStateGlobal state_global;
+			state_local_to_global(state_global, item.state, summary_node.node);
+
+			draw_particle(frame, count_i, count_j, state_global, lab_size, axis_1, axis_2);
+			
+			frame.write((output_dir / fs::path((bo::format("labmap_%s%s_t%u.png") % get_axis(axis_1) % get_axis(axis_2) % t).str())).string());
+			
+			t++;
+			last_time += dt;
+		}
+	}
+}
+
 void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser, vector<SimluationResultFreeSummary>& summaries_free, vector<SimluationResultNodeSummary>& summaries_node, short axis_1, short axis_2, fs::path output_dir)
 {
 	
@@ -246,21 +293,35 @@ void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser,
 
 	unsigned long t = 0;
 	
-	for (SimluationResultFreeSummary& summary_free: summaries_free)
+	
+	unsigned int f = 0;
+	unsigned int n = 0;
+	
+	// We take care that we draw the electron inside the laser pulse with the same time rate than the electron in free movement
+	while (f < summaries_free.size() || n < summaries_node.size())
 	{
-		for (SimluationResultFreeItem& item: summary_free.items)
+		if (f < summaries_free.size() && n < summaries_node.size())
 		{
-			image<rgb_pixel> frame(count_i, count_j);
-			
-			for (int i = 0; i < count_i; i++)
-				for (int j = 0; j < count_j; j++)
-					frame[j][i] = frame_base[j][i];
-					
-			draw_particle(frame, count_i, count_j, item.state, lab_size, axis_1, axis_2);
-			
-			frame.write((output_dir / fs::path((bo::format("labmap_%s%s_t%u.png") % get_axis(axis_1) % get_axis(axis_2) % t).str())).string());
-			
-			t++;
+			if (summaries_free[f].time_enter < summaries_node[n].time_enter)
+			{
+				draw_free(frame_base, summaries_free[f], lab_size, count_i, count_j, axis_1, axis_2, t, output_dir);
+				f++;
+			}
+			else
+			{
+				draw_node(frame_base, summaries_node[n], lab_size, count_i, count_j, axis_1, axis_2, simulation.time_resolution_free, t, output_dir);
+				n++;
+			}
+		}
+		else if (f < summaries_free.size())
+		{
+			draw_free(frame_base, summaries_free[f], lab_size, count_i, count_j, axis_1, axis_2, t, output_dir);
+			f++;
+		}
+		else if (n < summaries_node.size())
+		{
+			draw_node(frame_base, summaries_node[n], lab_size, count_i, count_j, axis_1, axis_2, simulation.time_resolution_free, t, output_dir);
+			n++;
 		}
 	}
 }

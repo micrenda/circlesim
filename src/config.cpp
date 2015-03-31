@@ -305,7 +305,7 @@ void read_config_renders(Setting* field_renders_config, vector<FieldRender>& ren
 			if (!render_config.exists("formula")) missing_param("formula");
 			
 			render.func_formula_name = (bo::format("func_field_render_%s") % render.id).str();
-			string s = (bo::format("function %s(D, t, x, y, z)\n") % render.func_formula_name).str();
+			string s = (bo::format("function %s(t, x, y, z)\n") % render.func_formula_name).str();
 			s += "    -- Injecting default variables\n";
 			s += (bo::format("    dx = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
 			s += (bo::format("    dy = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
@@ -703,6 +703,14 @@ void read_config(
 	simulation.error_rel				= parameters.error_rel;
 	simulation.time_resolution_laser	= parameters.time_resolution_laser	/ AU_TIME;
 	simulation.time_resolution_free		= parameters.time_resolution_free	/ AU_TIME;
+	
+	if (simulation.time_resolution_laser >= simulation.time_resolution_free)
+	{
+		printf("ERROR - 'time_resolution_laser' must be lower than 'time_resolution_free'\n");
+		exit(-1);
+		return;
+	}
+	
 	simulation.laser_influence_radius	= parameters.laser_influence_radius	/ AU_LENGTH;
 	simulation.max_labmap_size			= parameters.max_labmap_size;
 	simulation.duration					= parameters.simulation_duration 	/ AU_TIME;
