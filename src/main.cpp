@@ -223,7 +223,6 @@ int main(int argc, char *argv[])
 		fs::create_directories(output_interaction_dir);
 		stream_interaction.open(get_filename_interaction(output_interaction_dir));
 		setup_interaction(stream_interaction);
-		
 	};
 	
 	FunctionNodeTimeProgress on_node_time_progress	= [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local, Field& field) mutable
@@ -253,7 +252,7 @@ int main(int argc, char *argv[])
 	
 	FunctionFreeEnter        on_free_enter			= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
 	{
-		
+		write_particle(stream_particle, time_global, particle_state);
 	};
 	
 	FunctionFreeTimeProgress on_free_time_progress	= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
@@ -267,7 +266,9 @@ int main(int argc, char *argv[])
 	
 	FunctionFreeExit         on_free_exit			= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
 	{
+		write_particle(stream_particle, time_global, particle_state);
 		printf("\n");
+		
 	};
 	
 	

@@ -145,19 +145,7 @@ bool wrong_param(string param, string message)
 
 void init_position_and_momentum(Parameters& parameters, Particle& particle, Laboratory& laboratory, ParticleStateGlobal& state_global)
 {
-	// Setting the position of the particle relative to selected node
-	
-	if (parameters.initial_reference_node < 0 || parameters.initial_reference_node >= laboratory.nodes.size())
-	{
-		wrong_param("initial_reference_node", "Invalid node index\n");
-	}
-		
-	Node& first_node = laboratory.nodes[parameters.initial_reference_node];
-	
-	
-	// Initializing POSITION 
-	ParticleStateLocal state_local;
-	
+
 	
 	if (parameters.has_position_sphe && parameters.has_position_cart)
 	{
@@ -165,19 +153,19 @@ void init_position_and_momentum(Parameters& parameters, Particle& particle, Labo
 	}
 	else if (parameters.has_position_sphe)
 	{
-		spherical_to_cartesian(
+		spherical_to_cartesian<long double>(
 			parameters.initial_position_rho / AU_LENGTH,
 			parameters.initial_position_theta,
 			parameters.initial_position_phi,
-			state_local.position_x,
-			state_local.position_y,
-			state_local.position_z);
+			state_global.position_x,
+			state_global.position_y,
+			state_global.position_z);
 	}
 	else if (parameters.has_position_cart)
 	{
-		state_local.position_x	= parameters.initial_position_x / AU_LENGTH;
-		state_local.position_y	= parameters.initial_position_y / AU_LENGTH;
-		state_local.position_z	= parameters.initial_position_z / AU_LENGTH;
+		state_global.position_x	= parameters.initial_position_x / AU_LENGTH;
+		state_global.position_y	= parameters.initial_position_y / AU_LENGTH;
+		state_global.position_z	= parameters.initial_position_z / AU_LENGTH;
 	}
 	else
 	{
@@ -207,40 +195,36 @@ void init_position_and_momentum(Parameters& parameters, Particle& particle, Labo
 			parameters.initial_momentum_rho / AU_MOMENTUM,
 			parameters.initial_momentum_theta,
 			parameters.initial_momentum_phi,
-			state_local.momentum_x,
-			state_local.momentum_y,
-			state_local.momentum_z);
+			state_global.momentum_x,
+			state_global.momentum_y,
+			state_global.momentum_z);
 	}
 	else if (parameters.has_momentum_cart)
 	{
-		state_local.momentum_x	= parameters.initial_momentum_x / AU_MOMENTUM;
-		state_local.momentum_y	= parameters.initial_momentum_y / AU_MOMENTUM;
-		state_local.momentum_z	= parameters.initial_momentum_z / AU_MOMENTUM;
+		state_global.momentum_x	= parameters.initial_momentum_x / AU_MOMENTUM;
+		state_global.momentum_y	= parameters.initial_momentum_y / AU_MOMENTUM;
+		state_global.momentum_z	= parameters.initial_momentum_z / AU_MOMENTUM;
 	}
 	else if (parameters.has_energy_sphe)
 	{
-		double momentum_rho 	= energy_to_momentum(particle.rest_mass, parameters.initial_energy_rho / AU_ENERGY);
-		double momentum_theta	= parameters.initial_momentum_theta;
-		double momentum_phi		= parameters.initial_momentum_phi;
+		double momentum_rho 	= energy_kinetic_to_momentum(particle.rest_mass, parameters.initial_energy_rho / AU_ENERGY);
+		double momentum_theta	= parameters.initial_energy_theta;
+		double momentum_phi		= parameters.initial_energy_phi;
 		
 		spherical_to_cartesian<double>(
 			momentum_rho,
 			momentum_theta,
 			momentum_phi,
-			state_local.momentum_x,
-			state_local.momentum_y,
-			state_local.momentum_z);
+			state_global.momentum_x,
+			state_global.momentum_y,
+			state_global.momentum_z);
 	}
 	else if (parameters.has_energy_cart)
 	{
-		state_local.momentum_x = energy_to_momentum(particle.rest_mass, parameters.initial_energy_x / AU_ENERGY);
-		state_local.momentum_y = energy_to_momentum(particle.rest_mass, parameters.initial_energy_y / AU_ENERGY);
-		state_local.momentum_z = energy_to_momentum(particle.rest_mass, parameters.initial_energy_z / AU_ENERGY);
+		state_global.momentum_x = energy_kinetic_to_momentum(particle.rest_mass, parameters.initial_energy_x / AU_ENERGY);
+		state_global.momentum_y = energy_kinetic_to_momentum(particle.rest_mass, parameters.initial_energy_y / AU_ENERGY);
+		state_global.momentum_z = energy_kinetic_to_momentum(particle.rest_mass, parameters.initial_energy_z / AU_ENERGY);
 	}
-		
-	
-	// Converting to global state
-	state_local_to_global(state_global, state_local, first_node);
 }
 
 void read_config_renders(Setting* field_renders_config, vector<FieldRender>& renders, lua::State* lua_state)
@@ -469,8 +453,6 @@ void read_config(
 		config_particle.lookupValue			("rest_mass",  				parameters.rest_mass)					|| missing_param("rest_mass");
 		config_particle.lookupValue			("charge",  				parameters.charge)						|| missing_param("charge");
 		
-		config_particle.lookupValue			("initial_reference_node",  parameters.initial_reference_node)	|| missing_param("initial_reference_node");
-
 		parameters.has_position_cart = config_particle.exists("initial_position_x") 		&& config_particle.exists("initial_position_y") 	&& config_particle.exists("initial_position_z");
 		parameters.has_position_sphe = config_particle.exists("initial_position_rho") 		&& config_particle.exists("initial_position_theta")	&& config_particle.exists("initial_position_phi");
 		parameters.has_momentum_cart = config_particle.exists("initial_momentum_x") 		&& config_particle.exists("initial_momentum_y") 	&& config_particle.exists("initial_momentum_z");
@@ -530,6 +512,7 @@ void read_config(
 		config_simulation.lookupValue	("duration",  				parameters.simulation_duration)		|| missing_param("duration (simulation)");
 		config_simulation.lookupValue	("laser_influence_radius",  parameters.laser_influence_radius)	|| missing_param("laser_influence_radius");
 		config_simulation.lookupValue	("max_labmap_size",  		parameters.max_labmap_size)			|| missing_param("max_labmap_size");
+		config_simulation.lookupValue	("max_labmap_full",  		parameters.max_labmap_full)			|| missing_param("max_labmap_full");
 		config_simulation.lookupValue	("func_commons",  			parameters.func_commons)			|| missing_param("func_commons");
 
 

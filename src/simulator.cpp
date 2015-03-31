@@ -26,12 +26,10 @@ bool is_in_influence_radius(ParticleStateLocal& state, double laser_influence_ra
 
 int get_near_node_id(ParticleStateGlobal& state, Laboratory& laboratory, double laser_influence_radius)
 {
-	for (unsigned int r = 0; r < laboratory.nodes.size(); r++)
+	for (Node& node: laboratory.nodes)
 	{
-		Node& node = laboratory.nodes[r];
-		
 		if (is_in_influence_radius(state, node, laser_influence_radius))
-			return r;
+			return node.id;
 	}
 	
 	return -1;
@@ -280,6 +278,11 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 	y[3] = local_mom_x;
 	y[4] = local_mom_y;
 	y[5] = local_mom_z;
+	
+	SimluationResultFreeItem head_result;
+	head_result.time		= global_time_current;
+	head_result.state	= state;
+	summary.items.push_back(head_result);
 
 
 	
@@ -311,7 +314,7 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 		summary.items.push_back(result);
 		
 		// Checking if we are in a range of a laser.
-		if (get_near_node_id(state, laboratory, simulation.laser_influence_radius) > 0)
+		if (get_near_node_id(state, laboratory, simulation.laser_influence_radius) >= 0)
 			break;
 		
 	}
@@ -766,7 +769,7 @@ void simulate (
 	lua::State* lua_state)
 {
 	
-	RangeMode 	  current_range = FREE;
+	RangeMode 	  current_range = UNKN;
 	unsigned int  current_interaction = 0;
 	int 		  current_node = -1;
 	
@@ -781,23 +784,29 @@ void simulate (
 		// If outside we use the free motion laws, if inside we calculate the integration between the laser and the particle	
 		int new_node = get_near_node_id(particle_state_global, laboratory, simulation.laser_influence_radius);
 		
-		if (current_range == LASER && new_node < 0 )
+		if (current_range != FREE && new_node < 0 )
 		{
 			Node& node = laboratory.nodes[current_node];
-			if (on_node_exit != NULL) on_node_exit (simulation, laser, particle, particle_state_local, current_interaction, node, time_current_local);
-			state_local_to_global(particle_state_global, particle_state_local, node);
+			
+			if (current_range == NODE)
+			{
+				if (on_node_exit != NULL) on_node_exit (simulation, laser, particle, particle_state_local, current_interaction, node, time_current_local);
+					state_local_to_global(particle_state_global, particle_state_local, node);
+			}
+			
 			if (on_free_enter != NULL) on_free_enter(simulation, particle, particle_state_global, laboratory,   time_current_global);
 			
 			current_range = FREE;
 			current_node  = -1;
+			
 			current_interaction++;
 			
 		}
-		else if (current_range == FREE && new_node != current_node)
+		else if (current_range != NODE && new_node != current_node)
 		{
-			if (on_free_exit != NULL) on_free_exit(simulation, particle, particle_state_global, laboratory, time_current_global);
+			if (current_range == FREE && on_free_exit != NULL) on_free_exit(simulation, particle, particle_state_global, laboratory, time_current_global);
 			
-			current_range = LASER;
+			current_range = NODE;
 			current_node = new_node; 
 			Node& node = laboratory.nodes[current_node];
 			
@@ -806,7 +815,7 @@ void simulate (
 		}
 		
 		
-		if (current_range == LASER)
+		if (current_range == NODE)
 		{
 			Node& node = laboratory.nodes[current_node];
 			
@@ -819,7 +828,7 @@ void simulate (
 			
 			time_current_global += time_current_local - before;
 		}
-		else
+		else if (current_range == FREE)
 		{
 			SimluationResultFreeSummary summary;
 			simulate_free(simulation, laboratory, particle, particle_state_global, time_current_global, on_free_time_progress, summary, lua_state);

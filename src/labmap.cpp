@@ -16,12 +16,12 @@ typedef struct LabSize
 	double dr;
 } LabSize;
 
-unsigned int get_i(LabSize& lab_size, double position)
+int get_i(LabSize& lab_size, double position)
 {
 	return trunc((position - lab_size.min_1)/lab_size.dr);
 }
 
-unsigned int get_j(LabSize& lab_size, double position)
+int get_j(LabSize& lab_size, double position)
 {
 	return trunc((position - lab_size.min_2)/lab_size.dr);
 }
@@ -118,28 +118,31 @@ void compute_lab_limits(Laboratory& laboratory, Simulation& simulation, vector<S
 			lab_size.max_2 = center_2;	
 	}
 	
-	for (SimluationResultFreeSummary& summary_free: summaries_free)
+	if (simulation.max_labmap_full)
 	{
-		for (SimluationResultFreeItem& item: summary_free.items)
+		for (SimluationResultFreeSummary& summary_free: summaries_free)
 		{
-			double position_1, position_2;
-			get_particle_position(item.state, axis_1, axis_2, position_1, position_2);
-		
-			if (lab_size.min_1 > position_1)
-				lab_size.min_1 = position_1;
-			if (lab_size.min_2 > position_2)
-				lab_size.min_2 = position_2;
-			if (lab_size.max_1 < position_1)
-				lab_size.max_1 = position_1;
-			if (lab_size.max_2 < position_2)
-				lab_size.max_2 = position_2;	
+			for (SimluationResultFreeItem& item: summary_free.items)
+			{
+				double position_1, position_2;
+				get_particle_position(item.state, axis_1, axis_2, position_1, position_2);
+			
+				if (lab_size.min_1 > position_1)
+					lab_size.min_1 = position_1;
+				if (lab_size.min_2 > position_2)
+					lab_size.min_2 = position_2;
+				if (lab_size.max_1 < position_1)
+					lab_size.max_1 = position_1;
+				if (lab_size.max_2 < position_2)
+					lab_size.max_2 = position_2;	
+			}
 		}
 	}
 	
-	lab_size.min_1 -= 1.5 * simulation.laser_influence_radius;
-	lab_size.min_2 -= 1.5 * simulation.laser_influence_radius;
-	lab_size.max_1 += 1.5 * simulation.laser_influence_radius;
-	lab_size.max_2 += 1.5 * simulation.laser_influence_radius;
+	lab_size.min_1 -= 2.0 * simulation.laser_influence_radius;
+	lab_size.min_2 -= 2.0 * simulation.laser_influence_radius;
+	lab_size.max_1 += 2.0 * simulation.laser_influence_radius;
+	lab_size.max_2 += 2.0 * simulation.laser_influence_radius;
 	
 	lab_size.size_1 = lab_size.max_1 - lab_size.min_1;
 	lab_size.size_2 = lab_size.max_2 - lab_size.min_2;
@@ -151,9 +154,9 @@ void compute_lab_limits(Laboratory& laboratory, Simulation& simulation, vector<S
 	
 }
 
-void draw_base(image<rgb_pixel>& image_base, unsigned int count_i, unsigned int count_j, Simulation& simulation, Laboratory& laboratory, LabSize& lab_size, short axis_1, short axis_2)
+void draw_base(image<rgb_pixel>& image_base, int count_i, int count_j, Simulation& simulation, Laboratory& laboratory, LabSize& lab_size, short axis_1, short axis_2)
 {
-	const rgb_pixel fg = rgb_pixel(127, 127, 127);
+	const rgb_pixel fg = rgb_pixel(63, 63, 63);
 	const rgb_pixel bg  = rgb_pixel(255, 255, 255);
 	
 	for (Node& node: laboratory.nodes)
@@ -161,55 +164,54 @@ void draw_base(image<rgb_pixel>& image_base, unsigned int count_i, unsigned int 
 		double center_1, center_2;
 		get_node_center(node, axis_1, axis_2, center_1, center_2);
 		
-		unsigned int center_i = get_i(lab_size, center_1);
-		unsigned int center_j = get_j(lab_size, center_2);
+		int center_i = get_i(lab_size, center_1);
+		int center_j = get_j(lab_size, center_2);
 		
 		int radius = trunc(simulation.laser_influence_radius / lab_size.dr);
 		
-		for (unsigned int i = 0; i < count_i; i++)
+		for (int i = 0; i < count_i; i++)
 		{
-			for (unsigned int j = 0; j < count_j; j++)
+			for (int j = 0; j < count_j; j++)
 			{
 				int delta_i = center_i - i;
 				int delta_j = center_j - j;
 				
 				if (vector_module(delta_i, delta_j, 0) == radius)
-					image_base[i][j] = fg;
+					image_base[j][i] = fg;
 				else if (abs(delta_i) <= 3  && center_j == j)
-					image_base[i][j] = fg;
+					image_base[j][i] = fg;
 				else if (center_j == i && abs(delta_j) <= 3)
-					image_base[i][j] = fg;
-				else if (i == 0 || i == count_i - 1)
-					image_base[i][j] = fg;
-				else if (j == 0 || j == count_j - 1)
-					image_base[i][j] = fg;
+					image_base[j][i] = fg;
 				else
-					image_base[i][j] = bg;
+					image_base[j][i] = bg;
 			}	
 		}
 	}
 }
 
-void draw_particle(image<rgb_pixel>& image, unsigned int count_i, unsigned int count_j, ParticleStateGlobal& state, LabSize& lab_size, short axis_1, short axis_2)
+void draw_particle(image<rgb_pixel>& image, int count_i, int count_j, ParticleStateGlobal& state, LabSize& lab_size, short axis_1, short axis_2)
 {
 	const rgb_pixel pixel_particle = rgb_pixel(255, 0, 100);
 	
 	double position_1, position_2;
 	get_particle_position(state, axis_1, axis_2, position_1, position_2);
 	
-	unsigned int i = get_i(lab_size, position_1);
-	unsigned int j = get_j(lab_size, position_2);
+	int i = get_i(lab_size, position_1);
+	int j = get_j(lab_size, position_2);
 	
-	image[i][j] = pixel_particle;
+	if (i >= 0 && i < count_i && j > 0 && j < count_j)
+	{
+		image[j][i] = pixel_particle;
 	
-	if (i >= 1)
-		image[i-1][j] = pixel_particle;
-	if (i <= count_i - 1)
-		image[i+1][j] = pixel_particle;
-	if (j >= 1)
-		image[i][j-1] = pixel_particle;
-	if (j <= count_j - 1)
-		image[i][j+1] = pixel_particle;
+		if (i >= 1)
+			image[i-1][j] = pixel_particle;
+		if (i <= count_i - 1)
+			image[i+1][j] = pixel_particle;
+		if (j >= 1)
+			image[i][j-1] = pixel_particle;
+		if (j <= count_j - 1)
+			image[i][j+1] = pixel_particle;
+	}
 	
 }
 
@@ -234,8 +236,8 @@ void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser,
 	LabSize lab_size;
 	compute_lab_limits(laboratory, simulation, summaries_free, axis_1, axis_2, lab_size);
 	
-	unsigned int count_i = trunc(lab_size.size_1 / lab_size.dr);
-	unsigned int count_j = trunc(lab_size.size_2 / lab_size.dr);
+	int count_i = trunc(lab_size.size_1 / lab_size.dr);
+	int count_j = trunc(lab_size.size_2 / lab_size.dr);
 	
 	
 	image<rgb_pixel> frame_base(count_i, count_j);
@@ -250,9 +252,9 @@ void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser,
 		{
 			image<rgb_pixel> frame(count_i, count_j);
 			
-			for (unsigned int i = 0; i < count_i; i++)
-				for (unsigned int j = 0; j < count_j; j++)
-					frame[i][j] = frame_base[i][j];
+			for (int i = 0; i < count_i; i++)
+				for (int j = 0; j < count_j; j++)
+					frame[j][i] = frame_base[j][i];
 					
 			draw_particle(frame, count_i, count_j, item.state, lab_size, axis_1, axis_2);
 			

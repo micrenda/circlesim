@@ -9,6 +9,7 @@ MASS				, Da,		1.660538921E-27 	, Dalton				, 		, 1/12 of the mass of a carbon-1
 MASS				, m_e,		9.109382156E-31		, electron mass			, 		, electron rest mass
 MASS				, m_p,		1.672621777E-27		, proton mass			, 		,
 MASS				, m_n,		1.674927351E-27		, neutron mass			, 		,
+MASS				, eV,		1.782662E-36		, electron volt			, 		, expressed according E=mc²
 				
 LENGTH				, m,		1E0					, meter					, SI	, 
 LENGTH				, Å,		1E-10				, Ångström				, 		, 
@@ -61,6 +62,7 @@ ELECTRIC_POTENTIAL	, au,		-2.72013883718225E1	, atomic unit			, AU	,
 
 MOMENTUM			, Nm/s,		1E0					, Newton meter / second	, SI	,
 MOMENTUM			, au,		1.99285168402348E-24, atomic unit			, AU	,
+MOMENTUM			, eV,		5.344286E-28		, electron volt			, 		, expressed according p=eV/c
 	
 MAGNETIC_FIELD		, T,		1E0					, Tesla					, SI	,
 MAGNETIC_FIELD		, G,		1E-4				, Gauss					, 		,

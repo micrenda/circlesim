@@ -17,8 +17,7 @@ namespace fs = boost::filesystem;
 namespace ba = boost::algorithm;
 namespace bo = boost;
 
-typedef enum {FREE, LASER}				 		RangeMode;
-typedef enum {TURN_ON, CONSTANT, TURN_OFF} 		TimingMode;
+typedef enum {FREE, NODE, UNKN}					RangeMode;
 typedef enum {XY, XZ, YZ} 						Plane;
 typedef enum {LINEAR, RANDOM} 					ChangeMode;
 typedef enum {PERCENTUAL, ABSOLUTE} 			ValueMode;
@@ -63,14 +62,13 @@ typedef struct Parameters
 	double 			error_rel;
 	
 	unsigned int 	max_labmap_size;
+	bool		 	max_labmap_full;
 
 	string func_commons;
 	string func_fields;
 
 	double rest_mass;
 	double charge;
-
-	unsigned int initial_reference_node;
 
 	bool has_position_cart;
 	bool has_position_sphe;
@@ -119,6 +117,7 @@ typedef struct Simulation
 	double 			error_rel;
 	
 	unsigned int 	max_labmap_size;
+	bool		 	max_labmap_full;
 	
 } Simulation;
 

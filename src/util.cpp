@@ -6,30 +6,60 @@
 
 using namespace arma;
 
-double energy_to_momentum(double rest_mass, double energy)
+double energy_kinetic_to_momentum(double rest_mass, double energy_kinetic)
+{
+	// Energy E = E₀ + Eₖ
+
+	double energy_total = rest_mass * C0 * C0 + energy_kinetic;
+	return energy_total_to_momentum(rest_mass, energy_total);
+}
+
+double momentum_to_energy_kinetic(double rest_mass, double momentum)
+{
+	double energy_total = momentum_to_energy_total(rest_mass, momentum);
+	return energy_total - rest_mass * C0 * C0;
+}
+
+double energy_total_to_momentum(double rest_mass, double energy)
 {
 	//	We use these formule to find the relativistic momentum:
-	// 	p = mᵣv		E=mᵣc²		where mᵣ = m₀ + mᵣ
+	// 	p = mv		E=mc²		where m = m₀ + mₖ
 	//	We define these two units:
 	//	β = v/c  			γ = 1 / √(1-v²/c²)
 	//	Combining the last two definitions we get
 	//  β = √(1-1/γ²)		γ = 1 / √(1-β²) 
-	// 
-	//	Using the formulas above we get:
-	//	p = m₀γv = m₀γβ/c = m₀γ√(1-1/γ²)/c = m₀√(γ²-1)/c
-	//	Εxtracting γ from energy:
-	//  E = m₀γc²  → γ = E/(c²m₀)
-	//	So at the end we can get:
-	//  p = m₀√(γ²-1)/c = m₀√(E²/(c⁴m₀²)-1)/c
-	return rest_mass * sqrt(energy*energy / (C0*C0*C0*C0 * rest_mass*rest_mass) - 1) / C0;
+	
+	
+	// Let's start:
+	//   p = mv = m₀γv = m₀γcβ
+	// Extracting γ from E we get:
+	//   γ = Ε/(m₀c)
+	double gamma = energy / (rest_mass * C0 * C0);
+	// So now we know all except β. We can extract it from gamma using previous relations
+	//   β = √(1-1/γ²)
+	double beta = sqrt(1.d-1.d/(gamma*gamma));
+	// We can now get p:
+	return rest_mass * gamma * C0 * beta;
 }
 
-double momentum_to_energy(double rest_mass, double momentum)
+double momentum_to_energy_total(double rest_mass, double momentum)
 {
-	//  p = m₀√(E²/(c⁴m₀²)-1)/c
-	//  E = √(c⁴m₀²((cp/m₀)² + 1))
+	//	We use these formule to find the relativistic momentum:
+	// 	p = mv		E=mc²		where m = m₀ + mₖ
+	//	We define these two units:
+	//	β = v/c  			γ = 1 / √(1-v²/c²)
+	//	Combining the last two definitions we get
+	//  β = √(1-1/γ²)		γ = 1 / √(1-β²) 
 	
-	return sqrt(C0*C0*C0*C0 * rest_mass*rest_mass * ((C0 * momentum / rest_mass)*(C0 * momentum / rest_mass) + 1));
+	// Let's start:
+	//   E = mc² = m₀γc²
+	// Extracting γ from p we get:
+	// γ =  √(1+(p/(m₀c²))²) defining ζ = p/(m₀c²)
+	//
+	double zeta = momentum / (rest_mass * C0 * C0);
+	double gamma = sqrt(1 + zeta * zeta);
+	// We now can get E
+	return rest_mass * gamma * C0 * C0;
 }
 
 void state_global_to_local(ParticleStateLocal&  state_local, ParticleStateGlobal& state_global, Node& node)

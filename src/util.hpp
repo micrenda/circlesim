@@ -2,8 +2,10 @@
 
 template <typename T> T vector_module(T x1, T x2, T x3);
 
-double energy_to_momentum(double rest_mass, double energy);
-double momentum_to_energy(double rest_mass, double momentum);
+double energy_kinetic_to_momentum(double rest_mass, double energy_kinetic);
+double momentum_to_energy_kinetic(double rest_mass, double momentum);
+double energy_total_to_momentum(double rest_mass, double energy);
+double momentum_to_energy_total(double rest_mass, double momentum);
 
 template <typename T> void spherical_to_cartesian(T rho, T theta, T phi, T& x, T& y, T& z);
 template <typename T> void cartesian_to_spherical(T x, T y, T z, T& theta, T& phi);
