@@ -37,6 +37,10 @@ void plot_interaction_files(fs::path output_dir)
 	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot_interaction/interaction_pos_x.ct2'    --output-directory '%s' --name 'position_x'")     % interaction_file.string() % output_dir.string()).str());
 	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot_interaction/interaction_pos_y.ct2'    --output-directory '%s' --name 'position_y'")     % interaction_file.string() % output_dir.string()).str());
 	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot_interaction/interaction_pos_z.ct2'    --output-directory '%s' --name 'position_z'")     % interaction_file.string() % output_dir.string()).str());
+	
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot_interaction/interaction_pos_xy.ct2'    --output-directory '%s' --name 'position_xy'")     % interaction_file.string() % output_dir.string()).str());
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot_interaction/interaction_pos_xz.ct2'    --output-directory '%s' --name 'position_xz'")     % interaction_file.string() % output_dir.string()).str());
+	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot_interaction/interaction_pos_yz.ct2'    --output-directory '%s' --name 'position_yz'")     % interaction_file.string() % output_dir.string()).str());
 
 	// Plotting momentum
 	execute_plot_cmd((bo::format("ctioga2 --text-separator \\; --load '%s' -f 'util/plot_interaction/interaction_mom_x.ct2'    --output-directory '%s' --name 'momentum_x'")     % interaction_file.string() % output_dir.string()).str());
