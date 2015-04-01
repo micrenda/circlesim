@@ -32,3 +32,5 @@ void simulate (
 	lua::State* lua_state);
 	
 void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, lua::State* lua_state, fs::path output_dir);
+
+void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, const Pulse& laser, Field& field, lua::State* lua_state);

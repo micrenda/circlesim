@@ -284,13 +284,10 @@ int main(int argc, char *argv[])
 	
 	stream_particle.close();
 	
-	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 2, output_dir);
-	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 3, output_dir);
-	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 2, 3, output_dir);
+	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 2, &lua_state, output_dir);
+	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 3, &lua_state, output_dir);
+	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 2, 3, &lua_state, output_dir);
 	
-	
-	
-
 	
 	// Executing response analyses simulations
 	#pragma omp parallel for shared(output_dir, response_analyses, particle, particle_state, laser)

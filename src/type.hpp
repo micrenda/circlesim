@@ -316,6 +316,15 @@ typedef struct FieldRenderLimit
 	double value_max_abs;
 } FieldRenderResultLimit;
 
+typedef struct LabMapLimit
+{
+	double e_mod_min;
+	double e_mod_max;
+	double b_mod_min;
+	double b_mod_max;
+} LabMapLimit;
+
+
 typedef struct FieldRenderResult
 {
 	unsigned int   	node;

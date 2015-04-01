@@ -822,6 +822,7 @@ void simulate (
 			double before = time_current_local;
 			
 			SimluationResultNodeSummary summary;
+			summary.node = node;
 			simulate_node(simulation, laser, node, particle, particle_state_local, time_current_local, current_interaction, on_node_time_progress, summary, lua_state);
 			summaries_node.push_back(summary);	
 			state_local_to_global(particle_state_global, particle_state_local, node);
