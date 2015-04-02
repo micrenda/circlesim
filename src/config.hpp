@@ -10,4 +10,4 @@ void read_config(
 	Laboratory& laboratory,
 	vector<FieldRender>&      field_renders,
 	vector<ResponseAnalysis>& response_analyses,
-	lua::State* lua_state);
+	vector<lua::State*>& lua_states);

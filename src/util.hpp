@@ -200,7 +200,6 @@ template <typename T> void rotate_spherical(T& x, T& y, T& z, T theta, T phi)
 }
 
 
-
-
+string get_thread_prefix(int h);
 
  

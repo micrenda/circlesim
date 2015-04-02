@@ -227,7 +227,7 @@ void init_position_and_momentum(Parameters& parameters, Particle& particle, Labo
 	}
 }
 
-void read_config_renders(Setting* field_renders_config, vector<FieldRender>& renders, lua::State* lua_state)
+void read_config_renders(Setting* field_renders_config, vector<FieldRender>& renders, vector<lua::State*>& lua_states)
 {
 	try 
 	{
@@ -304,37 +304,41 @@ void read_config_renders(Setting* field_renders_config, vector<FieldRender>& ren
 
 			if (!render_config.exists("formula")) missing_param("formula");
 			
-			render.func_formula_name = (bo::format("func_field_render_%s") % render.id).str();
-			string s = (bo::format("function %s(t, x, y, z)\n") % render.func_formula_name).str();
-			s += "    -- Injecting default variables\n";
-			s += (bo::format("    dx = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
-			s += (bo::format("    dy = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
-			s += (bo::format("    dz = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
-			
-			s += (bo::format("    size_x   = %.16E\n") % (render.space_size_x * AU_LENGTH)).str();
-			s += (bo::format("    size_y   = %.16E\n") % (render.space_size_y * AU_LENGTH)).str();
-			s += (bo::format("    size_z   = %.16E\n") % (render.space_size_z * AU_LENGTH)).str();
-			
-			s += (bo::format("    dt = %.16E\n") % (render.time_resolution  / 1000 * AU_TIME)).str();
-			s += "    -- completed\n\n";
-			
-			string formula = render_config["formula"];
-			s += (bo::format("%s\n") % (formula)).str();
-			s += "end\n";
-			
-			try
+			for (int h = 0; h < omp_get_num_threads(); h++)
 			{
-				lua_state->doString(s.c_str());
-			}
-			catch (lua::LoadError& e)
-			{
-				check_lua_error(e, render.func_formula_name, s);
+				
+				render.func_formula_name = (bo::format("func_field_render_%s") % render.id).str();
+				string s = (bo::format("function %s%s(t, x, y, z)\n") % get_thread_prefix(h) % render.func_formula_name).str();
+				s += "    -- Injecting default variables\n";
+				s += (bo::format("    dx = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+				s += (bo::format("    dy = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+				s += (bo::format("    dz = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+				
+				s += (bo::format("    size_x   = %.16E\n") % (render.space_size_x * AU_LENGTH)).str();
+				s += (bo::format("    size_y   = %.16E\n") % (render.space_size_y * AU_LENGTH)).str();
+				s += (bo::format("    size_z   = %.16E\n") % (render.space_size_z * AU_LENGTH)).str();
+				
+				s += (bo::format("    dt = %.16E\n") % (render.time_resolution  / 1000 * AU_TIME)).str();
+				s += "    -- completed\n\n";
+				
+				string formula = render_config["formula"];
+				s += (bo::format("%s\n") % (formula)).str();
+				s += "end\n";
+				
+				try
+				{
+					lua_states[h]->doString(s.c_str());
+				}
+				catch (lua::LoadError& e)
+				{
+					check_lua_error(e, render.func_formula_name, s);
+				}
 			}
 			
-			printf((bo::format("Render field %s LUA function:\n") % render.id).str().c_str());
-			printf("--------------------------------------------------------\n");
-			printf("%s\n", s.c_str());
-			printf("--------------------------------------------------------\n");
+			//printf((bo::format("Render field %s LUA function:\n") % render.id).str().c_str());
+			//printf("--------------------------------------------------------\n");
+			//printf("%s\n", s.c_str());
+			//printf("--------------------------------------------------------\n");
 
 
 			renders.push_back(render);
@@ -385,7 +389,7 @@ void read_config(
 	Laboratory& laboratory,
 	vector<FieldRender>&      field_renders,
 	vector<ResponseAnalysis>& response_analyses,
-	lua::State* lua_state)
+	vector<lua::State*>& lua_states)
 {
 	Parameters parameters;
 	
@@ -723,50 +727,88 @@ void read_config(
 	
 	
 	// Loading the common functins. Loading and evaluating so remain availabe to the other LUA scripts
-	lua_state->doString(parameters.func_commons);
-	//check_lua_error(lua_state, err, "func_commons", parameters.func_commons);
+	
+	for (int h = 0; h < omp_get_num_threads(); h++)
+	{
+		try
+		{
+			lua_states[h]->doString(parameters.func_commons);
+		}
+		catch (lua::LoadError& e)
+		{
+			check_lua_error(e, "func_commons", parameters.func_commons);
+		}
+	}
+			
+	
 	// Loading other lua scripts
-	
-	string s = "function func_fields(t, x, y, z)\n";
-	s += "    -- Injecting external variables\n";
-	for (map<string,int>::iterator	entry = laser.params_int.begin(); entry != laser.params_int.end(); ++entry) 
-		s += (bo::format("    % -12s\t= %d\n") 		% entry->first % entry->second).str();
-	for (map<string,long>::iterator	entry = laser.params_int64.begin(); entry != laser.params_int64.end(); ++entry) 
-		s += (bo::format("    % -12s\t= %l\n") 		% entry->first % entry->second).str();
-	for (map<string,double>::iterator	entry = laser.params_float.begin(); entry != laser.params_float.end(); ++entry) 
-		s += (bo::format("    % -12s\t= %.16E\n") 	% entry->first % entry->second).str();
-	for (map<string,string>::iterator	entry = laser.params_string.begin(); entry != laser.params_string.end(); ++entry)
+	for (int h = 0; h < omp_get_num_threads(); h++)
 	{
-		string value = entry->second;
-		bo::replace_all(value, "\"", "\\\"");
-		s += (bo::format("    % -12s\t= %s\n") 		% entry->first % value).str();
+		string s = (bo::format("function %s_func_fields(t, x, y, z)\n") % get_thread_prefix(h)).str();
+		s += "    -- Injecting external variables\n";
+		for (map<string,int>::iterator	entry = laser.params_int.begin(); entry != laser.params_int.end(); ++entry) 
+			s += (bo::format("    % -12s\t= %d\n") 		% entry->first % entry->second).str();
+		for (map<string,long>::iterator	entry = laser.params_int64.begin(); entry != laser.params_int64.end(); ++entry) 
+			s += (bo::format("    % -12s\t= %l\n") 		% entry->first % entry->second).str();
+		for (map<string,double>::iterator	entry = laser.params_float.begin(); entry != laser.params_float.end(); ++entry) 
+			s += (bo::format("    % -12s\t= %.16E\n") 	% entry->first % entry->second).str();
+		for (map<string,string>::iterator	entry = laser.params_string.begin(); entry != laser.params_string.end(); ++entry)
+		{
+			string value = entry->second;
+			bo::replace_all(value, "\"", "\\\"");
+			s += (bo::format("    % -12s\t= %s\n") 		% entry->first % value).str();
+		}
+		for (map<string,bool>::iterator	entry = laser.params_boolean.begin(); entry != laser.params_boolean.end(); ++entry) 
+			s += (bo::format("    % -12s\t= %s\n") 		% entry->first % (entry->second ? "true" : "false")).str();
+		s += "    -- completed\n\n";
+		
+		s += parameters.func_fields + "\n";
+		s += "end\n";
+		
+		try
+		{
+			lua_states[h]->doString(s.c_str());
+		}
+		catch (lua::LoadError& e)
+		{
+			check_lua_error(e, "func_fields", s);
+		}
 	}
-	for (map<string,bool>::iterator	entry = laser.params_boolean.begin(); entry != laser.params_boolean.end(); ++entry) 
-		s += (bo::format("    % -12s\t= %s\n") 		% entry->first % (entry->second ? "true" : "false")).str();
-	s += "    -- completed\n\n";
 	
-	s += parameters.func_fields + "\n";
-	s += "end\n";
+
+	//printf("Generated fields LUA function:\n");
+	//printf("--------------------------------------------------------\n");
+	//printf("%s\n", s.c_str());
+	//printf("--------------------------------------------------------\n");
+
+
+	// Loading wrapper function
+
 	
-	try
+	for (int h = 0; h < omp_get_num_threads(); h++)
 	{
-		lua_state->doString(s.c_str());
+		string s  = "";
+		s += (bo::format("function %sfield(t, x, y, z)\n") % get_thread_prefix(h)).str();            
+		s += "   value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = func_fields(t, x, y, z)\n";
+		s += "   return { e_x = value_e_x, e_y = value_e_y, e_z = value_e_z, b_x = value_b_x, b_y = value_b_y, b_z = value_b_z }\n";
+		s += "end";
+		try
+		{	
+			
+			
+			lua_states[h]->doString(s);
+		}
+		catch (lua::LoadError& e)
+		{
+			check_lua_error(e, "field (wrapper)", s);
+		}
 	}
-	catch (lua::LoadError& e)
-	{
-		check_lua_error(e, "func_fields", s);
-	}
-	
-	printf("Generated fields LUA function:\n");
-	printf("--------------------------------------------------------\n");
-	printf("%s\n", s.c_str());
-	printf("--------------------------------------------------------\n");
 
 	particle.rest_mass 					= parameters.rest_mass 				/ AU_MASS;
 	particle.charge 					= parameters.charge    				/ AU_CHARGE;
 	
 	Setting& field_renders_setting = config->lookup("field_renders");
-	read_config_renders(&field_renders_setting, field_renders, lua_state);
+	read_config_renders(&field_renders_setting, field_renders, lua_states);
 
 	delete config;
 	

@@ -39,13 +39,14 @@ int get_near_node_id(ParticleStateGlobal& state, Laboratory& laboratory, double 
 
 typedef struct gsl_odeiv_custom_params
 {
-	Pulse* 		laser;
-	Particle*	particle;
-	lua::State*	lua_state;
+	Pulse* 					laser;
+	Particle*				particle;
+	vector<lua::State*>*	lua_states;
+
 } gsl_odeiv_custom_params;
 
       
-void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, const Pulse& laser, Field& field, lua::State* lua_state)
+void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, const Pulse& laser, Field& field, vector<lua::State*>& lua_states)
 {
 	//TODO: These values must be cached because does not change between the execution of calculate fiels (or neither in all simulation)
 	
@@ -57,11 +58,11 @@ void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, co
   
 	double e1, e2, e3, b1, b2, b3;
 	
-	#pragma omp critical (lua_fields)
-	{
-		// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
-		lua::tie(e1, e2, e3, b1, b2, b3) = (*lua_state)["func_fields"](param_time, param_x, param_y, param_z);
-	}
+
+	lua::State* local_lua_state = lua_states[omp_get_thread_num()];	
+	lua::String f_name = lua::String((get_thread_prefix(omp_get_thread_num()) + "func_fields").c_str());
+	lua::tie(e1, e2, e3, b1, b2, b3) = (*local_lua_state)[f_name](param_time, param_x, param_y, param_z);
+
 	
 	field.e_x = e1 / AU_ELECTRIC_FIELD; 
 	field.e_y = e2 / AU_ELECTRIC_FIELD;
@@ -82,9 +83,9 @@ int gsl_odeiv_jac (double t, const double y[], double *dfdy, double dfdt[], void
 
 int gsl_odeiv_func_laser(double t, const double y[], double f[], void *params)
 {
-	Pulse 	 	laser 	  		= *((gsl_odeiv_custom_params*)params)->laser;
-	Particle 	particle 		= *((gsl_odeiv_custom_params*)params)->particle;
-	lua::State*	lua_state	    =  ((gsl_odeiv_custom_params*)params)->lua_state;
+	Pulse& 	 	laser 	  				= *((gsl_odeiv_custom_params*)params)->laser;
+	Particle& 	particle 				= *((gsl_odeiv_custom_params*)params)->particle;
+	vector<lua::State*>& lua_states     = *((gsl_odeiv_custom_params*)params)->lua_states;
 
 	double pos_t = C0*t;
 	double pos_x = y[0];
@@ -95,7 +96,7 @@ int gsl_odeiv_func_laser(double t, const double y[], double f[], void *params)
 	double mom_z = y[5];
 	
 	Field field;
-	calculate_fields(pos_t, pos_x, pos_y, pos_z, laser, field, lua_state);
+	calculate_fields(pos_t, pos_x, pos_y, pos_z, laser, field, lua_states);
 	
 	double e_x = field.e_x;
 	double e_y = field.e_x;
@@ -123,7 +124,7 @@ int gsl_odeiv_func_laser(double t, const double y[], double f[], void *params)
 
 int gsl_odeiv_func_free(double t, const double y[], double f[], void *params)
 {
-	Particle particle = *((gsl_odeiv_custom_params*)params)->particle;
+	Particle& particle = *((gsl_odeiv_custom_params*)params)->particle;
 
 	// double pos_t = C0*t;
 	// double pos_x = y[0];
@@ -156,7 +157,7 @@ void simulate_node(
 	unsigned int interaction,
 	FunctionNodeTimeProgress& on_node_time_progress,
 	SimluationResultNodeSummary& summary,
-	lua::State* lua_state)
+	vector<lua::State*>& lua_states)
 {
 	// Trasforming global coordinates to local coordinates
 	
@@ -164,9 +165,9 @@ void simulate_node(
 	summary.time_enter = local_time_current;
 
 	gsl_odeiv_custom_params params;
-	params.laser 	= &laser;
-	params.particle	= &particle;
-	params.lua_state = lua_state;
+	params.laser 	  = &laser;
+	params.particle	  = &particle;
+	params.lua_states = &lua_states;
 
 	const gsl_odeiv_step_type* 	step_type 	= gsl_odeiv_step_rk8pd;
 	gsl_odeiv_step* 			steps 		= gsl_odeiv_step_alloc(step_type, 6);
@@ -205,7 +206,7 @@ void simulate_node(
 		
 		Field field;
 		// Print the particle interaction (local position, fields, etc)
-		calculate_fields(local_time_current*C0, y[0], y[1], y[2], laser, field, lua_state);
+		calculate_fields(local_time_current*C0, y[0], y[1], y[2], laser, field, lua_states);
 		
 		if (on_node_time_progress != NULL) on_node_time_progress(simulation, laser, particle, state, interaction, node, local_time_current, field);
 		//TODO:
@@ -235,7 +236,7 @@ void simulate_node(
 }
 
 
-void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& particle, ParticleStateGlobal& state, long double& global_time_current, FunctionFreeTimeProgress& on_free_time_progress, SimluationResultFreeSummary& summary, lua::State* lua_state)
+void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& particle, ParticleStateGlobal& state, long double& global_time_current, FunctionFreeTimeProgress& on_free_time_progress, SimluationResultFreeSummary& summary, vector<lua::State*>& lua_states)
 {
 	
 	summary.time_enter = global_time_current;
@@ -262,7 +263,7 @@ void simulate_free(Simulation& simulation, Laboratory& laboratory, Particle& par
 	gsl_odeiv_custom_params params;
 	params.laser 	 = NULL;
 	params.particle	 = &particle;
-	params.lua_state = lua_state;
+	params.lua_states = &lua_states;
 
 	const gsl_odeiv_step_type* 	step_type 	= gsl_odeiv_step_rk8pd;
 	gsl_odeiv_step* 			steps 		= gsl_odeiv_step_alloc(step_type, 6);
@@ -338,7 +339,7 @@ void update_limits(FieldRenderResultLimit& limit, double value)
 }
 
 
-void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, lua::State* lua_state, fs::path output_dir)
+void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, vector<lua::State*>& lua_states, fs::path output_dir)
 {
 	
 	// Initializing field_render_result
@@ -395,27 +396,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 	double& start_t = field_render_result.time_start;
 	double& end_t   = field_render_result.time_end;
 	
-	
-	string wrapper  = "";
-	wrapper += "function field(t, x, y, z)\n";            
-	wrapper += "   value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = func_fields(t, x, y, z)\n";
-	wrapper += "   return { e_x = value_e_x, e_y = value_e_y, e_z = value_e_z, b_x = value_b_x, b_y = value_b_y, b_z = value_b_z }\n";
-	wrapper += "end";
-	
-	
-	try
-	{
-		lua_state->doString(wrapper);
-	}
-	catch (lua::LoadError& e)
-	{
-		printf("Error while parsing 'field': %s\n", e.what());
-		printf("--------------------------------------------------------\n");
-		printf("%s\n", wrapper.c_str());
-		printf("--------------------------------------------------------\n");
-		
-		exit(-4);
-	}
 
 	unsigned int nt = (end_t - start_t) / field_render.time_resolution;
 	unsigned int ni = field_render.space_size_x / field_render.space_resolution;
@@ -461,7 +441,7 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 				data.t = t;
 				data.values = new double**[ni];
 				
-				#pragma omp parallel for shared(data, lua_state)
+				#pragma omp parallel for shared(data, lua_states)
 				for (unsigned int i = 0; i < ni; i++)
 				{
 					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
@@ -473,11 +453,10 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 						
 						double v0,v1,v2,v3,v4,v5,v6,v7;
 						
-						// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
-						#pragma omp critical (lua_field_render)
-						{
-						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](time * AU_TIME, x * AU_LENGTH, y * AU_LENGTH, field_render.axis_cut * AU_LENGTH);
-						}
+						lua::State* local_lua_state = lua_states[omp_get_thread_num()];	
+						lua::String f_name = lua::String((get_thread_prefix(omp_get_thread_num()) + field_render.func_formula_name).c_str());
+						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*local_lua_state)[f_name](time * AU_TIME, x * AU_LENGTH, y * AU_LENGTH, field_render.axis_cut * AU_LENGTH);
+						
 						
 						for (unsigned short c = 0; c < field_render.count; c++)
 						{
@@ -561,7 +540,7 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 				data.t = t;
 				data.values = new double**[ni];
 				
-				#pragma omp parallel for shared(data, lua_state)
+				#pragma omp parallel for shared(data, lua_states)
 				for (unsigned int i = 0; i < ni; i++)
 				{
 					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
@@ -573,11 +552,10 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 						
 						double v0,v1,v2,v3,v4,v5,v6,v7;
 						
-						// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
-						#pragma omp critical (lua_field_render)
-						{
-						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](time * AU_TIME, x * AU_LENGTH, field_render.axis_cut * AU_LENGTH, z * AU_LENGTH);
-						}
+						lua::State* local_lua_state = lua_states[omp_get_thread_num()];
+						lua::String f_name = lua::String((get_thread_prefix(omp_get_thread_num()) + field_render.func_formula_name).c_str());
+						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*local_lua_state)[f_name](time * AU_TIME, x * AU_LENGTH, field_render.axis_cut * AU_LENGTH, z * AU_LENGTH);
+						
 						
 						for (unsigned short c = 0; c < field_render.count; c++)
 						{
@@ -661,7 +639,7 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 				data.t = t;
 				data.values = new double**[nj];
 				
-				#pragma omp parallel for shared(data, lua_state)
+				#pragma omp parallel for shared(data, lua_states)
 				for (unsigned int j = 0; j < nj; j++)
 				{
 					double y = -field_render.space_size_y/2 + field_render.space_resolution * j;
@@ -673,11 +651,10 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 						
 						double v0,v1,v2,v3,v4,v5,v6,v7;
 						
-						// Unfortunately LuaState is not thread safe, so we must not parallel execute this section of code
-						#pragma omp critical (lua_field_render)
-						{
-						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*lua_state)[field_render.func_formula_name.c_str()](time * AU_TIME, field_render.axis_cut * AU_LENGTH, y * AU_LENGTH, z * AU_LENGTH);
-						}
+						lua::State* local_lua_state = lua_states[omp_get_thread_num()];
+						lua::String f_name = lua::String((get_thread_prefix(omp_get_thread_num()) + field_render.func_formula_name).c_str());
+						lua::tie(v0,v1,v2,v3,v4,v5,v6,v7) = (*local_lua_state)[f_name](time * AU_TIME, field_render.axis_cut * AU_LENGTH, y * AU_LENGTH, z * AU_LENGTH);
+						
 						
 						for (unsigned short c = 0; c < field_render.count; c++)
 						{
@@ -766,7 +743,7 @@ void simulate (
 	vector<SimluationResultFreeSummary>& summaries_free,
 	vector<SimluationResultNodeSummary>& summaries_node,
 	
-	lua::State* lua_state)
+	vector<lua::State*>& lua_states)
 {
 	
 	RangeMode 	  current_range = UNKN;
@@ -823,7 +800,7 @@ void simulate (
 			
 			SimluationResultNodeSummary summary;
 			summary.node = node;
-			simulate_node(simulation, laser, node, particle, particle_state_local, time_current_local, current_interaction, on_node_time_progress, summary, lua_state);
+			simulate_node(simulation, laser, node, particle, particle_state_local, time_current_local, current_interaction, on_node_time_progress, summary, lua_states);
 			summaries_node.push_back(summary);	
 			state_local_to_global(particle_state_global, particle_state_local, node);
 			
@@ -832,7 +809,7 @@ void simulate (
 		else if (current_range == FREE)
 		{
 			SimluationResultFreeSummary summary;
-			simulate_free(simulation, laboratory, particle, particle_state_global, time_current_global, on_free_time_progress, summary, lua_state);
+			simulate_free(simulation, laboratory, particle, particle_state_global, time_current_global, on_free_time_progress, summary, lua_states);
 			summaries_free.push_back(summary);
 		}
 	}
@@ -848,7 +825,7 @@ void simulate (
 	Laboratory& laboratory,
 	vector<SimluationResultFreeSummary>& summaries_free,
 	vector<SimluationResultNodeSummary>& summaries_node,
-	lua::State* lua_state)
+	vector<lua::State*>& lua_states)
 {
 	
 	FunctionNodeEnter        on_node_enter			= [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local) mutable {};
@@ -873,7 +850,7 @@ void simulate (
 		on_free_exit,
 		summaries_free,
 		summaries_node,
-		lua_state);
+		lua_states);
 }
 
 	

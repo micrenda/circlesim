@@ -2,6 +2,7 @@
 #include "util.hpp"
 #include "type.hpp"
 #include "simulator.hpp"
+#include "plot.hpp"
 
 using namespace png;
 
@@ -185,7 +186,7 @@ void draw_base(image<rgb_pixel>& image_base, int count_i, int count_j, Simulatio
 				int delta_j = center_j - j;
 				
 				if (vector_module(delta_i, delta_j, 0) == radius)
-					image_base[j][i] = color_fg;
+					image_base[count_j-1-j][i] = color_fg;
 			}	
 		}
 	}
@@ -201,16 +202,16 @@ void draw_particle(image<rgb_pixel>& image, int count_i, int count_j, ParticleSt
 	
 	if (i >= 0 && i < count_i && j >= 0 && j < count_j)
 	{
-		image[j][i] = color_particle;
+		image[count_j-1-j][i] = color_particle;
 	
 		if (i >= 1)
-			image[j][i-1] = color_particle;
+			image[count_j-1-j][i-1] = color_particle;
 		if (i < count_i - 1)
-			image[j][i+1] = color_particle;
+			image[count_j-1-j][i+1] = color_particle;
 		if (j >= 1)
-			image[j-1][i] = color_particle;
+			image[count_j-1-(j-1)][i] = color_particle;
 		if (j < count_j - 1)
-			image[j+1][i] = color_particle;
+			image[count_j-1-(j+1)][i] = color_particle;
 	}
 	
 }
@@ -230,17 +231,17 @@ void draw_node_center(image<rgb_pixel>& image, int count_i, int count_j, Node& n
 		image[j][i] = pixel_particle;
 	
 		if (i >= 1)
-			image[i-1][j] = pixel_particle;
+			image[count_j-1-j][i-1] = pixel_particle;
 		if (i <= count_i - 1)
-			image[i+1][j] = pixel_particle;
+			image[count_j-1-j][i+1] = pixel_particle;
 		if (j >= 1)
-			image[i][j-1] = pixel_particle;
+			image[count_j-1-(j-1)][i] = pixel_particle;
 		if (j <= count_j - 1)
-			image[i][j+1] = pixel_particle;
+			image[count_j-1-(j+1)][i] = pixel_particle;
 	}
 }
 
-void get_node_field(Field& field, Node& node, Pulse& laser, LabSize& lab_size, int i, int j, short axis_1, short axis_2, double local_time, lua::State* lua_state)
+void get_node_field(Field& field, Node& node, Pulse& laser, LabSize& lab_size, int i, int j, short axis_1, short axis_2, double local_time, vector<lua::State*>& lua_states)
 {
 	double local_position_x;
 	double local_position_y;
@@ -288,11 +289,11 @@ void get_node_field(Field& field, Node& node, Pulse& laser, LabSize& lab_size, i
 		exit(-2);
 	}
 
-	calculate_fields(local_time * C0, local_position_x, local_position_y, local_position_z, laser, field, lua_state);
+	calculate_fields(local_time * C0, local_position_x, local_position_y, local_position_z, laser, field, lua_states);
 }
 
 
-void draw_field(image<rgb_pixel>& image, int count_i, int count_j, SimluationResultNodeItem& item, Node& node, LabMapLimit& limit, LabSize& lab_size, short axis_1, short axis_2, Simulation& simulation, Pulse& laser, lua::State* lua_state)
+void draw_field(image<rgb_pixel>& image, int count_i, int count_j, SimluationResultNodeItem& item, Node& node, LabMapLimit& limit, LabSize& lab_size, short axis_1, short axis_2, Simulation& simulation, Pulse& laser, vector<lua::State*>& lua_states)
 {
 	double center_1, center_2;
 	get_node_center(node, axis_1, axis_2, center_1, center_2);
@@ -309,14 +310,14 @@ void draw_field(image<rgb_pixel>& image, int count_i, int count_j, SimluationRes
 			if (i * i + j * j  < radius * radius)
 			{
 				Field field;
-				get_node_field(field, node, laser, lab_size, i, j, axis_1, axis_2, item.time, lua_state);
+				get_node_field(field, node, laser, lab_size, i, j, axis_1, axis_2, item.time, lua_states);
 				
 				double value     = vector_module(field.e_x, field.e_y, field.e_z);
 				double value_max = limit.e_mod_max;
 				
-				unsigned short red   = 0;
-				unsigned short green = 0;
-				unsigned short blue  = 0;
+				unsigned short red   = 0xff;
+				unsigned short green = 0xff;
+				unsigned short blue  = 0xff;
 				
 				if (value_max > 0)
 				{
@@ -325,7 +326,7 @@ void draw_field(image<rgb_pixel>& image, int count_i, int count_j, SimluationRes
 					blue  = 255 - round(0x00 * value/value_max);
 				}
 				
-				image[global_center_j+j][global_center_i+i] = rgb_pixel(red, green, blue);
+				image[count_j-1-global_center_j+j][global_center_i+i] = rgb_pixel(red, green, blue);
 			}
 		}
 	}
@@ -355,7 +356,7 @@ void draw_free(image<rgb_pixel> frame_base, SimluationResultFreeSummary& summary
 		
 		for (int i = 0; i < count_i; i++)
 			for (int j = 0; j < count_j; j++)
-				frame[j][i] = frame_base[j][i];
+				frame[count_j-1-j][i] = frame_base[j][i];
 				
 		draw_particle(frame, count_i, count_j, item.state, lab_size, axis_1, axis_2);
 		
@@ -365,7 +366,7 @@ void draw_free(image<rgb_pixel> frame_base, SimluationResultFreeSummary& summary
 	}
 }
 
-void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationResultNodeSummary& summary_node, LabSize& lab_size, LabMapLimit& limit, int count_i, int count_j, short axis_1, short axis_2, double dt, long unsigned int& t, Pulse& laser, lua::State* lua_state, fs::path output_dir)
+void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationResultNodeSummary& summary_node, LabSize& lab_size, LabMapLimit& limit, int count_i, int count_j, short axis_1, short axis_2, double dt, long unsigned int& t, Pulse& laser, vector<lua::State*>& lua_states, fs::path output_dir)
 {
 	double last_time  = summary_node.items.front().time;
 
@@ -383,8 +384,7 @@ void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationRe
 					frame[j][i] = frame_base[j][i];	
 					
 			// Drawing fields
-			LabMapLimit limit;
-			draw_field(frame, count_i, count_j, item, summary_node.node, limit, lab_size, axis_1, axis_2, simulation, laser, lua_state);
+			draw_field(frame, count_i, count_j, item, summary_node.node, limit, lab_size, axis_1, axis_2, simulation, laser, lua_states);
 			
 			// Draw node center
 			draw_node_center(frame, count_i, count_j, summary_node.node, lab_size, axis_1, axis_2);
@@ -402,7 +402,7 @@ void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationRe
 	}
 }
 
-void get_field_limits(Simulation& simulation, Pulse& laser, LabSize& lab_size, LabMapLimit& limit, vector<SimluationResultNodeSummary>& summaries_node, short axis_1, short axis_2, lua::State* lua_state)
+void get_field_limits(Simulation& simulation, Pulse& laser, LabSize& lab_size, LabMapLimit& limit, vector<SimluationResultNodeSummary>& summaries_node, short axis_1, short axis_2, vector<lua::State*>& lua_states)
 {
 	limit.e_mod_min = +INFINITY;
 	limit.b_mod_min = +INFINITY;
@@ -431,7 +431,7 @@ void get_field_limits(Simulation& simulation, Pulse& laser, LabSize& lab_size, L
 						{
 							Field field;
 							
-							get_node_field(field, summary_node.node, laser, lab_size, i, j, axis_1, axis_2, item.time, lua_state);
+							get_node_field(field, summary_node.node, laser, lab_size, i, j, axis_1, axis_2, item.time, lua_states);
 							
 							double e_mod = vector_module(field.e_x, field.e_y, field.e_z);
 							double b_mod = vector_module(field.b_x, field.b_y, field.b_z);
@@ -450,7 +450,7 @@ void get_field_limits(Simulation& simulation, Pulse& laser, LabSize& lab_size, L
 	}
 }
 
-void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser, vector<SimluationResultFreeSummary>& summaries_free, vector<SimluationResultNodeSummary>& summaries_node, short axis_1, short axis_2, lua::State* lua_state, fs::path output_dir)
+void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser, vector<SimluationResultFreeSummary>& summaries_free, vector<SimluationResultNodeSummary>& summaries_node, short axis_1, short axis_2, vector<lua::State*>& lua_states, fs::path output_dir)
 {
 	
 	LabSize lab_size;
@@ -465,7 +465,7 @@ void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser,
 	frame_base.write((output_dir / fs::path((bo::format("labmap_%s%s_base.png") % get_axis(axis_1) % get_axis(axis_2)).str())).string());
 
 	LabMapLimit limit;
-	get_field_limits(simulation, laser, lab_size, limit, summaries_node, axis_1, axis_2, lua_state);
+	get_field_limits(simulation, laser, lab_size, limit, summaries_node, axis_1, axis_2, lua_states);
 
 	unsigned long t = 0;
 	
@@ -485,7 +485,7 @@ void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser,
 			}
 			else
 			{
-				draw_node(frame_base, simulation, summaries_node[n], lab_size, limit, count_i, count_j, axis_1, axis_2, simulation.time_resolution_free, t, laser, lua_state, output_dir);
+				draw_node(frame_base, simulation, summaries_node[n], lab_size, limit, count_i, count_j, axis_1, axis_2, simulation.time_resolution_free, t, laser, lua_states, output_dir);
 				n++;
 			}
 		}
@@ -496,9 +496,13 @@ void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser,
 		}
 		else if (n < summaries_node.size())
 		{
-			draw_node(frame_base, simulation, summaries_node[n], lab_size, limit, count_i, count_j, axis_1, axis_2, simulation.time_resolution_free, t, laser, lua_state, output_dir);
+			draw_node(frame_base, simulation, summaries_node[n], lab_size, limit, count_i, count_j, axis_1, axis_2, simulation.time_resolution_free, t, laser, lua_states, output_dir);
 			n++;
 		}
 	}
+	
+	
+	
+	plot_labmap(output_dir, axis_1, axis_2);
 }
 

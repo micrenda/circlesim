@@ -179,3 +179,8 @@ void scale_image(unsigned int& w, unsigned int& h, unsigned int max_w, unsigned 
 		}
 	}
 }
+
+string get_thread_prefix(int h)
+{
+	return (bo::format("thr%d_") % h).str();
+}

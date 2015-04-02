@@ -151,8 +151,16 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 	
-	// Create a new lua state
-	lua::State		lua_state;
+	// Create a new vector of lua state (one per thread)
+	vector<lua::State*> lua_states;
+	
+	for (int h = 0; h < omp_get_num_threads(); h++)
+	{
+		// creating a different lua state for every thead (because it is not multithead by himself)
+		lua_states.push_back(new lua::State);
+	}
+	
+			
 
 	Simulation			simulation;
 	Pulse				laser;
@@ -175,7 +183,7 @@ int main(int argc, char *argv[])
 	}
 	
 	
-	read_config(cfg_file_si_tmp, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, &lua_state);
+	read_config(cfg_file_si_tmp, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, lua_states);
 	
 	// Creating output directory
 	fs::path output_dir;
@@ -245,7 +253,7 @@ int main(int argc, char *argv[])
 			if (field_render.enabled)
 			{
 				FieldRenderResult field_render_result;
-				calculate_field_map(field_render_result, field_render, current_interaction, node.id,  laser, &lua_state, output_interaction_dir);
+				calculate_field_map(field_render_result, field_render, current_interaction, node.id,  laser, lua_states, output_interaction_dir);
 			}
 		}
 	};
@@ -280,17 +288,30 @@ int main(int argc, char *argv[])
 				on_node_enter, on_node_time_progress, on_node_exit,
 				on_free_enter, on_free_time_progress, on_free_exit,
 				summaries_free, summaries_node,
-				&lua_state);
+				lua_states);
 	
 	stream_particle.close();
 	
-	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 2, &lua_state, output_dir);
-	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 3, &lua_state, output_dir);
-	render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 2, 3, &lua_state, output_dir);
-	
+	#pragma omp parallel sections shared(laboratory, simulation, laser, summaries_free, summaries_node, lua_states, output_dir)
+	{
+		#pragma omp section
+		{
+				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 2, lua_states, output_dir);
+		}
+		
+		#pragma omp section	
+		{
+				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 3, lua_states, output_dir);
+		}
+		
+		#pragma omp section	
+		{
+				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 2, 3, lua_states, output_dir);
+		}
+	}
 	
 	// Executing response analyses simulations
-	#pragma omp parallel for shared(output_dir, response_analyses, particle, particle_state, laser)
+	#pragma omp parallel for shared(output_dir, response_analyses, particle, particle_state, laser, lua_states)
 	for (unsigned int a = 0; a < response_analyses.size(); a++)
 	{
 		ResponseAnalysis analysis = response_analyses[a];
@@ -338,7 +359,7 @@ int main(int argc, char *argv[])
 			vector<SimluationResultFreeSummary> an_summaries_free;
 			vector<SimluationResultNodeSummary> an_summaries_node;
 			
-			simulate (simulation, an_laser, an_particle, an_particle_state, laboratory,	an_summaries_free, an_summaries_node, &lua_state);
+			simulate (simulation, an_laser, an_particle, an_particle_state, laboratory,	an_summaries_free, an_summaries_node, lua_states);
 			
 			for (unsigned int o = 0; o < analysis.attribute_out.size(); o++)
 			{	
@@ -355,4 +376,11 @@ int main(int argc, char *argv[])
 		save_response_analysis_ct2(analysis, output_response_dir);
 		save_response_analysis_sh (analysis, output_response_dir);
 	}
+	
+	
+	for (int h = 0; h < omp_get_num_threads(); h++)
+	{
+		delete lua_states[h];
+	}
+	
 }

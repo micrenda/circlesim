@@ -19,7 +19,7 @@ void simulate (
 	vector<SimluationResultFreeSummary>& summariesFree,
 	vector<SimluationResultNodeSummary>& summariesNode,
 	
-	lua::State* lua_state);
+	vector<lua::State*>& lua_states);
 
 void simulate (
 	Simulation& simulation,
@@ -29,8 +29,8 @@ void simulate (
 	Laboratory& laboratory,
 	vector<SimluationResultFreeSummary>& summaries_free,
 	vector<SimluationResultNodeSummary>& summaries_node,
-	lua::State* lua_state);
+	vector<lua::State*>& lua_states);
 	
-void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, lua::State* lua_state, fs::path output_dir);
+void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, vector<lua::State*>& lua_states, fs::path output_dir);
 
-void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, const Pulse& laser, Field& field, lua::State* lua_state);
+void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, const Pulse& laser, Field& field, vector<lua::State*>& lua_states);
