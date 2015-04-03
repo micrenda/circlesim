@@ -4,7 +4,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/regex.hpp>
-#include <LuaState.h>
 #include <armadillo>
 
 #ifndef CIRCLESIM_TYPE
@@ -274,6 +273,8 @@ typedef struct SimluationResultFreeSummary
 	vector<SimluationResultFreeItem> items;
 } SimluationResultFreeSummary;
 
+typedef Field          (*FunctionFieldType) (double t, double x, double y, double z);
+typedef vector<double> (*FunctionRenderType)(double t, double x, double y, double z);
 
 typedef struct FieldRender
 {
@@ -302,9 +303,7 @@ typedef struct FieldRender
 	double movie_length;
 
 
-	string func_formula_name;
-
-	
+	FunctionRenderType function_render;
 
 } FieldRender;
 
@@ -383,5 +382,7 @@ typedef function<void(double time_local, FieldRenderResult render_result)> 	Func
 
 inline bool operator<(const FieldRender& lhs, 		const FieldRender& rhs) 		{ return lhs.id <  rhs.id; }
 inline bool operator<(const ResponseAnalysis& lhs, 	const ResponseAnalysis& rhs)	{ return lhs.id <  rhs.id; }
+
+
 
 #endif

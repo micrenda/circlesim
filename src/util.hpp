@@ -16,8 +16,6 @@ template <typename T> void rotate_euler		(T& x, T& y, T& z, T alpha, T beta, T g
 void state_global_to_local(ParticleStateLocal&  state_local,  ParticleStateGlobal& state_global, Node& node);
 void state_local_to_global(ParticleStateGlobal& state_global, ParticleStateLocal&  state_local,  Node& node);
 
-void check_lua_error(char** lua_msg);
-
 void scale_image(unsigned int& w, unsigned int& h, unsigned int max_w, unsigned int max_h);
 
 
@@ -198,8 +196,4 @@ template <typename T> void rotate_spherical(T& x, T& y, T& z, T theta, T phi)
 	
 	spherical_to_cartesian(buffer_rho, buffer_theta, buffer_phi, x, y, z);
 }
-
-
-string get_thread_prefix(int h);
-
  

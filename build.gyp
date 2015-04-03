@@ -15,12 +15,11 @@
 				'src/simulator.cpp',
 				'src/util.cpp',
 				'src/response.cpp',
-				'src/labmap.cpp'
+				'src/labmap.cpp',
+				'src/script.cpp'
 			],
 		
-			'libraries': 	['-fopenmp', '-lgsl', '-lgslcblas', '-lconfig++', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-llua5.2', '-larmadillo' , '-ldl', '-lpng12'],	
-			'include_dirs': ['util/LuaState/include/'],
-			
+			'libraries': 	['-fopenmp', '-lgsl', '-lgslcblas', '-lconfig++', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-larmadillo' , '-ldl', '-lpng12'],	
 			
 			'conditions':
 			[
@@ -30,7 +29,6 @@
 						'cflags': 		['-std=c++11', '-Wall', '-fopenmp'],
 						'include_dirs':
 						[
-							'/usr/include/lua5.2/',
 							'/usr/include/libpng12/',
 						],
 						

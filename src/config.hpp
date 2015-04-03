@@ -1,4 +1,3 @@
-#include <LuaState.h>
 #include "type.hpp"
 
 void read_config(
@@ -10,4 +9,5 @@ void read_config(
 	Laboratory& laboratory,
 	vector<FieldRender>&      field_renders,
 	vector<ResponseAnalysis>& response_analyses,
-	vector<lua::State*>& lua_states);
+	vector<string>& sources,
+	vector<string>& headers);

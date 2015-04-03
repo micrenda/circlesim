@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <omp.h>
-#include <LuaState.h>
+#include <dlfcn.h>
 #include "main.hpp"
 #include "type.hpp"
 #include "plot.hpp"
@@ -12,6 +12,7 @@
 #include "output.hpp"
 #include "response.hpp"
 #include "labmap.hpp"
+#include "script.hpp"
 
 extern string exe_path;
 extern string exe_name;
@@ -32,24 +33,6 @@ void print_help()
     printf("\n");
 }
 
-int lua_error_handler(lua_State* L)
-{
-   lua_Debug d;
-   lua_getstack(L, 1, &d);
-   lua_getinfo(L, "Sln", &d);
-   std::string err = lua_tostring(L, -1);
-   lua_pop(L, 1);
-   std::stringstream msg;
-   msg << d.short_src << ":" << d.currentline;
-
-   if (d.name != 0)
-   {
-      msg << "(" << d.namewhat << " " << d.name << ")";
-   }
-   msg << " " << err;
-   lua_pushstring(L, msg.str().c_str());
-   return 1;
-}
 
 int main(int argc, char *argv[])
 {
@@ -150,24 +133,15 @@ int main(int argc, char *argv[])
 		printf("The <num_threads> parameters specified with option -j must be not smaller than 1.\n");
 		exit(-1);
 	}
-	
-	// Create a new vector of lua state (one per thread)
-	vector<lua::State*> lua_states;
-	
-	for (int h = 0; h < omp_get_num_threads(); h++)
-	{
-		// creating a different lua state for every thead (because it is not multithead by himself)
-		lua_states.push_back(new lua::State);
-	}
-	
+
 			
 
 	Simulation			simulation;
 	Pulse				laser;
 	Particle			particle;
-	Laboratory 			laboratory;
-	ParticleStateGlobal		particle_state;
-	vector<FieldRender>		field_renders;
+	Laboratory 			        laboratory;
+	ParticleStateGlobal		    particle_state;
+	vector<FieldRender>		    field_renders;
 	vector<ResponseAnalysis>	response_analyses;
 	
 	// Convert the config file to a SI compliant version
@@ -182,8 +156,10 @@ int main(int argc, char *argv[])
 		exit(-2);
 	}
 	
+	vector<string> headers;
+	vector<string> sources;
 	
-	read_config(cfg_file_si_tmp, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, lua_states);
+	read_config(cfg_file_si_tmp, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, headers, sources);
 	
 	// Creating output directory
 	fs::path output_dir;
@@ -210,13 +186,35 @@ int main(int argc, char *argv[])
 	string units_txt_cmd = (bo::format("java -jar '%s/util/unit/ConfigUnitConvertor.jar' --print-units SI '%s/util/unit/conversions.csv' >> %s/README.txt") %  exe_path % exe_path % output_dir.string()).str();
 	system(units_txt_cmd.c_str());
 	
-	
 	ofstream stream_node;
 	stream_node.open(get_filename_node(output_dir));
 	setup_node(stream_node);
 	for (Node& node: laboratory.nodes)
 		write_node(stream_node, node);
 	stream_node.close();
+	
+	
+	// Building auxiliary library
+	build_auxiliary_library(headers, sources, output_dir);
+	
+	void* custom_lib = dlopen((output_dir / fs::path("custom_scripts.so")).string().c_str(), RTLD_NOW);
+
+	
+	FunctionFieldType* function_field = (FunctionFieldType*) dlsym(custom_lib, "field");
+	
+	for (FieldRender render: field_renders)
+	{
+		string function_name = (bo::format("func_field_render_%s") % render.id).str();
+		FunctionRenderType* function_render = (FunctionRenderType*) dlsym(custom_lib, function_name.c_str());
+		
+		if (function_render)
+			render.function_render = *function_render;
+		else
+		{
+			printf("ERROR - Unable to load the function '%s'\n", function_name.c_str());
+			exit(-5);
+		}
+	}
 	
 	// Setting up particle stream
 	ofstream stream_particle;
@@ -235,7 +233,7 @@ int main(int argc, char *argv[])
 	
 	FunctionNodeTimeProgress on_node_time_progress	= [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local, Field& field) mutable
 	{
-		printf("\rSimulating interactiion %u node %u: %.16f", current_interaction, node.id, time_local * AU_TIME);
+		printf("\rSimulating node: %.16f (i%un%u)", time_local * AU_TIME, current_interaction, node.id);
 		fflush(stdout);
 		write_interaction(stream_interaction, time_local, particle_state, field);
 	};
@@ -253,7 +251,7 @@ int main(int argc, char *argv[])
 			if (field_render.enabled)
 			{
 				FieldRenderResult field_render_result;
-				calculate_field_map(field_render_result, field_render, current_interaction, node.id,  laser, lua_states, output_interaction_dir);
+				calculate_field_map(field_render_result, field_render, current_interaction, node.id,  laser, *function_field, output_interaction_dir);
 			}
 		}
 	};
@@ -288,30 +286,30 @@ int main(int argc, char *argv[])
 				on_node_enter, on_node_time_progress, on_node_exit,
 				on_free_enter, on_free_time_progress, on_free_exit,
 				summaries_free, summaries_node,
-				lua_states);
+				*function_field);
 	
 	stream_particle.close();
 	
-	#pragma omp parallel sections shared(laboratory, simulation, laser, summaries_free, summaries_node, lua_states, output_dir)
+	#pragma omp parallel sections shared(laboratory, simulation, laser, summaries_free, summaries_node,output_dir)
 	{
 		#pragma omp section
 		{
-				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 2, lua_states, output_dir);
+				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 2, *function_field, output_dir);
 		}
 		
 		#pragma omp section	
 		{
-				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 3, lua_states, output_dir);
+				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 3, *function_field, output_dir);
 		}
 		
 		#pragma omp section	
 		{
-				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 2, 3, lua_states, output_dir);
+				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 2, 3, *function_field, output_dir);
 		}
 	}
 	
 	// Executing response analyses simulations
-	#pragma omp parallel for shared(output_dir, response_analyses, particle, particle_state, laser, lua_states)
+	#pragma omp parallel for shared(output_dir, response_analyses, particle, particle_state, laser)
 	for (unsigned int a = 0; a < response_analyses.size(); a++)
 	{
 		ResponseAnalysis analysis = response_analyses[a];
@@ -359,7 +357,7 @@ int main(int argc, char *argv[])
 			vector<SimluationResultFreeSummary> an_summaries_free;
 			vector<SimluationResultNodeSummary> an_summaries_node;
 			
-			simulate (simulation, an_laser, an_particle, an_particle_state, laboratory,	an_summaries_free, an_summaries_node, lua_states);
+			simulate (simulation, an_laser, an_particle, an_particle_state, laboratory,	an_summaries_free, an_summaries_node, *function_field);
 			
 			for (unsigned int o = 0; o < analysis.attribute_out.size(); o++)
 			{	
@@ -378,9 +376,6 @@ int main(int argc, char *argv[])
 	}
 	
 	
-	for (int h = 0; h < omp_get_num_threads(); h++)
-	{
-		delete lua_states[h];
-	}
-	
+	dlclose(custom_lib);
+
 }

@@ -1,6 +1,6 @@
 #include <libconfig.h++>
 #include <math.h>
-#include <LuaState.h>
+#include <omp.h>
 #include <boost/regex.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/algorithm/string.hpp>
@@ -8,7 +8,6 @@
 #include "config.hpp"
 #include "type.hpp"
 #include "util.hpp"
-#include "le.h"
 #include "response.hpp"
 
 using namespace libconfig;
@@ -18,17 +17,6 @@ void err_config()
     exit(-1);
 }
 
-void check_lua_error(lua::LoadError& e, string section_name, string fullcode)
-{
-	
-	printf("Error while parsing '%s': %s\n", section_name.c_str(), e.what());
-	printf("--------------------------------------------------------\n");
-	printf("%s\n", fullcode.c_str());
-	printf("--------------------------------------------------------\n");
-	
-	exit(-3);
-
-}
 
 bool missing_param(string param)
 {
@@ -43,105 +31,6 @@ bool wrong_param(string param, string message)
 	exit(-1);
 	return true;
 }
-
-
-//void init_nodes(Accellerator& accellerator)
-//{
-	//unsigned int n = 0;
-	//for (Node& node: accellerator.nodes)
-	//{
-		//node.position_x = accellerator.radius * sin(2 * M_PI * n / accellerator.nodes.size());
-		//node.position_y = accellerator.radius * cos(2 * M_PI * n / accellerator.nodes.size());
-		//node.position_z = 0;
-		
-		
-		//double theta	= 0; 
-		//double phi		= 0;
-		
-		//if (accellerator.node_axis_rotate_theta)
-			//theta = +2 * M_PI * n / accellerator.nodes.size();
-		//if (accellerator.node_axis_rotate_phi)
-			//theta = -2 * M_PI * n / accellerator.nodes.size();
-		
-		//mat versors = zeros<mat>(3,3);
-		
-		//switch (accellerator.node_axis_mode)
-		//{
-			//case MODE_P:
-				//versors(0,0) =  1; 
-				//versors(1,0) =  0; 
-				//versors(2,0) =  0;
-				
-				//versors(0,1) =  0; 
-				//versors(1,1) =  1; 
-				//versors(2,1) =  0;
-				
-				//versors(0,2) =  0; 
-				//versors(1,2) =  0; 
-				//versors(2,2) =  1;
-			//break;
-			
-			
-			//case MODE_T_FW:
-				//versors(0,0) =  0; 
-				//versors(1,0) =  1; 
-				//versors(2,0) =  0;
-				
-				//versors(0,1) =  0; 
-				//versors(1,1) =  0; 
-				//versors(2,1) =  1;
-				
-				//versors(0,2) =  1; 
-				//versors(1,2) =  0; 
-				//versors(2,2) =  0;
-			//break;
-			
-			//case MODE_T_BW:
-				//versors(0,0) =  0; 
-				//versors(1,0) = -1; 
-				//versors(2,0) =  0;
-				
-				//versors(0,1) =  0; 
-				//versors(1,1) =  0; 
-				//versors(2,1) =  1;
-				
-				//versors(0,2) = -1; 
-				//versors(1,2) =  0; 
-				//versors(2,2) =  0;
-			//break;
-
-		//}
-		
-		//rotate_spherical(versors(0,0), versors(1,0), versors(2,0), theta, phi);
-		//rotate_spherical(versors(0,1), versors(1,1), versors(2,1), theta, phi);
-		//rotate_spherical(versors(0,2), versors(1,2), versors(2,2), theta, phi);
-		
-		//// setting to zero all the versor components where abs(v) < 1E-15
-		//// We do this because these values are likely created by cos(π/2) != 0 and sin(0) != 0functions and
-   
-		//if (abs(versors(0,0)) < 1E-15)  versors(0,0) =  0; 
-		//if (abs(versors(1,0)) < 1E-15)  versors(1,0) =  0; 
-		//if (abs(versors(2,0)) < 1E-15)  versors(2,0) =  0; 
-		//if (abs(versors(0,1)) < 1E-15)  versors(0,1) =  0; 
-		//if (abs(versors(1,1)) < 1E-15)  versors(1,1) =  0; 
-		//if (abs(versors(2,1)) < 1E-15)  versors(2,1) =  0; 
-		//if (abs(versors(0,2)) < 1E-15)  versors(0,2) =  0; 
-		//if (abs(versors(1,2)) < 1E-15)  versors(1,2) =  0; 
-		//if (abs(versors(2,2)) < 1E-15)  versors(2,2) =  0; 
-			
-		
-		//node.axis = versors;
-		
-//#ifdef DEBUG_NODE_VERSORS
-		//printf("Node %d\n", node.id);
-		//node.axis.print("local versors:");
-		//printf("\n\n");
-//#endif
-
-		//n++;
-	//}
-//}
-
 
 void init_position_and_momentum(Parameters& parameters, Particle& particle, Laboratory& laboratory, ParticleStateGlobal& state_global)
 {
@@ -227,7 +116,7 @@ void init_position_and_momentum(Parameters& parameters, Particle& particle, Labo
 	}
 }
 
-void read_config_renders(Setting* field_renders_config, vector<FieldRender>& renders, vector<lua::State*>& lua_states)
+void read_config_renders(Setting* field_renders_config, vector<FieldRender>& renders, vector<string>& headers, vector<string>& sources)
 {
 	try 
 	{
@@ -304,41 +193,31 @@ void read_config_renders(Setting* field_renders_config, vector<FieldRender>& ren
 
 			if (!render_config.exists("formula")) missing_param("formula");
 			
-			for (int h = 0; h < omp_get_num_threads(); h++)
-			{
-				
-				render.func_formula_name = (bo::format("func_field_render_%s") % render.id).str();
-				string s = (bo::format("function %s%s(t, x, y, z)\n") % get_thread_prefix(h) % render.func_formula_name).str();
-				s += "    -- Injecting default variables\n";
-				s += (bo::format("    dx = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
-				s += (bo::format("    dy = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
-				s += (bo::format("    dz = %.16E\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
-				
-				s += (bo::format("    size_x   = %.16E\n") % (render.space_size_x * AU_LENGTH)).str();
-				s += (bo::format("    size_y   = %.16E\n") % (render.space_size_y * AU_LENGTH)).str();
-				s += (bo::format("    size_z   = %.16E\n") % (render.space_size_z * AU_LENGTH)).str();
-				
-				s += (bo::format("    dt = %.16E\n") % (render.time_resolution  / 1000 * AU_TIME)).str();
-				s += "    -- completed\n\n";
-				
-				string formula = render_config["formula"];
-				s += (bo::format("%s\n") % (formula)).str();
-				s += "end\n";
-				
-				try
-				{
-					lua_states[h]->doString(s.c_str());
-				}
-				catch (lua::LoadError& e)
-				{
-					check_lua_error(e, render.func_formula_name, s);
-				}
-			}
 			
-			//printf((bo::format("Render field %s LUA function:\n") % render.id).str().c_str());
-			//printf("--------------------------------------------------------\n");
-			//printf("%s\n", s.c_str());
-			//printf("--------------------------------------------------------\n");
+			headers.push_back((bo::format("vector<double> func_field_render_%s(double t, double x, double y, double z);") % render.id).str());
+			
+			string s = (bo::format("vector<double> func_field_render_%s(double t, double x, double y, double z)\n") % render.id).str();
+			s += "{\n";
+			s += "    // Injecting default variables\n";
+			
+			
+			s += (bo::format("    double dx __attribute__ ((unused)) = %.16E;\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+			s += (bo::format("    double dy __attribute__ ((unused)) = %.16E;\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+			s += (bo::format("    double dz __attribute__ ((unused)) = %.16E;\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+			
+			s += (bo::format("    double size_x __attribute__ ((unused)) = %.16E;\n") % (render.space_size_x * AU_LENGTH)).str();
+			s += (bo::format("    double size_y __attribute__ ((unused)) = %.16E;\n") % (render.space_size_y * AU_LENGTH)).str();
+			s += (bo::format("    double size_z __attribute__ ((unused)) = %.16E;\n") % (render.space_size_z * AU_LENGTH)).str();
+			
+			s += (bo::format("    double dt __attribute__ ((unused)) = %.16E;\n") % (render.time_resolution  / 1000 * AU_TIME)).str();
+			s += "    // completed\n\n";
+			
+			string formula = render_config["formula"];
+			s += (bo::format("%s\n") % (formula)).str();
+			s += "}\n";
+				
+			sources.push_back(s);
+			
 
 
 			renders.push_back(render);
@@ -389,7 +268,8 @@ void read_config(
 	Laboratory& laboratory,
 	vector<FieldRender>&      field_renders,
 	vector<ResponseAnalysis>& response_analyses,
-	vector<lua::State*>& lua_states)
+	vector<string>& headers,
+	vector<string>& sources)
 {
 	Parameters parameters;
 	
@@ -400,6 +280,8 @@ void read_config(
 	map<string, double> laser_field_param_map_float;
 	map<string, string>	laser_field_param_map_string;
 	map<string, bool>	laser_field_param_map_boolean;
+	
+
 
 	// Read the file. If there is an error, report it and exit.
 	try 
@@ -727,91 +609,52 @@ void read_config(
 	
 	
 	// Loading the common functins. Loading and evaluating so remain availabe to the other LUA scripts
+	sources.push_back(parameters.func_commons);
 	
-	for (int h = 0; h < omp_get_num_threads(); h++)
+	
+	
+	// Loading field function
+	headers.push_back("Field field(double t, double x, double y, double z);");
+	
+	
+	string s = (bo::format("Field field(double t, double x, double y, double z)\n")).str();
+	s += "{\n";
+	s += "// Injecting external variables\n";
+	for (map<string,int>::iterator	entry = laser.params_int.begin(); entry != laser.params_int.end(); ++entry) 
+		s += (bo::format("    int    % -12s\t= %d;\n") 		% entry->first % entry->second).str();
+	for (map<string,long>::iterator	entry = laser.params_int64.begin(); entry != laser.params_int64.end(); ++entry) 
+		s += (bo::format("    long   % -12s\t= %l;\n") 		% entry->first % entry->second).str();
+	for (map<string,double>::iterator	entry = laser.params_float.begin(); entry != laser.params_float.end(); ++entry) 
+		s += (bo::format("    double % -12s\t= %.16E;\n") 	% entry->first % entry->second).str();
+	for (map<string,string>::iterator	entry = laser.params_string.begin(); entry != laser.params_string.end(); ++entry)
 	{
-		try
-		{
-			lua_states[h]->doString(parameters.func_commons);
-		}
-		catch (lua::LoadError& e)
-		{
-			check_lua_error(e, "func_commons", parameters.func_commons);
-		}
+		string value = entry->second;
+		bo::replace_all(value, "\"", "\\\"");
+		s += (bo::format("    string % -12s\t= %s;\n") 		% entry->first % value).str();
 	}
-			
+	for (map<string,bool>::iterator	entry = laser.params_boolean.begin(); entry != laser.params_boolean.end(); ++entry) 
+		s += (bo::format("    bool % -12s\t= %s;\n") 		% entry->first % (entry->second ? "true" : "false")).str();
+	s += "// completed\n\n";
 	
-	// Loading other lua scripts
-	for (int h = 0; h < omp_get_num_threads(); h++)
-	{
-		string s = (bo::format("function %s_func_fields(t, x, y, z)\n") % get_thread_prefix(h)).str();
-		s += "    -- Injecting external variables\n";
-		for (map<string,int>::iterator	entry = laser.params_int.begin(); entry != laser.params_int.end(); ++entry) 
-			s += (bo::format("    % -12s\t= %d\n") 		% entry->first % entry->second).str();
-		for (map<string,long>::iterator	entry = laser.params_int64.begin(); entry != laser.params_int64.end(); ++entry) 
-			s += (bo::format("    % -12s\t= %l\n") 		% entry->first % entry->second).str();
-		for (map<string,double>::iterator	entry = laser.params_float.begin(); entry != laser.params_float.end(); ++entry) 
-			s += (bo::format("    % -12s\t= %.16E\n") 	% entry->first % entry->second).str();
-		for (map<string,string>::iterator	entry = laser.params_string.begin(); entry != laser.params_string.end(); ++entry)
-		{
-			string value = entry->second;
-			bo::replace_all(value, "\"", "\\\"");
-			s += (bo::format("    % -12s\t= %s\n") 		% entry->first % value).str();
-		}
-		for (map<string,bool>::iterator	entry = laser.params_boolean.begin(); entry != laser.params_boolean.end(); ++entry) 
-			s += (bo::format("    % -12s\t= %s\n") 		% entry->first % (entry->second ? "true" : "false")).str();
-		s += "    -- completed\n\n";
+	s += parameters.func_fields + "\n";
+	s += "}\n";
+	
+	sources.push_back(s);
 		
-		s += parameters.func_fields + "\n";
-		s += "end\n";
-		
-		try
-		{
-			lua_states[h]->doString(s.c_str());
-		}
-		catch (lua::LoadError& e)
-		{
-			check_lua_error(e, "func_fields", s);
-		}
-	}
-	
-
-	//printf("Generated fields LUA function:\n");
-	//printf("--------------------------------------------------------\n");
-	//printf("%s\n", s.c_str());
-	//printf("--------------------------------------------------------\n");
-
-
-	// Loading wrapper function
 
 	
-	for (int h = 0; h < omp_get_num_threads(); h++)
-	{
-		string s  = "";
-		s += (bo::format("function %sfield(t, x, y, z)\n") % get_thread_prefix(h)).str();            
-		s += "   value_e_x, value_e_y, value_e_z, value_b_x, value_b_y, value_b_z = func_fields(t, x, y, z)\n";
-		s += "   return { e_x = value_e_x, e_y = value_e_y, e_z = value_e_z, b_x = value_b_x, b_y = value_b_y, b_z = value_b_z }\n";
-		s += "end";
-		try
-		{	
-			
-			
-			lua_states[h]->doString(s);
-		}
-		catch (lua::LoadError& e)
-		{
-			check_lua_error(e, "field (wrapper)", s);
-		}
-	}
+	
 
 	particle.rest_mass 					= parameters.rest_mass 				/ AU_MASS;
 	particle.charge 					= parameters.charge    				/ AU_CHARGE;
 	
 	Setting& field_renders_setting = config->lookup("field_renders");
-	read_config_renders(&field_renders_setting, field_renders, lua_states);
+	read_config_renders(&field_renders_setting, field_renders, headers, sources);
 
 	delete config;
 	
 	//init_nodes(accellerator);
 	init_position_and_momentum(parameters, particle, laboratory, particle_state);
+	
+
 }

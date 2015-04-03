@@ -117,14 +117,7 @@ void state_local_to_global(ParticleStateGlobal& state_global, ParticleStateLocal
 	state_global.momentum_z = mom(2);
 }
 
-void check_lua_error(char** lua_msg)
-{
-    if (*lua_msg != NULL)
-    {
-        printf("Error while parsing/executing LUA script at:\n%s\n", *lua_msg);
-        exit(-1);
-    }
-}
+
 
 /**
  * 
@@ -178,9 +171,4 @@ void scale_image(unsigned int& w, unsigned int& h, unsigned int max_w, unsigned 
 			w = (orig_w / 2) * 2;
 		}
 	}
-}
-
-string get_thread_prefix(int h)
-{
-	return (bo::format("thr%d_") % h).str();
 }
