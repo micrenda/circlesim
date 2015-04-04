@@ -129,8 +129,6 @@ typedef struct Pulse
 	map<string, double> params_float;
 	map<string, string> params_string;
 	map<string, bool>	params_boolean;
-	
-	int					func_fields;	// coockie of LUA function
 } Pulse;
 
 typedef struct Field

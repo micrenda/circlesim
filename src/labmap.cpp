@@ -186,7 +186,7 @@ void draw_base(image<rgb_pixel>& image_base, int count_i, int count_j, Simulatio
 				int delta_j = center_j - j;
 				
 				if (vector_module(delta_i, delta_j, 0) == radius)
-					image_base[count_j-1-j][i] = color_fg;
+					image_base[j][i] = color_fg;
 			}	
 		}
 	}
@@ -197,23 +197,23 @@ void draw_particle(image<rgb_pixel>& image, int count_i, int count_j, ParticleSt
 	double position_1, position_2;
 	get_particle_position(state, axis_1, axis_2, position_1, position_2);
 	
-	int i = get_i(lab_size, position_1);
-	int j = get_j(lab_size, position_2);
+	int particle_radius = ceil(min(count_i, count_j) / 250.d);
 	
-	if (i >= 0 && i < count_i && j >= 0 && j < count_j)
+	int particle_i = get_i(lab_size, position_1);
+	int particle_j = get_j(lab_size, position_2);
+	
+	for (int i = 0; i < count_i; i++)
 	{
-		image[count_j-1-j][i] = color_particle;
-	
-		if (i >= 1)
-			image[count_j-1-j][i-1] = color_particle;
-		if (i < count_i - 1)
-			image[count_j-1-j][i+1] = color_particle;
-		if (j >= 1)
-			image[count_j-1-(j-1)][i] = color_particle;
-		if (j < count_j - 1)
-			image[count_j-1-(j+1)][i] = color_particle;
+		int delta_i = i - particle_i;
+		for (int j = 0; j < count_j; j++)
+		{
+			int delta_j = j - particle_j;
+			if (delta_i*delta_i + delta_j*delta_j <= particle_radius * particle_radius)
+			{
+				image[j][i] = color_particle;	
+			}
+		}
 	}
-	
 }
 
 void draw_node_center(image<rgb_pixel>& image, int count_i, int count_j, Node& node, LabSize& lab_size, short axis_1, short axis_2)
@@ -231,13 +231,13 @@ void draw_node_center(image<rgb_pixel>& image, int count_i, int count_j, Node& n
 		image[j][i] = pixel_particle;
 	
 		if (i >= 1)
-			image[count_j-1-j][i-1] = pixel_particle;
+			image[j][i-1] = pixel_particle;
 		if (i <= count_i - 1)
-			image[count_j-1-j][i+1] = pixel_particle;
+			image[j][i+1] = pixel_particle;
 		if (j >= 1)
-			image[count_j-1-(j-1)][i] = pixel_particle;
+			image[j-1][i] = pixel_particle;
 		if (j <= count_j - 1)
-			image[count_j-1-(j+1)][i] = pixel_particle;
+			image[j+1][i] = pixel_particle;
 	}
 }
 
@@ -326,7 +326,7 @@ void draw_field(image<rgb_pixel>& image, int count_i, int count_j, SimluationRes
 					blue  = 255 - round(0x00 * value/value_max);
 				}
 				
-				image[count_j-1-global_center_j+j][global_center_i+i] = rgb_pixel(red, green, blue);
+				image[global_center_j+j][global_center_i+i] = rgb_pixel(red, green, blue);
 			}
 		}
 	}
@@ -348,6 +348,21 @@ string get_axis(short id)
 	}
 }
 
+void flip_imabe_v(image<rgb_pixel>& image, int count_i, int count_j)
+{
+	for (int i=0; i < count_i; i++)
+	{
+		for (int j=0; j < count_j/2; j++)
+		{
+			rgb_pixel buffer;
+			
+			buffer = image[j][i];
+			image[j][i] = image[count_j-j- 1][i];
+			image[count_j-j-1][i] = buffer;
+		}
+	}
+}
+
 void draw_free(image<rgb_pixel> frame_base, SimluationResultFreeSummary& summary_free, LabSize& lab_size, int count_i, int count_j, short axis_1, short axis_2, long unsigned int& t, fs::path output_dir)
 {
 	for (SimluationResultFreeItem& item: summary_free.items)
@@ -356,9 +371,11 @@ void draw_free(image<rgb_pixel> frame_base, SimluationResultFreeSummary& summary
 		
 		for (int i = 0; i < count_i; i++)
 			for (int j = 0; j < count_j; j++)
-				frame[count_j-1-j][i] = frame_base[j][i];
+				frame[j][i] = frame_base[j][i];
 				
 		draw_particle(frame, count_i, count_j, item.state, lab_size, axis_1, axis_2);
+		
+		flip_imabe_v(frame, count_i, count_j);
 		
 		frame.write((output_dir / fs::path((bo::format("labmap_%s%s_t%u.png") % get_axis(axis_1) % get_axis(axis_2) % t).str())).string());
 		
@@ -394,6 +411,8 @@ void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationRe
 			state_local_to_global(state_global, item.state, summary_node.node);
 			draw_particle(frame, count_i, count_j, state_global, lab_size, axis_1, axis_2);
 			
+			flip_imabe_v(frame, count_i, count_j);
+			
 			frame.write((output_dir / fs::path((bo::format("labmap_%s%s_t%u.png") % get_axis(axis_1) % get_axis(axis_2) % t).str())).string());
 			
 			t++;
@@ -401,6 +420,7 @@ void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationRe
 		}
 	}
 }
+
 
 void get_field_limits(Simulation& simulation, Pulse& laser, LabSize& lab_size, LabMapLimit& limit, vector<SimluationResultNodeSummary>& summaries_node, short axis_1, short axis_2, FunctionFieldType function_field)
 {
@@ -449,6 +469,7 @@ void get_field_limits(Simulation& simulation, Pulse& laser, LabSize& lab_size, L
 		}
 	}
 }
+
 
 void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser, vector<SimluationResultFreeSummary>& summaries_free, vector<SimluationResultNodeSummary>& summaries_node, short axis_1, short axis_2, FunctionFieldType function_field, fs::path output_dir)
 {
