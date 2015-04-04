@@ -593,10 +593,10 @@ void simulate (
 			
 			if (on_free_enter != NULL) on_free_enter(simulation, particle, particle_state_global, laboratory,   time_current_global);
 			
+			if (current_range != UNKN)
+				current_interaction++;
 			current_range = FREE;
 			current_node  = -1;
-			
-			current_interaction++;
 			
 		}
 		else if (current_range != NODE && new_node != current_node)

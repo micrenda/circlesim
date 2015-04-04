@@ -21,6 +21,7 @@ void build_auxiliary_library(vector<string>& headers, vector<string>& sources, f
 	{
 		cpp << source				<< endl;
 	}
+	cpp << "extern \"C\" double test(double a, double b) { return a + b; }" << endl;
 	
 	cpp.close();
 	
@@ -46,7 +47,6 @@ void build_auxiliary_library(vector<string>& headers, vector<string>& sources, f
 	hpp << "} Field;"				<< endl;
 	hpp << ""						<< endl;
 	
-	
 	for (string header: headers)
 	{
 		hpp << header				<< endl;
@@ -54,7 +54,7 @@ void build_auxiliary_library(vector<string>& headers, vector<string>& sources, f
 	hpp.close();
 	
 	// building
-	string cmd = (bo::format("g++ -std=c++11 -Wall -shared -fPIC -o %s %s -lm") % filename_so.string() % filename_cpp.string()).str();
+	string cmd = (bo::format("g++ -std=c++11 -g -rdynamic -Wall -shared -fPIC -o %s %s -lm") % filename_so.string() % filename_cpp.string()).str();
 	
 	cout << bo::format("Building '%s' with cmd:") % filename_cpp.filename().string() << endl;
 	cout << "-----------------------------------------------------------" << endl;

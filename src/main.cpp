@@ -197,21 +197,46 @@ int main(int argc, char *argv[])
 	// Building auxiliary library
 	build_auxiliary_library(headers, sources, output_dir);
 	
-	void* custom_lib = dlopen((output_dir / fs::path("custom_scripts.so")).string().c_str(), RTLD_NOW);
+	fs::path shared_lib = output_dir / fs::path("custom_scripts.so");
+	void* custom_lib = dlopen(shared_lib.string().c_str(), RTLD_NOW);
 
+	if (!custom_lib)
+	{
+		printf("ERROR - Unable to open shared library at position '%s'\n", shared_lib.string().c_str());
+		exit(-5);
+	}
 	
-	FunctionFieldType* function_field = (FunctionFieldType*) dlsym(custom_lib, "field");
+	char* error;
+	if ((error = dlerror()) != NULL)
+	{
+		printf("ERROR - Error during %s loading: %s\n", "custom_scripts.so", error);
+		exit(-5);
+	}
+	
+	FunctionFieldType function_field = (FunctionFieldType) dlsym(custom_lib, "field");
+	
+	if ((error = dlerror()) != NULL)
+	{
+		printf("ERROR - Error during dynamic function '%s' loading: %s\n", "field", error);
+		exit(-5);
+	}
 	
 	for (FieldRender render: field_renders)
 	{
 		string function_name = (bo::format("func_field_render_%s") % render.id).str();
-		FunctionRenderType* function_render = (FunctionRenderType*) dlsym(custom_lib, function_name.c_str());
+		FunctionRenderType function_render = (FunctionRenderType) dlsym(custom_lib, function_name.c_str());
 		
 		if (function_render)
-			render.function_render = *function_render;
+			render.function_render = function_render;
 		else
 		{
 			printf("ERROR - Unable to load the function '%s'\n", function_name.c_str());
+			exit(-5);
+		}
+		
+		if ((error = dlerror()) != NULL)
+		{
+			printf("ERROR - Error during dynamic function '%s' loading: %s\n", function_name.c_str(), error);
 			exit(-5);
 		}
 	}

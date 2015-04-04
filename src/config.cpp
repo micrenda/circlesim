@@ -194,7 +194,7 @@ void read_config_renders(Setting* field_renders_config, vector<FieldRender>& ren
 			if (!render_config.exists("formula")) missing_param("formula");
 			
 			
-			headers.push_back((bo::format("vector<double> func_field_render_%s(double t, double x, double y, double z);") % render.id).str());
+			headers.push_back((bo::format("extern \"C\" vector<double> func_field_render_%s(double t, double x, double y, double z);") % render.id).str());
 			
 			string s = (bo::format("vector<double> func_field_render_%s(double t, double x, double y, double z)\n") % render.id).str();
 			s += "{\n";
@@ -608,13 +608,13 @@ void read_config(
 	laser.params_boolean	= laser_field_param_map_boolean;
 	
 	
-	// Loading the common functins. Loading and evaluating so remain availabe to the other LUA scripts
+	// Loading the common functins.
 	sources.push_back(parameters.func_commons);
 	
 	
 	
 	// Loading field function
-	headers.push_back("Field field(double t, double x, double y, double z);");
+	headers.push_back("extern \"C\" Field field(double t, double x, double y, double z);");
 	
 	
 	string s = (bo::format("Field field(double t, double x, double y, double z)\n")).str();
