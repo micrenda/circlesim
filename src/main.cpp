@@ -348,7 +348,7 @@ int main(int argc, char *argv[])
 		
 		vector<double> value_out;
 		vector<double> delta_out;
-		vector<double> perc_out;
+		vector<double> perct_out;
 		
 		ofstream stream_response_analysis;
 		stream_response_analysis.open((output_response_dir / fs::path("response.csv")).string());
@@ -364,20 +364,20 @@ int main(int argc, char *argv[])
 			Pulse               an_laser            = laser;
 			
 			
-			double perc_in;
+			double perct_in;
 			double delta_in;
 			double value_in;
 			
 			if (analysis.value_mode == PERCENTUAL)
 			{
-				perc_in  = -analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
-				delta_in = base_value_in * perc_in;
+				perct_in  = -analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
+				delta_in = base_value_in * perct_in;
 				value_in = base_value_in + delta_in;
 			}
 			else
 			{
 				delta_in = -analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
-				perc_in  = delta_in / base_value_in;
+				perct_in  = delta_in / base_value_in;
 				value_in = base_value_in + delta_in;
 			}
 			
@@ -396,11 +396,11 @@ int main(int argc, char *argv[])
 				
 				value_out.push_back(get_attribute(an_particle, an_particle_state, an_laser, analysis.object_out[o], analysis.attribute_out[o]));
 				delta_out.push_back(value_out[o] - base_value_out);
-				perc_out.push_back(delta_out[o] / base_value_out);
+				perct_out.push_back(delta_out[o] / base_value_out);
 			}
 			
 			#pragma omp ordered
-			write_response_analysis(stream_response_analysis, analysis, perc_in, delta_in, value_in, perc_out, delta_out, value_out);
+			write_response_analysis(stream_response_analysis, analysis, perct_in, delta_in, value_in, perct_out, delta_out, value_out);
 			
 		}
 		
