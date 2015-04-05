@@ -22,15 +22,15 @@ void print_help()
 {
 	string exe_name = "circlesim";
 	
-    printf("Usage:\n\n");
-    printf("  %s -c <config_file.cfg> [-o <output_dir>] [-j <num_threads>]\n", exe_name.c_str());
-    printf("  %s -h\n", exe_name.c_str());
-    printf("\n");
-    printf("  -o  --output  <output_dir>                Set output directory (default /tmp)\n");
-    printf("  -c  --config  <config_file>               Set configuration file\n");
-    printf("  -j  --threads <num_threads>               Set how many threads to use (default 1)\n");
-    printf("  -h  --help                                Print this help menu\n");
-    printf("\n");
+	printf("Usage:\n\n");
+	printf("  %s -c <config_file.cfg> [-o <output_dir>] [-j <num_threads>]\n", exe_name.c_str());
+	printf("  %s -h\n", exe_name.c_str());
+	printf("\n");
+	printf("  -o  --output  <output_dir>                Set output directory (default /tmp)\n");
+	printf("  -c  --config  <config_file>               Set configuration file\n");
+	printf("  -j  --threads <num_threads>               Set how many threads to use (default 1)\n");
+	printf("  -h  --help                                Print this help menu\n");
+	printf("\n");
 }
 
 
@@ -51,10 +51,10 @@ int main(int argc, char *argv[])
 
 	int flag;
 	static struct option long_options[] = {
-		{"help", 	0, 0, 'h'},
-		{"output", 	1, 0, 'o'},
+		{"help",    0, 0, 'h'},
+		{"output",  1, 0, 'o'},
 		{"threads", 1, 0, 'j'},
-		{"config", 	1, 0, 'c'},
+		{"config",  1, 0, 'c'},
 		{NULL, 0, NULL, 0}
 	};
 	
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		ffmpeg_name = "ffmpeg";
-		printf("WARNING: Unable to find 'ffmpeg' command. The video creation will be disabled.\n");	
+		printf("WARNING: Unable to find 'ffmpeg' command. The video creation will be disabled.\n"); 
 	}
 	
 	if (num_threads >= 1)
@@ -136,14 +136,14 @@ int main(int argc, char *argv[])
 
 			
 
-	Simulation			simulation;
-	Pulse				laser;
-	Particle			particle;
-	Laboratory 			        laboratory;
-	ParticleStateGlobal		    particle_state;
-	ParticleStateGlobal		    particle_state_initial;
-	vector<FieldRender>		    field_renders;
-	vector<ResponseAnalysis>	response_analyses;
+	Simulation          simulation;
+	Pulse               laser;
+	Particle            particle;
+	Laboratory                  laboratory;
+	ParticleStateGlobal         particle_state;
+	ParticleStateGlobal         particle_state_initial;
+	vector<FieldRender>         field_renders;
+	vector<ResponseAnalysis>    response_analyses;
 	
 	// Convert the config file to a SI compliant version
 	fs::path cfg_file_si_tmp = fs::temp_directory_path() / fs::unique_path();
@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
 	stream_particle.open(get_filename_particle(output_dir));
 	setup_particle(stream_particle);
 	
-	FunctionNodeEnter        on_node_enter			= [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local) mutable 
+	FunctionNodeEnter        on_node_enter          = [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local) mutable 
 	{
 		output_interaction_dir = output_dir / fs::path((bo::format("i%un%u") % current_interaction % node.id).str());
 		fs::create_directories(output_interaction_dir);
@@ -259,14 +259,14 @@ int main(int argc, char *argv[])
 		setup_interaction(stream_interaction);
 	};
 	
-	FunctionNodeTimeProgress on_node_time_progress	= [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local, Field& field) mutable
+	FunctionNodeTimeProgress on_node_time_progress  = [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local, Field& field) mutable
 	{
 		printf("\rSimulating node: %.16f (i%un%u)", time_local * AU_TIME, current_interaction, node.id);
 		fflush(stdout);
 		write_interaction(stream_interaction, time_local, particle_state, field);
 	};
 	
-	FunctionNodeExit         on_node_exit			= [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local) mutable
+	FunctionNodeExit         on_node_exit           = [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local) mutable
 	{
 		printf("\n");
 		
@@ -284,12 +284,12 @@ int main(int argc, char *argv[])
 		}
 	};
 	
-	FunctionFreeEnter        on_free_enter			= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
+	FunctionFreeEnter        on_free_enter          = [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
 	{
 		write_particle(stream_particle, time_global, particle_state);
 	};
 	
-	FunctionFreeTimeProgress on_free_time_progress	= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
+	FunctionFreeTimeProgress on_free_time_progress  = [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
 	{
 		printf("\rSimulating free: %3.4f%%", (double) time_global / simulation.duration * 100);
 		fflush(stdout);
@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
 		
 	};
 	
-	FunctionFreeExit         on_free_exit			= [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
+	FunctionFreeExit         on_free_exit           = [&](Simulation& simulation, Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global) mutable
 	{
 		write_particle(stream_particle, time_global, particle_state);
 		printf("\n");
@@ -325,12 +325,12 @@ int main(int argc, char *argv[])
 				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 2, *function_field, output_dir);
 		}
 		
-		#pragma omp section	
+		#pragma omp section 
 		{
 				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 1, 3, *function_field, output_dir);
 		}
 		
-		#pragma omp section	
+		#pragma omp section 
 		{
 				render_labmap(laboratory, simulation, laser, summaries_free, summaries_node, 2, 3, *function_field, output_dir);
 		}
@@ -346,10 +346,6 @@ int main(int argc, char *argv[])
 		
 		double base_value_in  = get_attribute(particle, particle_state_initial, laser, analysis.object_in,  analysis.attribute_in);
 		
-		Particle 			an_particle 		= particle;
-		ParticleStateGlobal	an_particle_state	= particle_state_initial;
-		Pulse				an_laser			= laser;
-		
 		vector<double> value_out;
 		vector<double> delta_out;
 		vector<double> perc_out;
@@ -363,6 +359,10 @@ int main(int argc, char *argv[])
 		#pragma omp parallel for shared(output_dir, analysis) ordered
 		for (unsigned int s = 0; s < sn; s++)
 		{
+			Particle            an_particle         = particle;
+			ParticleStateGlobal an_particle_state   = particle_state_initial;
+			Pulse               an_laser            = laser;
+			
 			
 			double perc_in;
 			double delta_in;
@@ -387,10 +387,11 @@ int main(int argc, char *argv[])
 			vector<SimluationResultFreeSummary> an_summaries_free;
 			vector<SimluationResultNodeSummary> an_summaries_node;
 			
-			simulate (simulation, an_laser, an_particle, an_particle_state, laboratory,	an_summaries_free, an_summaries_node, *function_field);
+			simulate (simulation, an_laser, an_particle, an_particle_state, laboratory, an_summaries_free, an_summaries_node, *function_field);
 			
 			for (unsigned int o = 0; o < analysis.attribute_out.size(); o++)
-			{	
+			{   
+				
 				double base_value_out = get_attribute(particle, particle_state, laser, analysis.object_out[o], analysis.attribute_out[o]);
 				
 				value_out.push_back(get_attribute(an_particle, an_particle_state, an_laser, analysis.object_out[o], analysis.attribute_out[o]));

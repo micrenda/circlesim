@@ -216,7 +216,7 @@ void set_attribute(Particle& particle, ParticleStateGlobal& particle_state, Puls
 			double momentum_phi;
 			
 			cartesian_to_spherical<double>(particle_state.momentum_x,	particle_state.momentum_y, particle_state.momentum_z, momentum_theta, momentum_phi);
-			momentum_rho = vector_module<double>(particle_state.position_x,	particle_state.position_y, particle_state.position_z);
+			momentum_rho = vector_module<double>(particle_state.momentum_x,	particle_state.momentum_y, particle_state.momentum_y);
 			
 			if (attribute == "momentum_phi")
 				momentum_phi		= new_value;
