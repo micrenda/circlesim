@@ -208,7 +208,7 @@ void draw_particle(image<rgb_pixel>& image, int count_i, int count_j, ParticleSt
 		for (int j = 0; j < count_j; j++)
 		{
 			int delta_j = j - particle_j;
-			if (delta_i*delta_i + delta_j*delta_j <= particle_radius * particle_radius)
+			if (delta_i*delta_i + delta_j*delta_j < particle_radius * particle_radius)
 			{
 				image[j][i] = color_particle;	
 			}

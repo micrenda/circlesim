@@ -141,6 +141,7 @@ int main(int argc, char *argv[])
 	Particle			particle;
 	Laboratory 			        laboratory;
 	ParticleStateGlobal		    particle_state;
+	ParticleStateGlobal		    particle_state_initial;
 	vector<FieldRender>		    field_renders;
 	vector<ResponseAnalysis>	response_analyses;
 	
@@ -160,6 +161,8 @@ int main(int argc, char *argv[])
 	vector<string> sources;
 	
 	read_config(cfg_file_si_tmp, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, headers, sources);
+	
+	particle_state_initial = particle_state;
 	
 	// Creating output directory
 	fs::path output_dir;
@@ -343,7 +346,7 @@ int main(int argc, char *argv[])
 		fs::create_directories(output_response_dir);
 		
 		Particle 			an_particle 		= particle;
-		ParticleStateGlobal	an_particle_state	= particle_state;
+		ParticleStateGlobal	an_particle_state	= particle_state_initial;
 		Pulse				an_laser			= laser;
 		
 		double base_value_in  = get_attribute(particle, particle_state, laser, analysis.object_in,  analysis.attribute_in);

@@ -739,6 +739,7 @@ void simulate (
 				if (laser.timing_mode == NEAREST)
 				{
 					SimluationResultNodeItem 	nearest_item;
+					nearest_item.local_time = 0.d;
 					double 						nearest_distance = INFINITY;
 					
 					for (SimluationResultNodeItem item: summary_fake.items)
