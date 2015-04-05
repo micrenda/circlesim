@@ -337,7 +337,6 @@ int main(int argc, char *argv[])
 	}
 	
 	// Executing response analyses simulations
-	#pragma omp parallel for shared(output_dir, response_analyses, particle, particle_state, laser)
 	for (unsigned int a = 0; a < response_analyses.size(); a++)
 	{
 		ResponseAnalysis analysis = response_analyses[a];
@@ -359,7 +358,10 @@ int main(int argc, char *argv[])
 		stream_response_analysis.open((output_response_dir / fs::path("response.csv")).string());
 		setup_response_analysis(stream_response_analysis, analysis);
 		
-		for (unsigned int s = 0; s < analysis.change_steps; s++)
+		unsigned int  sn = analysis.change_steps;
+		
+		#pragma omp parallel for shared(output_dir, analysis)
+		for (unsigned int s = 0; s < sn; s++)
 		{
 			
 			double perc_in;
