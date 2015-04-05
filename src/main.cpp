@@ -346,10 +346,6 @@ int main(int argc, char *argv[])
 		
 		double base_value_in  = get_attribute(particle, particle_state_initial, laser, analysis.object_in,  analysis.attribute_in);
 		
-		vector<double> value_out;
-		vector<double> delta_out;
-		vector<double> perct_out;
-		
 		ofstream stream_response_analysis;
 		stream_response_analysis.open((output_response_dir / fs::path("response.csv")).string());
 		setup_response_analysis(stream_response_analysis, analysis);
@@ -389,6 +385,10 @@ int main(int argc, char *argv[])
 			
 			simulate (simulation, an_laser, an_particle, an_particle_state, laboratory, an_summaries_free, an_summaries_node, *function_field);
 			
+			vector<double> value_out;
+			vector<double> delta_out;
+			vector<double> perct_out;
+		
 			for (unsigned int o = 0; o < analysis.attribute_out.size(); o++)
 			{   
 				
