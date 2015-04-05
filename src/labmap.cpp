@@ -310,7 +310,7 @@ void draw_field(image<rgb_pixel>& image, int count_i, int count_j, SimluationRes
 			if (i * i + j * j  < radius * radius)
 			{
 				Field field;
-				get_node_field(field, node, laser, lab_size, i, j, axis_1, axis_2, item.time, function_field);
+				get_node_field(field, node, laser, lab_size, i, j, axis_1, axis_2, item.local_time, function_field);
 				
 				double value     = vector_module(field.e_x, field.e_y, field.e_z);
 				double value_max = limit.e_mod_max;
@@ -385,11 +385,11 @@ void draw_free(image<rgb_pixel> frame_base, SimluationResultFreeSummary& summary
 
 void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationResultNodeSummary& summary_node, LabSize& lab_size, LabMapLimit& limit, int count_i, int count_j, short axis_1, short axis_2, double dt, long unsigned int& t, Pulse& laser, FunctionFieldType function_field, fs::path output_dir)
 {
-	double last_time  = summary_node.items.front().time;
+	double last_time  = summary_node.items.front().local_time;
 
 	for (SimluationResultNodeItem& item: summary_node.items)
 	{
-		double current_time = item.time - last_time;
+		double current_time = item.local_time - last_time;
 		
 		if (current_time >= dt)
 		{
@@ -408,7 +408,7 @@ void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationRe
 				
 			// Drawing particle
 			ParticleStateGlobal state_global;
-			state_local_to_global(state_global, item.state, summary_node.node);
+			state_local_to_global(state_global, item.local_state, summary_node.node);
 			draw_particle(frame, count_i, count_j, state_global, lab_size, axis_1, axis_2);
 			
 			flip_imabe_v(frame, count_i, count_j);
@@ -434,12 +434,12 @@ void get_field_limits(Simulation& simulation, Pulse& laser, LabSize& lab_size, L
 	
 	for (SimluationResultNodeSummary& summary_node: summaries_node)
 	{
-		double last_time  = summary_node.items.front().time;
+		double last_time  = summary_node.items.front().local_time;
 		
 		for (SimluationResultNodeItem& item: summary_node.items)
 		{
 			
-			double current_time = item.time - last_time;
+			double current_time = item.local_time - last_time;
 		
 			if (current_time >= simulation.time_resolution_free)
 			{
@@ -451,7 +451,7 @@ void get_field_limits(Simulation& simulation, Pulse& laser, LabSize& lab_size, L
 						{
 							Field field;
 							
-							get_node_field(field, summary_node.node, laser, lab_size, i, j, axis_1, axis_2, item.time, function_field);
+							get_node_field(field, summary_node.node, laser, lab_size, i, j, axis_1, axis_2, item.local_time, function_field);
 							
 							double e_mod = vector_module(field.e_x, field.e_y, field.e_z);
 							double b_mod = vector_module(field.b_x, field.b_y, field.b_z);
@@ -499,7 +499,7 @@ void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser,
 	{
 		if (f < summaries_free.size() && n < summaries_node.size())
 		{
-			if (summaries_free[f].time_enter < summaries_node[n].time_enter)
+			if (summaries_free[f].time_enter < summaries_node[n].global_time_offset + summaries_node[n].local_time_enter)
 			{
 				draw_free(frame_base, summaries_free[f], lab_size, count_i, count_j, axis_1, axis_2, t, output_dir);
 				f++;

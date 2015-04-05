@@ -201,15 +201,15 @@ void read_config_renders(Setting* field_renders_config, vector<FieldRender>& ren
 			s += "    // Injecting default variables\n";
 			
 			
-			s += (bo::format("    double dx __attribute__ ((unused)) = %.16E;\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
-			s += (bo::format("    double dy __attribute__ ((unused)) = %.16E;\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
-			s += (bo::format("    double dz __attribute__ ((unused)) = %.16E;\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+			s += (bo::format("    double dx 	__attribute__ ((unused)) = %.16E;\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+			s += (bo::format("    double dy 	__attribute__ ((unused)) = %.16E;\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
+			s += (bo::format("    double dz 	__attribute__ ((unused)) = %.16E;\n") % (render.space_resolution / 1000 * AU_LENGTH)).str();
 			
-			s += (bo::format("    double size_x __attribute__ ((unused)) = %.16E;\n") % (render.space_size_x * AU_LENGTH)).str();
-			s += (bo::format("    double size_y __attribute__ ((unused)) = %.16E;\n") % (render.space_size_y * AU_LENGTH)).str();
-			s += (bo::format("    double size_z __attribute__ ((unused)) = %.16E;\n") % (render.space_size_z * AU_LENGTH)).str();
+			s += (bo::format("    double size_x	__attribute__ ((unused)) = %.16E;\n") % (render.space_size_x * AU_LENGTH)).str();
+			s += (bo::format("    double size_y	__attribute__ ((unused)) = %.16E;\n") % (render.space_size_y * AU_LENGTH)).str();
+			s += (bo::format("    double size_z	__attribute__ ((unused)) = %.16E;\n") % (render.space_size_z * AU_LENGTH)).str();
 			
-			s += (bo::format("    double dt __attribute__ ((unused)) = %.16E;\n") % (render.time_resolution  / 1000 * AU_TIME)).str();
+			s += (bo::format("    double dt		__attribute__ ((unused)) = %.16E;\n") % (render.time_resolution  / 1000 * AU_TIME)).str();
 			s += "    // completed\n\n";
 			
 			string formula = render_config["formula"];
@@ -335,6 +335,9 @@ void read_config(
 			}
 		}
 		
+
+		config_laser.lookupValue			("timing_mode",  				parameters.timing_mode)				|| missing_param("timing_mode");
+		config_laser.lookupValue			("timing_offset",  				parameters.timing_offset)			|| missing_param("timing_offset");
 
 		config_particle.lookupValue			("rest_mass",  				parameters.rest_mass)					|| missing_param("rest_mass");
 		config_particle.lookupValue			("charge",  				parameters.charge)						|| missing_param("charge");
@@ -606,6 +609,22 @@ void read_config(
 	laser.params_float		= laser_field_param_map_float;
 	laser.params_string		= laser_field_param_map_string;
 	laser.params_boolean	= laser_field_param_map_boolean;
+	
+	if (parameters.timing_mode == "enter")
+		laser.timing_mode = ENTER;
+	else if (parameters.timing_mode == "nearest")
+		laser.timing_mode = NEAREST;
+	else if (parameters.timing_mode == "exit")
+		laser.timing_mode = EXIT;
+	else
+	{
+		printf("ERROR - timing_mode has unknown values. Allowed values are: enter, nearest, exit'\n");
+		exit(-1);
+		return;
+	}
+	
+	laser.timing_offset = parameters.timing_offset / AU_TIME;
+	
 	
 	
 	// Loading the common functins.

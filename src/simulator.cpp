@@ -75,11 +75,39 @@ int gsl_odeiv_jac (double t, const double y[], double *dfdy, double dfdt[], void
 	return GSL_SUCCESS;
 }
 
+int gsl_odeiv_func_laser_fake(double t, const double y[], double f[], void *params)
+{
+	Particle& 	particle 				= *((gsl_odeiv_custom_params*)params)->particle;
+
+	//double pos_t = C0*t;
+	//double pos_x = y[0];
+	//double pos_y = y[1];
+	//double pos_z = y[2];
+	double mom_x = y[3];
+	double mom_y = y[4];
+	double mom_z = y[5];
+	
+	// In out formulas we use B instead of H and we use the relation B = H/c₀
+	// Formulas (3),(4),(5)
+	
+	// fac =  1/√(1 + p/(c₀m)²) = c₀/√(c₀²+p²)
+	double fac = C0 / sqrt(C0 * C0 + mom_x * mom_x + mom_y * mom_y + mom_z * mom_z);
+	
+	f[0] = fac * mom_x / particle.rest_mass;
+	f[1] = fac * mom_y / particle.rest_mass;
+	f[2] = fac * mom_z / particle.rest_mass;
+	f[3] = 0.d;
+	f[4] = 0.d;
+	f[5] = 0.d;
+
+	return GSL_SUCCESS;
+}
+
 int gsl_odeiv_func_laser(double t, const double y[], double f[], void *params)
 {
 	Pulse& 	 	laser 	  				= *((gsl_odeiv_custom_params*)params)->laser;
 	Particle& 	particle 				= *((gsl_odeiv_custom_params*)params)->particle;
-	FunctionFieldType function_field   = *((gsl_odeiv_custom_params*)params)->function_field;
+	FunctionFieldType function_field    = *((gsl_odeiv_custom_params*)params)->function_field;
 
 	double pos_t = C0*t;
 	double pos_x = y[0];
@@ -140,6 +168,90 @@ int gsl_odeiv_func_free(double t, const double y[], double f[], void *params)
 	return GSL_SUCCESS;
 }
 
+void simulate_node_fake(
+	Simulation& simulation, 
+	Node& node,
+	Particle& particle,
+	ParticleStateLocal& state,
+	double&  local_time_current,
+	unsigned int interaction,
+	SimluationResultNodeSummary& summary)
+{
+	// Trasforming global coordinates to local coordinates
+	
+	
+	summary.local_time_enter = local_time_current;
+
+	gsl_odeiv_custom_params params;
+	params.laser 	  = NULL;
+	params.particle	  = &particle;
+	params.function_field = NULL;
+
+	const gsl_odeiv_step_type* 	step_type 	= gsl_odeiv_step_rk8pd;
+	gsl_odeiv_step* 			steps 		= gsl_odeiv_step_alloc(step_type, 6);
+	gsl_odeiv_control* 			control		= gsl_odeiv_control_y_new (simulation.error_abs, simulation.error_rel);
+	gsl_odeiv_evolve* 			evolve		= gsl_odeiv_evolve_alloc(6);
+	gsl_odeiv_system 			system 		= {gsl_odeiv_func_laser_fake, gsl_odeiv_jac, 6, &params};
+
+	
+	double y[6];
+	y[0] = state.position_x;
+	y[1] = state.position_y;
+	y[2] = state.position_z;
+	y[3] = state.momentum_x;
+	y[4] = state.momentum_y;
+	y[5] = state.momentum_z;
+	
+	
+	while(true)
+	{
+		
+		double local_time_limit		= local_time_current + simulation.time_resolution_laser;
+		double local_time_step		= simulation.time_resolution_laser / 100;
+		
+		while (local_time_current < local_time_limit)
+		{
+			gsl_odeiv_evolve_apply(evolve, control, steps, &system, &local_time_current, local_time_limit, &local_time_step, y);
+		}
+		
+		
+		state.position_x = y[0];
+		state.position_y = y[1];
+		state.position_z = y[2];
+		state.momentum_x = y[3];
+		state.momentum_y = y[4];
+		state.momentum_z = y[5];
+		
+		Field field;
+		field.e_x = 0.d;
+		field.e_y = 0.d;
+		field.e_z = 0.d;
+		field.b_x = 0.d;
+		field.b_y = 0.d;
+		field.b_z = 0.d;
+		
+		SimluationResultNodeItem result;
+		result.local_time		= local_time_current;
+		result.local_state	= state;
+		result.field	= field;
+		summary.items.push_back(result);
+		
+		
+		// Checking if we are outside the laser influence radius.
+		if (!is_in_influence_radius(state, simulation.laser_influence_radius))
+			break;
+		
+	}
+
+
+
+	gsl_odeiv_evolve_free(evolve);
+	gsl_odeiv_control_free(control);
+	gsl_odeiv_step_free(steps);
+	
+	summary.local_time_exit = local_time_current;
+}
+
 
 void simulate_node(
 	Simulation& simulation, 
@@ -156,7 +268,7 @@ void simulate_node(
 	// Trasforming global coordinates to local coordinates
 	
 	
-	summary.time_enter = local_time_current;
+	summary.local_time_enter = local_time_current;
 
 	gsl_odeiv_custom_params params;
 	params.laser 	  = &laser;
@@ -203,13 +315,10 @@ void simulate_node(
 		calculate_fields(local_time_current*C0, y[0], y[1], y[2], laser, field, function_field);
 		
 		if (on_node_time_progress != NULL) on_node_time_progress(simulation, laser, particle, state, interaction, node, local_time_current, field);
-		//TODO:
-		//write_particle(stream_particle, time_current, state);
-		//write_interaction(stream_interaction, time_current, y[0], y[1], y[2], y[3], y[4], y[5], field);
 		
-		SimluationResultLaserItem result;
-		result.time		= local_time_current;
-		result.state	= state;
+		SimluationResultNodeItem result;
+		result.local_time		= local_time_current;
+		result.local_state	= state;
 		result.field	= field;
 		summary.items.push_back(result);
 		
@@ -226,7 +335,7 @@ void simulate_node(
 	gsl_odeiv_control_free(control);
 	gsl_odeiv_step_free(steps);
 	
-	summary.time_exit = local_time_current;
+	summary.local_time_exit = local_time_current;
 }
 
 
@@ -572,6 +681,7 @@ void simulate (
 	
 	long double time_current_global = 0;
 	double      time_current_local;
+	long double time_global_offset;
 	
 	ParticleStateLocal particle_state_local;
 	
@@ -607,7 +717,58 @@ void simulate (
 			current_node = new_node; 
 			Node& node = laboratory.nodes[current_node];
 			
+			
+			
+			// We must to get the new local starting time. If the mode is enter it is very easy
+			if (laser.timing_mode == ENTER)
+			{
+				time_current_local = laser.timing_offset;
+			}
+			else
+			{
+				// To know the correct time local we have to launch a simulation without laser and detect correct value.
+				SimluationResultNodeSummary summary_fake;
+				double time_current_local_fake = 0.d;
+				ParticleStateLocal particle_state_local_fake;
+				state_global_to_local(particle_state_local_fake, particle_state_global, node);
+				
+				simulate_node_fake(simulation, node, particle, particle_state_local_fake, time_current_local_fake, 0, summary_fake);
+				
+				// Now detecting the right time_current_local
+				
+				if (laser.timing_mode == NEAREST)
+				{
+					SimluationResultNodeItem 	nearest_item;
+					double 						nearest_distance = INFINITY;
+					
+					for (SimluationResultNodeItem item: summary_fake.items)
+					{
+						double current_distance = vector_module(item.local_state.position_x, item.local_state.position_y, item.local_state.position_z);
+						if (current_distance < nearest_distance)
+						{
+							nearest_item = item;
+							nearest_distance = current_distance;
+						}
+					}
+					
+					if (nearest_distance == INFINITY)
+					{
+						printf("ERROR - Unable to detect the nearest point for node %d\n", node.id);
+						exit(-6);	
+					}
+					
+					time_current_local = -(nearest_item.local_time-summary_fake.items.front().local_time) + laser.timing_offset;
+				}
+				else if (laser.timing_mode == EXIT)
+				{
+					time_current_local = -(summary_fake.items.back().local_time-summary_fake.items.front().local_time) + laser.timing_offset;
+				}
+			}
+			
+			time_global_offset = time_current_global - time_current_local;
+			
 			state_global_to_local(particle_state_local, particle_state_global, node);
+			
 			if (on_node_enter != NULL) on_node_enter(simulation, laser, particle,  particle_state_local, current_interaction, node, time_current_local);
 		}
 		
@@ -620,9 +781,11 @@ void simulate (
 			
 			SimluationResultNodeSummary summary;
 			summary.node = node;
+			summary.global_time_offset = time_global_offset;
 			simulate_node(simulation, laser, node, particle, particle_state_local, time_current_local, current_interaction, on_node_time_progress, summary, function_field);
 			summaries_node.push_back(summary);	
 			state_local_to_global(particle_state_global, particle_state_local, node);
+			
 			
 			time_current_global += time_current_local - before;
 		}

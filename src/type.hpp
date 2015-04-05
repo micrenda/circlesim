@@ -20,6 +20,7 @@ typedef enum {FREE, NODE, UNKN}					RangeMode;
 typedef enum {XY, XZ, YZ} 						Plane;
 typedef enum {LINEAR, RANDOM} 					ChangeMode;
 typedef enum {PERCENTUAL, ABSOLUTE} 			ValueMode;
+typedef enum {ENTER, NEAREST, EXIT} 			TimingMode;
 
 #define pow2(a) ((a) * (a)) 
 #define pow3(a) ((a) * (a) * (a)) 
@@ -56,6 +57,9 @@ typedef struct Parameters
 	double 			time_resolution_laser;
 	double 			time_resolution_free;
 	double			laser_influence_radius;
+	
+	string			timing_mode;
+	double			timing_offset;
 
 	double 			error_abs;
 	double 			error_rel;
@@ -122,6 +126,8 @@ typedef struct Simulation
 
 typedef struct Pulse
 {
+	TimingMode	timing_mode;
+	double		timing_offset;
 
 	// These are the only parameter that are not converted to A.U. (the main rule is that all values inside the program must be converted to A.U.)
 	map<string, int>	params_int;
@@ -235,18 +241,19 @@ typedef struct ResponseAnalysis
  */
 typedef struct SimluationResultNodeItem
 {
-	double time;
-	ParticleStateLocal state;
+	double local_time;
+	ParticleStateLocal local_state;
 	Field  field; // field at position
 	
-} SimluationResultLaserItem;
+} SimluationResultNodeItem;
 
 typedef struct SimluationResultNodeSummary
 {
 	Node   node;
 	
-	double time_enter;
-	double time_exit;
+	double global_time_offset;
+	double local_time_enter;
+	double local_time_exit;
 	
 	vector<SimluationResultNodeItem> items;
 	

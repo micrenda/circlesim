@@ -39,7 +39,7 @@ string get_conversion_si_unit(string object, string attribute)
 	}
 	else if (object == "laser")
 	{
-		if (attribute == "duration")
+		if (attribute == "timing_offset")
 			return "s";
 		else
 			return "arbitrary";
@@ -79,7 +79,7 @@ double get_conversion_si_value(string object, string attribute)
 	}
 	else if (object == "laser")
 	{
-		if (attribute == "duration")
+		if (attribute == "timing_offset")
 			return AU_TIME;
 		else
 			return 1.d;
@@ -162,7 +162,9 @@ double get_attribute(Particle& particle, ParticleStateGlobal& particle_state, Pu
 	}
 	else if (object == "laser")
 	{
-		if (laser.params_float.find(attribute) != laser.params_float.end())
+		if (attribute == "timing_offset")
+			 return laser.timing_offset;
+		else if (laser.params_float.find(attribute) != laser.params_float.end())
 			return laser.params_float[attribute];
 	}
 	
@@ -261,8 +263,9 @@ void set_attribute(Particle& particle, ParticleStateGlobal& particle_state, Puls
 			error_attribute_unknown(object, attribute);
 	}
 	else if (object == "laser")
-	{
-		if (laser.params_float.find(attribute) != laser.params_float.end())
+	{	if (attribute == "timing_offset")
+			laser.timing_offset = new_value;
+		else if (laser.params_float.find(attribute) != laser.params_float.end())
 			laser.params_float[attribute] = new_value;
 		else
 			error_attribute_unknown(object, attribute);

@@ -315,7 +315,7 @@ void save_field_render_sh(FieldRenderResult& field_render_result, fs::path outpu
 		for (unsigned int t = 0; t < field_render_result.nt; t++)
 		{
 			string basename_time = (bo::format("%s_t%u") % basename_global % t).str();
-			fprintf(file_sh, "ctioga2 --text-separator \\; --load 'field_render_%s_t%u.csv' -f '%s'  --name '%s'\n", field_render.id.c_str() , t, filename_ct.filename().string().c_str(), basename_time.c_str());
+			fprintf(file_sh, "ctioga2 --no-mark --text-separator \\; --load 'field_render_%s_t%u.csv' -f '%s'  --name '%s'\n", field_render.id.c_str() , t, filename_ct.filename().string().c_str(), basename_time.c_str());
 		}
 		fprintf(file_sh, "\n");
 		
@@ -421,9 +421,9 @@ void save_response_analysis_sh(ResponseAnalysis& response_analysis, fs::path out
 		string object_out    = response_analysis.object_out[o];
 		string attribute_out = response_analysis.attribute_out[o];
 		
-		s << bo::format("ctioga2 --text-separator \\; --load 'response.csv' -f 'response_%s_%s_delta.ct2'") % object_out % attribute_out << endl;
-		s << bo::format("ctioga2 --text-separator \\; --load 'response.csv' -f 'response_%s_%s_perc.ct2'" ) % object_out % attribute_out << endl;
-		s << bo::format("ctioga2 --text-separator \\; --load 'response.csv' -f 'response_%s_%s_abs.ct2'"  ) % object_out % attribute_out << endl;
+		s << bo::format("ctioga2 --no-mark --text-separator \\; --load 'response.csv' -f 'response_%s_%s_delta.ct2'") % object_out % attribute_out << endl;
+		s << bo::format("ctioga2 --no-mark --text-separator \\; --load 'response.csv' -f 'response_%s_%s_perc.ct2'" ) % object_out % attribute_out << endl;
+		s << bo::format("ctioga2 --no-mark --text-separator \\; --load 'response.csv' -f 'response_%s_%s_abs.ct2'"  ) % object_out % attribute_out << endl;
 	}
 	
 	system((bo::format("chmod a+x %s") % f.string()).str().c_str());	
