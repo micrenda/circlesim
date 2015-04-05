@@ -344,11 +344,11 @@ int main(int argc, char *argv[])
 		fs::path output_response_dir = output_dir / fs::path("analyses") / fs::path((bo::format("response_%u") % analysis.id).str());
 		fs::create_directories(output_response_dir);
 		
+		double base_value_in  = get_attribute(particle, particle_state_initial, laser, analysis.object_in,  analysis.attribute_in);
+		
 		Particle 			an_particle 		= particle;
 		ParticleStateGlobal	an_particle_state	= particle_state_initial;
 		Pulse				an_laser			= laser;
-		
-		double base_value_in  = get_attribute(particle, particle_state, laser, analysis.object_in,  analysis.attribute_in);
 		
 		vector<double> value_out;
 		vector<double> delta_out;
@@ -360,7 +360,7 @@ int main(int argc, char *argv[])
 		
 		unsigned int  sn = analysis.change_steps;
 		
-		#pragma omp parallel for shared(output_dir, analysis)
+		#pragma omp parallel for shared(output_dir, analysis) ordered
 		for (unsigned int s = 0; s < sn; s++)
 		{
 			
@@ -397,7 +397,10 @@ int main(int argc, char *argv[])
 				delta_out.push_back(value_out[o] - base_value_out);
 				perc_out.push_back(delta_out[o] / base_value_out);
 			}
+			
+			#pragma omp ordered
 			write_response_analysis(stream_response_analysis, analysis, perc_in, delta_in, value_in, perc_out, delta_out, value_out);
+			
 		}
 		
 		stream_response_analysis.close();
