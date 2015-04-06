@@ -228,7 +228,7 @@ typedef struct ResponseAnalysis
 	vector<string>	attribute_out;
 	
 	double 			change_range;
-	double 			change_steps;
+	unsigned int 	change_steps;
 	
 	ChangeMode		change_mode;
 	ValueMode		value_mode;
@@ -377,12 +377,13 @@ typedef struct FieldRenderData
 
 typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int interaction, Node& node, double time_local)>					FunctionNodeEnter; 
 typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int interaction, Node& node, double time_local)>					FunctionNodeExit; 
-typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int interaction, Node& node, double time_local, Field& field)>		FunctionNodeTimeProgress;
-typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)>	FunctionFreeEnter;
-typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 	FunctionFreeExit;
-typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 	FunctionFreeTimeProgress;
+typedef function<void(Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int interaction, Node& node, double time_local, Field& field)>	FunctionNodeTimeProgress;
+typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)>							FunctionFreeEnter;
+typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 							FunctionFreeExit;
+typedef function<void(Simulation& simulation, 				Particle& particle, ParticleStateGlobal& particle_state, Laboratory& laboratory, long double time_global)> 							FunctionFreeTimeProgress;
 
 typedef function<void(double time_local, FieldRenderResult render_result)> 	FunctionFieldRenderCalculated;
+typedef function<void(ResponseAnalysis& analisys, unsigned int step)> 		FunctionResponseAnalysisCalculated;
 
 
 inline bool operator<(const FieldRender& lhs, 		const FieldRender& rhs) 		{ return lhs.id <  rhs.id; }

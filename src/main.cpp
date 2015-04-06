@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
 	
 	FunctionNodeTimeProgress on_node_time_progress  = [&](Simulation& simulation, Pulse& laser, Particle& particle, ParticleStateLocal&  particle_state, unsigned int current_interaction, Node& node, double time_local, Field& field) mutable
 	{
-		printf("\rSimulating node: %.16f (i%un%u)", time_local * AU_TIME, current_interaction, node.id);
+		printf("\rSimulating node: %+.16f (i%un%u)", time_local * AU_TIME, current_interaction, node.id);
 		fflush(stdout);
 		write_interaction(stream_interaction, time_local, particle_state, field);
 	};
@@ -337,76 +337,18 @@ int main(int argc, char *argv[])
 	}
 	
 	// Executing response analyses simulations
+	
 	for (unsigned int a = 0; a < response_analyses.size(); a++)
 	{
-		ResponseAnalysis analysis = response_analyses[a];
-		
-		fs::path output_response_dir = output_dir / fs::path("analyses") / fs::path((bo::format("response_%u") % analysis.id).str());
-		fs::create_directories(output_response_dir);
-		
-		double base_value_in  = get_attribute(particle, particle_state_initial, laser, analysis.object_in,  analysis.attribute_in);
-		
-		ofstream stream_response_analysis;
-		stream_response_analysis.open((output_response_dir / fs::path("response.csv")).string());
-		setup_response_analysis(stream_response_analysis, analysis);
-		
-		unsigned int  sn = analysis.change_steps;
-		
-		#pragma omp parallel for shared(output_dir, analysis) ordered
-		for (unsigned int s = 0; s < sn; s++)
+
+		FunctionResponseAnalysisCalculated on_calculate          = [&](ResponseAnalysis& analisys, unsigned int step) mutable
 		{
-			Particle            an_particle         = particle;
-			ParticleStateGlobal an_particle_state   = particle_state_initial;
-			Pulse               an_laser            = laser;
-			
-			
-			double perct_in;
-			double delta_in;
-			double value_in;
-			
-			if (analysis.value_mode == PERCENTUAL)
-			{
-				perct_in  = -analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
-				delta_in = base_value_in * perct_in;
-				value_in = base_value_in + delta_in;
-			}
-			else
-			{
-				delta_in = -analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
-				perct_in  = delta_in / base_value_in;
-				value_in = base_value_in + delta_in;
-			}
-			
-			
-			set_attribute(an_particle, an_particle_state, an_laser, analysis.object_in, analysis.attribute_in, value_in);
-			
-			vector<SimluationResultFreeSummary> an_summaries_free;
-			vector<SimluationResultNodeSummary> an_summaries_node;
-			
-			simulate (simulation, an_laser, an_particle, an_particle_state, laboratory, an_summaries_free, an_summaries_node, *function_field);
-			
-			vector<double> value_out;
-			vector<double> delta_out;
-			vector<double> perct_out;
+			printf("\rResponse analisys %u: %u/%u", analisys.id, step + 1, analisys.change_steps);
+		};
 		
-			for (unsigned int o = 0; o < analysis.attribute_out.size(); o++)
-			{   
-				
-				double base_value_out = get_attribute(particle, particle_state, laser, analysis.object_out[o], analysis.attribute_out[o]);
-				
-				value_out.push_back(get_attribute(an_particle, an_particle_state, an_laser, analysis.object_out[o], analysis.attribute_out[o]));
-				delta_out.push_back(value_out[o] - base_value_out);
-				perct_out.push_back(delta_out[o] / base_value_out);
-			}
-			
-			#pragma omp ordered
-			write_response_analysis(stream_response_analysis, analysis, perct_in, delta_in, value_in, perct_out, delta_out, value_out);
-			
-		}
+		calculateResponseAnalyses(response_analyses[a], simulation, particle, particle_state_initial, particle_state, laser, laboratory, output_dir, *function_field, on_calculate);
 		
-		stream_response_analysis.close();
-		save_response_analysis_ct2(analysis, output_response_dir);
-		save_response_analysis_sh (analysis, output_response_dir);
+		printf("\n");
 	}
 	
 	

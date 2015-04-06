@@ -738,9 +738,9 @@ void simulate (
 				
 				if (laser.timing_mode == NEAREST)
 				{
-					SimluationResultNodeItem 	nearest_item;
+					SimluationResultNodeItem nearest_item;
 					nearest_item.local_time = 0.d;
-					double 						nearest_distance = INFINITY;
+					double nearest_distance = INFINITY;
 					
 					for (SimluationResultNodeItem item: summary_fake.items)
 					{
@@ -796,6 +796,14 @@ void simulate (
 			simulate_free(simulation, laboratory, particle, particle_state_global, time_current_global, on_free_time_progress, summary);
 			summaries_free.push_back(summary);
 		}
+	}
+	
+	if (current_range == FREE && on_free_exit != NULL) on_free_exit(simulation, particle, particle_state_global, laboratory, time_current_global);
+	
+	if (current_range == NODE)
+	{
+		if (on_node_exit != NULL) on_node_exit (simulation, laser, particle, particle_state_local, current_interaction, laboratory.nodes[current_node], time_current_local);
+			state_local_to_global(particle_state_global, particle_state_local, laboratory.nodes[current_node]);
 	}
 }
 
