@@ -370,6 +370,8 @@ void save_response_analysis_ct2(ResponseAnalysis& response_analysis, fs::path ou
 		s1 << bo::format("name 'response_%s_%s_perc'") % object_out % attribute_out << endl;
 		s1 << bo::format("xlabel '%s'") % xlabel2 << endl;
 		s1 << bo::format("ylabel '%s'") % ylabel2 << endl;
+		s1 << "marker bullet" << endl;
+		s1 << "line-style no" << endl;
 		s1 << "plot @$1*100:$" << offset + 1 << "*100" << endl;
 		s1.close();
 		
@@ -386,6 +388,8 @@ void save_response_analysis_ct2(ResponseAnalysis& response_analysis, fs::path ou
 		s2 << bo::format("name 'response_%s_%s_delta'") % object_out % attribute_out << endl;
 		s2 << bo::format("xlabel '%s'") % xlabel1 << endl;
 		s2 << bo::format("ylabel '%s'") % ylabel1 << endl;
+		s2 << "marker bullet" << endl;
+		s2 << "line-style no" << endl;
 		s2 << "plot @2:" << offset + 2 << endl;
 		s2.close();
 		
@@ -402,6 +406,8 @@ void save_response_analysis_ct2(ResponseAnalysis& response_analysis, fs::path ou
 		s3 << bo::format("name 'response_%s_%s_abs'") % object_out % attribute_out << endl;
 		s3 << bo::format("xlabel '%s'") % xlabel3 << endl;
 		s3 << bo::format("ylabel '%s'") % ylabel3 << endl;
+		s3 << "marker bullet" << endl;
+		s3 << "line-style no" << endl;
 		s3 << "plot @3:" << offset + 3 << endl;
 		s3.close();
 	}
