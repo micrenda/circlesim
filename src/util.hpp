@@ -49,7 +49,7 @@ template <typename T> void unique_spherical_angles(T& theta, T& phi)
 		
 	if (phi < 0)		// Fixing negative values
 	{	
-		phi = 2*M_PI - phi;
+		phi = 2*M_PI + phi;
 	}
 	
 }

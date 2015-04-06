@@ -389,6 +389,7 @@ void save_response_analysis_ct2(ResponseAnalysis& response_analysis, fs::path ou
 		s2 << bo::format("xlabel '%s'") % xlabel1 << endl;
 		s2 << bo::format("ylabel '%s'") % ylabel1 << endl;
 		s2 << "marker bullet" << endl;
+		s2 << "marker-scale 0.15" << endl;
 		s2 << "line-style no" << endl;
 		s2 << "plot @2:" << offset + 2 << endl;
 		s2.close();
