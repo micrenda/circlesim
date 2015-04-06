@@ -341,10 +341,11 @@ int main(int argc, char *argv[])
 	for (unsigned int a = 0; a < response_analyses.size(); a++)
 	{
 		printf("\rResponse analisys %u: %u/%u", response_analyses[a].id, 0, response_analyses[a].change_steps);
-		
+		fflush(cout);
 		FunctionResponseAnalysisCalculated on_calculate          = [&](ResponseAnalysis& analisys, unsigned int step) mutable
 		{
 			printf("\rResponse analisys %u: %u/%u", analisys.id, step + 1, analisys.change_steps);
+			fflush(cout);
 		};
 		
 		calculateResponseAnalyses(response_analyses[a], simulation, particle, particle_state_initial, particle_state, laser, laboratory, output_dir, *function_field, on_calculate);
