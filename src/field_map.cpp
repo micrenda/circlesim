@@ -226,4 +226,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 	// Creating files needed to create the video
 	save_field_render_ct2(field_render_result, output_dir);
 	save_field_render_sh(field_render_result, output_dir);
+	
+	printf("\n");
 }	
