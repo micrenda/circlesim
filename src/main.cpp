@@ -13,6 +13,7 @@
 #include "response.hpp"
 #include "labmap.hpp"
 #include "script.hpp"
+#include "field_map.hpp"
 
 extern string exe_path;
 extern string exe_name;
@@ -224,7 +225,7 @@ int main(int argc, char *argv[])
 		exit(-5);
 	}
 	
-	for (FieldRender render: field_renders)
+	for (FieldRender& render: field_renders)
 	{
 		string function_name = (bo::format("func_field_render_%s") % render.id).str();
 		FunctionRenderType function_render = (FunctionRenderType) dlsym(custom_lib, function_name.c_str());
@@ -318,7 +319,7 @@ int main(int argc, char *argv[])
 	
 	stream_particle.close();
 	
-	#pragma omp parallel sections shared(laboratory, simulation, laser, summaries_free, summaries_node,output_dir)
+	#pragma omp parallel sections shared(summaries_free, summaries_node)
 	{
 		#pragma omp section
 		{
@@ -340,17 +341,21 @@ int main(int argc, char *argv[])
 	
 	for (unsigned int a = 0; a < response_analyses.size(); a++)
 	{
-		printf("\rResponse analisys %u: %u/%u", response_analyses[a].id, 0, response_analyses[a].change_steps);
-		fflush(stdout);
-		FunctionResponseAnalysisCalculated on_calculate          = [&](ResponseAnalysis& analisys, unsigned int step) mutable
+		ResponseAnalysis& analysis = response_analyses[a];
+		
+		if (analysis.enabled)
 		{
-			printf("\rResponse analisys %u: %u/%u", analisys.id, step + 1, analisys.change_steps);
+			printf("\rResponse analisys %u: %u/%u", analysis.id, 0, analysis.steps);
 			fflush(stdout);
-		};
-		
-		calculateResponseAnalyses(response_analyses[a], simulation, particle, particle_state_initial, particle_state, laser, laboratory, output_dir, *function_field, on_calculate);
-		
-		printf("\n");
+			FunctionResponseAnalysisCalculated on_calculate          = [&](ResponseAnalysis& analisys, unsigned int step) mutable
+			{
+				printf("\rResponse analisys %u: %u/%u", analisys.id, step + 1, analisys.steps);
+				fflush(stdout);
+			};
+			
+			calculateResponseAnalyses(analysis, simulation, particle, particle_state_initial, particle_state, laser, laboratory, output_dir, *function_field, on_calculate);
+			printf("\n");
+		}
 	}
 	
 	

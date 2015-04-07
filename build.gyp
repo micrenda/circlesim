@@ -16,7 +16,8 @@
 				'src/util.cpp',
 				'src/response.cpp',
 				'src/labmap.cpp',
-				'src/script.cpp'
+				'src/script.cpp',
+				'src/field_map.cpp'
 			],
 		
 			'libraries': 	['-fopenmp', '-lgsl', '-lgslcblas', '-lconfig++', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-larmadillo' , '-ldl', '-lpng12'],	

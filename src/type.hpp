@@ -103,6 +103,8 @@ typedef struct Parameters
 	double initial_energy_phi;
 
 	unsigned int 	nodes;
+	
+	bool response_analyses_enabled;
 
 } Parameters;
 
@@ -220,6 +222,7 @@ typedef struct Laboratory
 typedef struct ResponseAnalysis
 {
 	unsigned int	id;
+	bool			enabled;
 	
 	string 			object_in;
 	string 			attribute_in;
@@ -227,8 +230,10 @@ typedef struct ResponseAnalysis
 	vector<string> 	object_out;
 	vector<string>	attribute_out;
 	
-	double 			change_range;
-	unsigned int 	change_steps;
+	double 			change_from;
+	double 			change_to;
+	
+	unsigned int 	steps;
 	
 	ChangeMode		change_mode;
 	ValueMode		value_mode;

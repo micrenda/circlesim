@@ -404,7 +404,7 @@ void read_config(
 		config_simulation.lookupValue	("max_labmap_full",  		parameters.max_labmap_full)			|| missing_param("max_labmap_full");
 		config_simulation.lookupValue	("func_commons",  			parameters.func_commons)			|| missing_param("func_commons");
 
-
+		config_response_analyses.lookupValue ("enabled",  			parameters.response_analyses_enabled)	|| missing_param("response_analyses_enabled");
 		
 		static const bo::regex e_node("^node\\_([0-9]+)$");
 		for (int i = 0; i < config_laboratory.getLength(); i++)
@@ -464,7 +464,7 @@ void read_config(
 		}
 		
 		static const bo::regex e_resp1("^analysis\\_([0-9]+)$");
-		static const bo::regex e_resp2("^\\s*analyze\\s+([a-zA-Z\\_\\s,]+)\\s+when\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+changes\\s+by\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s*(\\%?)\\s+in\\s+([0-9]+)\\s+steps\\s*$");
+		static const bo::regex e_resp2("^\\s*analyze\\s+([a-zA-Z\\_\\s,]+)\\s+when\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+([a-zA-Z\\_]+)\\s+changes\\s+(by\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s*(\\%?))?(between\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s*(\\%?)\\s+and\\s+([-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?)\\s*(\\%?))?\\s+in\\s+([0-9]+)\\s+steps\\s*$");
 		
 		for (int i = 0; i < config_response_analyses.getLength(); i++)
 		{
@@ -481,6 +481,7 @@ void read_config(
 				{
 					ResponseAnalysis response_analysis;
 					response_analysis.id = stoi(what1[1]);
+					response_analysis.enabled = parameters.response_analyses_enabled;
 					
 					string last_object = "";
 					
@@ -541,18 +542,51 @@ void read_config(
 					}
 					
 					
-					if (what2[7] == "%")
+					if (what2[5] != "" && what2[9] == "")
 					{
-						response_analysis.value_mode    = PERCENTUAL;
-						response_analysis.change_range	= stod(what2[5]) / 100.d;
+						if (what2[8] == "%")
+						{
+							response_analysis.value_mode    = PERCENTUAL;
+							response_analysis.change_from	= -stod(what2[6]) / 100.d;
+							response_analysis.change_to		= +stod(what2[6]) / 100.d;
+						}
+						else
+						{
+							response_analysis.value_mode    = ABSOLUTE;
+							response_analysis.change_from	= -stod(what2[6]) / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
+							response_analysis.change_to		= +stod(what2[6]) / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
+						}
+					}
+					else if (what2[5] == "" && what2[9] != "")
+					{
+						if (what2[12] == "%" && what2[15] == "%")
+						{
+							response_analysis.value_mode    = PERCENTUAL;
+							response_analysis.change_from	= stod(what2[10])  / 100.d;
+							response_analysis.change_to		= stod(what2[13]) / 100.d;
+						}
+						else if (what2[12] == "" && what2[15] == "")
+						{
+							response_analysis.value_mode    = ABSOLUTE;
+							response_analysis.change_from	= stod(what2[10])  / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
+							response_analysis.change_to		= stod(what2[13]) / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
+						}
+						else
+						{
+							printf("ERROR - Error in %s syntax: when using between, both elements must be percentual or absolute values.\n", config_analysis.getName());
+							exit(-1);
+							return;
+						}
 					}
 					else
 					{
-						response_analysis.value_mode    = ABSOLUTE;
-						response_analysis.change_range	= stod(what2[5]) / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
+						printf("ERROR - Error in %s syntax: we must have one 'by' clause or 'between' clause.\n", config_analysis.getName());
+						exit(-1);
+						return;
 					}
 					
-					response_analysis.change_steps	= stoi(what2[8]);
+					
+					response_analysis.steps	= stoi(what2[16]);
 					response_analyses.push_back(response_analysis);
 				}
 				else
@@ -561,13 +595,15 @@ void read_config(
 					printf("Allowed format are:\n");
 					printf("  analyze particle <attribute> when <object> <attribute> linearly changes by <value> in <n> steps\n");
 					printf("  analyze particle <attribute> when <object> <attribute> randomly changes by <value> in <n> steps\n");
+					printf("  analyze particle <attribute> when <object> <attribute> linearly changes between <value_1> and <value_2> in <n> steps\n");
+					printf("  analyze particle <attribute> when <object> <attribute> randomly changes between <value_1> and <value_2> in <n> steps\n");
 					printf("Provided format was:\n");
 					printf("  %s\n", analysis_expression.c_str());
 					exit(-1);
 					return;
 				}
 			}
-			else
+			else if (string(config_analysis.getName()) != "enabled")
 			{
 				printf("ERROR - Wrong '%s' parameter name. Allowed format is: analysis_<1-9999>\n", config_analysis.getName());
 				exit(-1);

@@ -33,7 +33,7 @@ void plot_interaction_files(fs::path output_dir)
 	fs::path interaction_file   = output_dir / fs::path("interaction.csv");
 	fs::path field_file         = output_dir / fs::path("field.csv");
 	
-	#pragma omp parallel sections shared(interaction_file, output_dir)
+	#pragma omp parallel sections
 	{
 	// Plotting position
 		#pragma omp section

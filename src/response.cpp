@@ -292,7 +292,7 @@ void calculateResponseAnalyses(
 	FunctionFieldType 	function_field,
 	FunctionResponseAnalysisCalculated&  on_calculate)
 {
-	fs::path output_response_dir = output_dir / fs::path("analyses") / fs::path((bo::format("response_%u") % analysis.id).str());
+	fs::path output_response_dir = output_dir / fs::path("analyses") / fs::path((bo::format("response_%u_by_%s_%s") % analysis.id % analysis.object_in % analysis.attribute_in).str());
 	fs::create_directories(output_response_dir);
 	
 	double base_value_in  = get_attribute(particle, particle_state_initial, laser, analysis.object_in,  analysis.attribute_in);
@@ -301,7 +301,7 @@ void calculateResponseAnalyses(
 	stream_response_analysis.open((output_response_dir / fs::path("response.csv")).string());
 	setup_response_analysis(stream_response_analysis, analysis);
 	
-	unsigned int  sn = analysis.change_steps;
+	unsigned int  sn = analysis.steps;
 	
 	// It is important to use schedule(static, 1) becouse in this way we ensure than for sn=50 and 4 cores we have these group of work (s=0,s=1,s=2, s=3) at t=0, (s=4,s=5,s=6, s=7) at t=1, etc. This will reduce time in the ordered section below
 	#pragma omp parallel for ordered schedule(static, 1)
@@ -318,14 +318,14 @@ void calculateResponseAnalyses(
 		
 		if (analysis.value_mode == PERCENTUAL)
 		{
-			perct_in  = -analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
+			perct_in = analysis.change_from + (analysis.change_to - analysis.change_from) / analysis.steps * s;
 			delta_in = base_value_in * perct_in;
 			value_in = base_value_in + delta_in;
 		}
 		else
 		{
-			delta_in = -analysis.change_range + (analysis.change_range * 2) / analysis.change_steps * s;
-			perct_in  = delta_in / base_value_in;
+			delta_in = analysis.change_from + (analysis.change_to - analysis.change_from) / analysis.steps * s;
+			perct_in = delta_in / base_value_in;
 			value_in = base_value_in + delta_in;
 		}
 		
