@@ -62,20 +62,17 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			field_render_result.nb = nj;
 			field_render_result.length_a = field_render.space_size_x;
 			field_render_result.length_b = field_render.space_size_y;
-		
+			
+			#pragma omp parallel for ordered schedule(static, 1)
 			for (unsigned int t = 0; t < nt; t++)
 			{
-				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
-				fflush(stdout);
-				
-				
 				double time = start_t + t * field_render.time_resolution;
 				
 				FieldRenderData data;
 				data.t = t;
 				data.values = new double**[ni];
 				
-				#pragma omp parallel for shared(data)
+				
 				for (unsigned int i = 0; i < ni; i++)
 				{
 					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
@@ -107,6 +104,10 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 					delete [] data.values[s2];
 				}
 				delete []  data.values;
+				
+				#pragma omp ordered
+				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
+				fflush(stdout);
 			}
 		break;
 		
@@ -118,18 +119,15 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			field_render_result.length_a = field_render.space_size_x;
 			field_render_result.length_b = field_render.space_size_z;
 		
+			#pragma omp parallel for ordered schedule(static, 1)
 			for (unsigned int t = 0; t < nt; t++)
 			{
-				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
-				fflush(stdout);
-				
 				double time = start_t + t * field_render.time_resolution;
 				
 				FieldRenderData data;
 				data.t = t;
 				data.values = new double**[ni];
 				
-				#pragma omp parallel for shared(data)
 				for (unsigned int i = 0; i < ni; i++)
 				{
 					double x = -field_render.space_size_x/2 + field_render.space_resolution * i;
@@ -161,6 +159,10 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 					delete [] data.values[s2];
 				}
 				delete [] data.values;
+				
+				#pragma omp ordered
+				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
+				fflush(stdout);
 			}
 		break;
 		
@@ -171,19 +173,17 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			field_render_result.nb = nk;
 			field_render_result.length_a = field_render.space_size_y;
 			field_render_result.length_b = field_render.space_size_z;
-		
+			
+			#pragma omp parallel for ordered schedule(static, 1)
 			for (unsigned int t = 0; t < nt; t++)
 			{
-				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
-				fflush(stdout);
-				
 				double time = start_t + t * field_render.time_resolution;
 				
 				FieldRenderData data;
 				data.t = t;
 				data.values = new double**[nj];
 				
-				#pragma omp parallel for shared(data)
+				
 				for (unsigned int j = 0; j < nj; j++)
 				{
 					double y = -field_render.space_size_y/2 + field_render.space_resolution * j;
@@ -214,6 +214,10 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 					delete [] data.values[s2];
 				}
 				delete [] data.values;
+				
+				#pragma omp ordered
+				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
+				fflush(stdout);
 			}
 		break;
 		
