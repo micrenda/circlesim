@@ -165,7 +165,7 @@ double get_attribute(Particle& particle, ParticleStateGlobal& particle_state, Pu
 	else if (object == "laser")
 	{
 		if (attribute == "timing_offset")
-			 return laser.timing_offset;
+			return laser.timing_offset;
 		else if (laser.params_float.find(attribute) != laser.params_float.end())
 			return laser.params_float[attribute];
 	}

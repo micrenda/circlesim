@@ -185,8 +185,17 @@ void draw_base(image<rgb_pixel>& image_base, int count_i, int count_j, Simulatio
 			{
 				int delta_j = center_j - j;
 				
-				if (vector_module(delta_i, delta_j, 0) == radius)
+				// Draw circle border
+				int module = vector_module(delta_i, delta_j, 0);
+				if (module == radius)
 					image_base[j][i] = color_fg;
+				
+				// Draw cross in the center
+				if ((abs(delta_i) <= radius / 10 && center_j == j) || (abs(delta_j) <= radius / 10 && center_i == i))
+					image_base[j][i] = color_fg;
+				
+					
+					
 			}	
 		}
 	}
@@ -216,30 +225,6 @@ void draw_particle(image<rgb_pixel>& image, int count_i, int count_j, ParticleSt
 	}
 }
 
-void draw_node_center(image<rgb_pixel>& image, int count_i, int count_j, Node& node, LabSize& lab_size, short axis_1, short axis_2)
-{
-	const rgb_pixel pixel_particle = color_bg;
-	
-	double center_1, center_2;
-	get_node_center(node, axis_1, axis_2, center_1, center_2);
-	
-	int i = get_i(lab_size, center_1);
-	int j = get_j(lab_size, center_2);
-	
-	if (i >= 0 && i < count_i && j > 0 && j < count_j)
-	{
-		image[j][i] = pixel_particle;
-	
-		if (i >= 1)
-			image[j][i-1] = pixel_particle;
-		if (i <= count_i - 1)
-			image[j][i+1] = pixel_particle;
-		if (j >= 1)
-			image[j-1][i] = pixel_particle;
-		if (j <= count_j - 1)
-			image[j+1][i] = pixel_particle;
-	}
-}
 
 void get_node_field(Field& field, Node& node, Pulse& laser, LabSize& lab_size, int i, int j, short axis_1, short axis_2, double local_time, FunctionFieldType function_field)
 {
@@ -309,24 +294,28 @@ void draw_field(image<rgb_pixel>& image, int count_i, int count_j, SimluationRes
 		{
 			if (i * i + j * j  < radius * radius)
 			{
-				Field field;
-				get_node_field(field, node, laser, lab_size, i, j, axis_1, axis_2, item.local_time, function_field);
-				
-				double value     = vector_module(field.e_x, field.e_y, field.e_z);
-				double value_max = limit.e_mod_max;
-				
-				unsigned short red   = 0xff;
-				unsigned short green = 0xff;
-				unsigned short blue  = 0xff;
-				
-				if (value_max > 0)
+				rgb_pixel current_color = image[global_center_j+j][global_center_i+i];
+				if (current_color.red == color_bg.red && current_color.green == color_bg.green && current_color.blue == color_bg.blue)
 				{
-					red   = 255 - round(0xff * value/value_max);
-					green = 255 - round(0x7f * value/value_max);
-					blue  = 255 - round(0x00 * value/value_max);
+					Field field;
+					get_node_field(field, node, laser, lab_size, i, j, axis_1, axis_2, item.local_time, function_field);
+					
+					double value     = vector_module(field.e_x, field.e_y, field.e_z);
+					double value_max = limit.e_mod_max;
+					
+					unsigned short red   = 0xff;
+					unsigned short green = 0xff;
+					unsigned short blue  = 0xff;
+					
+					if (value_max > 0)
+					{
+						red   = 255 - round(0xff * value/value_max);
+						green = 255 - round(0x7f * value/value_max);
+						blue  = 255 - round(0x00 * value/value_max);
+					}
+					
+					image[global_center_j+j][global_center_i+i] = rgb_pixel(red, green, blue);
 				}
-				
-				image[global_center_j+j][global_center_i+i] = rgb_pixel(red, green, blue);
 			}
 		}
 	}
@@ -402,9 +391,6 @@ void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationRe
 					
 			// Drawing fields
 			draw_field(frame, count_i, count_j, item, summary_node.node, limit, lab_size, axis_1, axis_2, simulation, laser, function_field);
-			
-			// Draw node center
-			draw_node_center(frame, count_i, count_j, summary_node.node, lab_size, axis_1, axis_2);
 				
 			// Drawing particle
 			ParticleStateGlobal state_global;

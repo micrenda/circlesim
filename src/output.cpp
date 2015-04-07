@@ -94,7 +94,7 @@ void setup_response_analysis(ofstream& stream, ResponseAnalysis& response_analys
 }
 
 
-void write_response_analysis(ofstream& stream, ResponseAnalysis& response_analysis, double perc_in,  double delta_in, double value_in, vector<double> perc_out, vector<double> delta_out, vector<double> value_out)
+void write_response_analysis(ofstream& stream, ResponseAnalysis& response_analysis, double perc_in,  double delta_in, double value_in, vector<double> perct_out, vector<double> delta_out, vector<double> value_out)
 {
 	double unit_in  = get_conversion_si_value(response_analysis.object_in,  response_analysis.attribute_in);
 	
@@ -109,7 +109,7 @@ void write_response_analysis(ofstream& stream, ResponseAnalysis& response_analys
 		double unit_out = get_conversion_si_value(response_analysis.object_out[o], response_analysis.attribute_out[o]);
 		
 		stream
-			<< perc_out[o]				<< ";"
+			<< perct_out[o]				<< ";"
 			<< delta_out[o] * unit_out	<< ";"
 			<< value_out[o] * unit_out	<< ";";
 	}
