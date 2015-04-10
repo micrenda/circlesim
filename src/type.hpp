@@ -64,8 +64,8 @@ typedef struct Parameters
 	double 			error_abs;
 	double 			error_rel;
 	
-	unsigned int 	max_labmap_size;
-	bool		 	max_labmap_full;
+	unsigned int 	labmap_max_size;
+	bool		 	labmap_full;
 
 	string func_commons;
 	string func_fields;
@@ -121,8 +121,8 @@ typedef struct Simulation
 	double 			error_abs;
 	double 			error_rel;
 	
-	unsigned int 	max_labmap_size;
-	bool		 	max_labmap_full;
+	unsigned int 	labmap_max_size;
+	bool		 	labmap_full;
 	
 } Simulation;
 

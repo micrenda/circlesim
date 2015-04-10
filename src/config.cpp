@@ -400,8 +400,8 @@ void read_config(
 		config_simulation.lookupValue	("time_resolution_free",	parameters.time_resolution_free)	|| missing_param("time_resolution_free");
 		config_simulation.lookupValue	("duration",  				parameters.simulation_duration)		|| missing_param("duration (simulation)");
 		config_simulation.lookupValue	("laser_influence_radius",  parameters.laser_influence_radius)	|| missing_param("laser_influence_radius");
-		config_simulation.lookupValue	("max_labmap_size",  		parameters.max_labmap_size)			|| missing_param("max_labmap_size");
-		config_simulation.lookupValue	("max_labmap_full",  		parameters.max_labmap_full)			|| missing_param("max_labmap_full");
+		config_simulation.lookupValue	("labmap_max_size",  		parameters.labmap_max_size)			|| missing_param("labmap_max_size");
+		config_simulation.lookupValue	("labmap_full",  			parameters.labmap_full)				|| missing_param("labmap_full");
 		config_simulation.lookupValue	("func_commons",  			parameters.func_commons)			|| missing_param("func_commons");
 
 		config_response_analyses.lookupValue ("enabled",  			parameters.response_analyses_enabled)	|| missing_param("response_analyses_enabled");
@@ -637,7 +637,8 @@ void read_config(
 	}
 	
 	simulation.laser_influence_radius	= parameters.laser_influence_radius	/ AU_LENGTH;
-	simulation.max_labmap_size			= parameters.max_labmap_size;
+	simulation.labmap_max_size			= parameters.labmap_max_size;
+	simulation.labmap_full				= parameters.labmap_full;
 	simulation.duration					= parameters.simulation_duration 	/ AU_TIME;
 
 	

@@ -6,39 +6,57 @@
 
 using namespace png;
 
-typedef struct LabSize
+typedef struct LabSizeGlobal
+{
+	double min_x;
+	double max_x;
+	double size_x;
+	
+	double min_y;
+	double max_y;
+	double size_y;
+	
+	double min_z;
+	double max_z;
+	double size_z;
+	
+	double dr;
+} LabSizeGlobal;
+
+typedef struct LabSizePlane
 {
 	double min_1;
 	double min_2;
+	
 	double max_1;
 	double max_2;
 
 	double size_1;
-	double size_2 ;
+	double size_2;
 	
 	double dr;
-} LabSize;
+} LabSizePlane;
 
 const rgb_pixel color_fg 		= rgb_pixel(63, 63, 63);
 const rgb_pixel color_bg  		= rgb_pixel(255, 255, 255);
 const rgb_pixel color_particle 	= rgb_pixel(255, 0, 100);
 
-int get_i(LabSize& lab_size, double position)
+int get_i(LabSizePlane& lab_size, double position)
 {
 	return trunc((position - lab_size.min_1)/lab_size.dr);
 }
 
-int get_j(LabSize& lab_size, double position)
+int get_j(LabSizePlane& lab_size, double position)
 {
 	return trunc((position - lab_size.min_2)/lab_size.dr);
 }
 
-double get_position_1(LabSize& lab_size, double pixel)
+double get_position_1(LabSizePlane& lab_size, double pixel)
 {
 	return lab_size.min_1 + pixel * lab_size.dr;
 }
 
-double get_position_2(LabSize& lab_size, double pixel)
+double get_position_2(LabSizePlane& lab_size, double pixel)
 {
 	return lab_size.min_2 + pixel * lab_size.dr;
 }
@@ -101,67 +119,130 @@ void get_particle_position(ParticleStateGlobal& state, short axis_1, short axis_
 	}
 }
 
-void compute_lab_limits(Laboratory& laboratory, Simulation& simulation, vector<SimluationResultFreeSummary>& summaries_free, short axis_1, short axis_2, LabSize& lab_size)
+void compute_lab_limits(Laboratory& laboratory, Simulation& simulation, vector<SimluationResultFreeSummary>& summaries_free, LabSizeGlobal& lab_size)
 {
-	lab_size.min_1 = +INFINITY;
-	lab_size.min_2 = +INFINITY;
-	lab_size.max_1 = -INFINITY;
-	lab_size.max_2 = -INFINITY;
+	lab_size.min_x = +INFINITY;
+	lab_size.min_y = +INFINITY;
+	lab_size.min_z = +INFINITY;
+	
+	lab_size.max_x = -INFINITY;
+	lab_size.max_y = -INFINITY;
+	lab_size.max_z = -INFINITY;
 
 	for (Node& node: laboratory.nodes)
 	{
-		double center_1;
-		double center_2;
-		 
-		get_node_center(node, axis_1, axis_2, center_1, center_2);
-		
-		if (lab_size.min_1 > center_1)
-			lab_size.min_1 = center_1;
-		if (lab_size.min_2 > center_2)
-			lab_size.min_2 = center_2;
-		if (lab_size.max_1 < center_1)
-			lab_size.max_1 = center_1;
-		if (lab_size.max_2 < center_2)
-			lab_size.max_2 = center_2;	
+		if (lab_size.min_x > node.position_x)
+			lab_size.min_x = node.position_x;
+		if (lab_size.min_y > node.position_y)
+			lab_size.min_y = node.position_y;
+		if (lab_size.min_z > node.position_z)
+			lab_size.min_z = node.position_z;
+			
+		if (lab_size.max_x < node.position_x)
+			lab_size.max_x = node.position_x;
+		if (lab_size.max_y < node.position_y)
+			lab_size.max_y = node.position_y;
+		if (lab_size.max_z < node.position_z)
+			lab_size.max_z = node.position_z;	
 	}
 	
-	if (simulation.max_labmap_full)
+	if (simulation.labmap_full)
 	{
 		for (SimluationResultFreeSummary& summary_free: summaries_free)
 		{
 			for (SimluationResultFreeItem& item: summary_free.items)
 			{
-				double position_1, position_2;
-				get_particle_position(item.state, axis_1, axis_2, position_1, position_2);
-			
-				if (lab_size.min_1 > position_1)
-					lab_size.min_1 = position_1;
-				if (lab_size.min_2 > position_2)
-					lab_size.min_2 = position_2;
-				if (lab_size.max_1 < position_1)
-					lab_size.max_1 = position_1;
-				if (lab_size.max_2 < position_2)
-					lab_size.max_2 = position_2;	
+				ParticleStateGlobal& state = item.state;
+				
+				if (lab_size.max_x < state.position_x)
+					lab_size.max_x = state.position_x;
+				if (lab_size.max_y < state.position_y)
+					lab_size.max_y = state.position_y;
+				if (lab_size.max_z < state.position_z)
+					lab_size.max_z = state.position_z;		
 			}
 		}
 	}
 	
-	lab_size.min_1 -= 2.0 * simulation.laser_influence_radius;
-	lab_size.min_2 -= 2.0 * simulation.laser_influence_radius;
-	lab_size.max_1 += 2.0 * simulation.laser_influence_radius;
-	lab_size.max_2 += 2.0 * simulation.laser_influence_radius;
+	lab_size.min_x -= 2.0 * simulation.laser_influence_radius;
+	lab_size.min_y -= 2.0 * simulation.laser_influence_radius;
+	lab_size.min_z -= 2.0 * simulation.laser_influence_radius;
 	
-	lab_size.size_1 = lab_size.max_1 - lab_size.min_1;
-	lab_size.size_2 = lab_size.max_2 - lab_size.min_2;
+	lab_size.max_x += 2.0 * simulation.laser_influence_radius;
+	lab_size.max_y += 2.0 * simulation.laser_influence_radius;
+	lab_size.max_z += 2.0 * simulation.laser_influence_radius;
 	
-	if (lab_size.size_1 >= lab_size.size_2)
-		lab_size.dr = lab_size.size_1 / simulation.max_labmap_size;
-	else
-		lab_size.dr = lab_size.size_2 / simulation.max_labmap_size;
+	lab_size.size_x = lab_size.max_x - lab_size.min_x;
+	lab_size.size_y = lab_size.max_y - lab_size.min_y;
+	lab_size.size_z = lab_size.max_z - lab_size.min_z;
 	
+	lab_size.dr = max(max(lab_size.size_x, lab_size.size_y), lab_size.size_z) / simulation.labmap_max_size;
 }
 
-void draw_base(image<rgb_pixel>& image_base, int count_i, int count_j, Simulation& simulation, Laboratory& laboratory, LabSize& lab_size, short axis_1, short axis_2)
+bool inside_lab_size(ParticleStateGlobal& state, LabSizeGlobal& lab_size)
+{
+	bool inside = true;
+	
+	inside &= state.position_x >= lab_size.min_x && state.position_x <= lab_size.max_x;
+	inside &= state.position_y >= lab_size.min_y && state.position_y <= lab_size.max_y;
+	inside &= state.position_z >= lab_size.min_z && state.position_z <= lab_size.max_z;
+	
+	return inside;
+}
+
+LabSizePlane get_lab_size(LabSizeGlobal& global, short axis_1, short axis_2)
+{
+	LabSizePlane plane;
+	
+	switch(axis_1)
+	{
+		case 1:
+			plane.min_1	 = global.min_x;
+			plane.max_1	 = global.max_x;
+			plane.size_1 = global.size_x;
+		break;
+		
+		case 2:
+			plane.min_1	 = global.min_y;
+			plane.max_1	 = global.max_y;
+			plane.size_1 = global.size_y;
+		break;
+		
+		case 3:
+			plane.min_1	 = global.min_z;
+			plane.max_1	 = global.max_z;
+			plane.size_1 = global.size_z;
+		break;
+	}
+	
+	switch(axis_2)
+	{
+		case 1:
+			plane.min_2	 = global.min_x;
+			plane.max_2	 = global.max_x;
+			plane.size_2 = global.size_x;
+		break;
+		
+		case 2:
+			plane.min_2	 = global.min_y;
+			plane.max_2	 = global.max_y;
+			plane.size_2 = global.size_y;
+		break;
+		
+		case 3:
+			plane.min_2	 = global.min_z;
+			plane.max_2	 = global.max_z;
+			plane.size_2 = global.size_z;
+		break;
+	}
+	
+	plane.dr = global.dr;
+	
+	return plane;
+}
+
+
+void draw_base(image<rgb_pixel>& image_base, int count_i, int count_j, Simulation& simulation, Laboratory& laboratory, LabSizePlane& lab_size, short axis_1, short axis_2)
 {
 	for (int i = 0; i < count_i; i++)
 		for (int j = 0; j < count_j; j++)
@@ -201,7 +282,7 @@ void draw_base(image<rgb_pixel>& image_base, int count_i, int count_j, Simulatio
 	}
 }
 
-void draw_particle(image<rgb_pixel>& image, int count_i, int count_j, ParticleStateGlobal& state, LabSize& lab_size, short axis_1, short axis_2)
+void draw_particle(image<rgb_pixel>& image, int count_i, int count_j, ParticleStateGlobal& state, LabSizePlane& lab_size, short axis_1, short axis_2)
 {
 	double position_1, position_2;
 	get_particle_position(state, axis_1, axis_2, position_1, position_2);
@@ -226,7 +307,7 @@ void draw_particle(image<rgb_pixel>& image, int count_i, int count_j, ParticleSt
 }
 
 
-void get_node_field(Field& field, Node& node, Pulse& laser, LabSize& lab_size, int i, int j, short axis_1, short axis_2, double local_time, FunctionFieldType function_field)
+void get_node_field(Field& field, Node& node, Pulse& laser, LabSizePlane& lab_size, int i, int j, short axis_1, short axis_2, double local_time, FunctionFieldType function_field)
 {
 	double local_position_x;
 	double local_position_y;
@@ -278,7 +359,7 @@ void get_node_field(Field& field, Node& node, Pulse& laser, LabSize& lab_size, i
 }
 
 
-void draw_field(image<rgb_pixel>& image, int count_i, int count_j, SimluationResultNodeItem& item, Node& node, LabMapLimit& limit, LabSize& lab_size, short axis_1, short axis_2, Simulation& simulation, Pulse& laser, FunctionFieldType function_field)
+void draw_field(image<rgb_pixel>& image, int count_i, int count_j, SimluationResultNodeItem& item, Node& node, LabMapLimit& limit, LabSizePlane& lab_size, short axis_1, short axis_2, Simulation& simulation, Pulse& laser, FunctionFieldType function_field)
 {
 	double center_1, center_2;
 	get_node_center(node, axis_1, axis_2, center_1, center_2);
@@ -352,27 +433,30 @@ void flip_imabe_v(image<rgb_pixel>& image, int count_i, int count_j)
 	}
 }
 
-void draw_free(image<rgb_pixel> frame_base, SimluationResultFreeSummary& summary_free, LabSize& lab_size, int count_i, int count_j, short axis_1, short axis_2, long unsigned int& t, fs::path output_dir)
+void draw_free(image<rgb_pixel> frame_base, SimluationResultFreeSummary& summary_free, LabSizePlane& lab_size, int count_i, int count_j, short axis_1, short axis_2, long unsigned int& t, Simulation& simulation, LabSizeGlobal& lab_size_global, fs::path output_dir)
 {
 	for (SimluationResultFreeItem& item: summary_free.items)
 	{
-		image<rgb_pixel> frame(count_i, count_j);
-		
-		for (int i = 0; i < count_i; i++)
-			for (int j = 0; j < count_j; j++)
-				frame[j][i] = frame_base[j][i];
-				
-		draw_particle(frame, count_i, count_j, item.state, lab_size, axis_1, axis_2);
-		
-		flip_imabe_v(frame, count_i, count_j);
-		
-		frame.write((output_dir / fs::path((bo::format("labmap_%s%s_t%u.png") % get_axis(axis_1) % get_axis(axis_2) % t).str())).string());
-		
-		t++;
+		if (simulation.labmap_full || inside_lab_size(item.state, lab_size_global))
+		{
+			image<rgb_pixel> frame(count_i, count_j);
+			
+			for (int i = 0; i < count_i; i++)
+				for (int j = 0; j < count_j; j++)
+					frame[j][i] = frame_base[j][i];
+					
+			draw_particle(frame, count_i, count_j, item.state, lab_size, axis_1, axis_2);
+			
+			flip_imabe_v(frame, count_i, count_j);
+			
+			frame.write((output_dir / fs::path((bo::format("labmap_%s%s_t%u.png") % get_axis(axis_1) % get_axis(axis_2) % t).str())).string());
+			
+			t++;
+		}
 	}
 }
 
-void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationResultNodeSummary& summary_node, LabSize& lab_size, LabMapLimit& limit, int count_i, int count_j, short axis_1, short axis_2, double dt, long unsigned int& t, Pulse& laser, FunctionFieldType function_field, fs::path output_dir)
+void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationResultNodeSummary& summary_node, LabSizePlane& lab_size, LabMapLimit& limit, int count_i, int count_j, short axis_1, short axis_2, double dt, long unsigned int& t, Pulse& laser, FunctionFieldType function_field, fs::path output_dir)
 {
 	double last_time  = summary_node.items.front().local_time;
 
@@ -408,7 +492,7 @@ void draw_node(image<rgb_pixel> frame_base, Simulation& simulation, SimluationRe
 }
 
 
-void get_field_limits(Simulation& simulation, Pulse& laser, LabSize& lab_size, LabMapLimit& limit, vector<SimluationResultNodeSummary>& summaries_node, short axis_1, short axis_2, FunctionFieldType function_field)
+void get_field_limits(Simulation& simulation, Pulse& laser, LabSizePlane& lab_size, LabMapLimit& limit, vector<SimluationResultNodeSummary>& summaries_node, short axis_1, short axis_2, FunctionFieldType function_field)
 {
 	limit.e_mod_min = +INFINITY;
 	limit.b_mod_min = +INFINITY;
@@ -460,9 +544,11 @@ void get_field_limits(Simulation& simulation, Pulse& laser, LabSize& lab_size, L
 void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser, vector<SimluationResultFreeSummary>& summaries_free, vector<SimluationResultNodeSummary>& summaries_node, short axis_1, short axis_2, FunctionFieldType function_field, fs::path output_dir)
 {
 	
-	LabSize lab_size;
-	compute_lab_limits(laboratory, simulation, summaries_free, axis_1, axis_2, lab_size);
+	LabSizeGlobal lab_size_global;
+	compute_lab_limits(laboratory, simulation, summaries_free, lab_size_global);
 	
+	LabSizePlane lab_size = get_lab_size(lab_size_global, axis_1, axis_2);
+
 	int count_i = trunc(lab_size.size_1 / lab_size.dr);
 	int count_j = trunc(lab_size.size_2 / lab_size.dr);
 	
@@ -487,7 +573,7 @@ void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser,
 		{
 			if (summaries_free[f].time_enter < summaries_node[n].global_time_offset + summaries_node[n].local_time_enter)
 			{
-				draw_free(frame_base, summaries_free[f], lab_size, count_i, count_j, axis_1, axis_2, t, output_dir);
+				draw_free(frame_base, summaries_free[f], lab_size, count_i, count_j, axis_1, axis_2, t, simulation, lab_size_global, output_dir);
 				f++;
 			}
 			else
@@ -498,7 +584,7 @@ void render_labmap(Laboratory& laboratory, Simulation& simulation, Pulse& laser,
 		}
 		else if (f < summaries_free.size())
 		{
-			draw_free(frame_base, summaries_free[f], lab_size, count_i, count_j, axis_1, axis_2, t, output_dir);
+			draw_free(frame_base, summaries_free[f], lab_size, count_i, count_j, axis_1, axis_2, t, simulation, lab_size_global, output_dir);
 			f++;
 		}
 		else if (n < summaries_node.size())

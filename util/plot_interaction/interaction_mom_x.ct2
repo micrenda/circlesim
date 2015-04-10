@@ -1,4 +1,4 @@
 title 'Local momentum'
-plot @1:5
+plot @1:8
 xlabel '$t$ [$s$]'
 ylabel '$x$ [$N*m/s$]'
