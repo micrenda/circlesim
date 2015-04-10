@@ -32,6 +32,33 @@ bool wrong_param(string param, string message)
 	return true;
 }
 
+
+void inject_laser_variables(string& s, Pulse& laser, bool hide_unused)
+{
+	
+	string v_attr = "";
+	if (hide_unused)
+		v_attr = "__attribute__ ((unused))";
+	
+	s += "// Injecting laser attributes\n";
+	for (map<string,int>::iterator	entry = laser.params_int.begin(); entry != laser.params_int.end(); ++entry) 
+		s += (bo::format("    int    %s % -12s\t= %d;\n") 		% v_attr % entry->first % entry->second).str();
+	for (map<string,long>::iterator	entry = laser.params_int64.begin(); entry != laser.params_int64.end(); ++entry) 
+		s += (bo::format("    long   %s % -12s\t= %l;\n") 		% v_attr % entry->first % entry->second).str();
+	for (map<string,double>::iterator	entry = laser.params_float.begin(); entry != laser.params_float.end(); ++entry) 
+		s += (bo::format("    double %s % -12s\t= %.16E;\n") 	% v_attr % entry->first % entry->second).str();
+	for (map<string,string>::iterator	entry = laser.params_string.begin(); entry != laser.params_string.end(); ++entry)
+	{
+		string value = entry->second;
+		bo::replace_all(value, "\"", "\\\"");
+		s += (bo::format("    string %s % -12s\t= %s;\n") 		% v_attr % entry->first % value).str();
+	}
+	for (map<string,bool>::iterator	entry = laser.params_boolean.begin(); entry != laser.params_boolean.end(); ++entry) 
+		s += (bo::format("    bool %s % -12s\t= %s;\n") 		% v_attr % entry->first % (entry->second ? "true" : "false")).str();
+	s += "// completed\n\n";	
+	
+}
+
 void init_position_and_momentum(Parameters& parameters, Particle& particle, Laboratory& laboratory, ParticleStateGlobal& state_global)
 {
 
@@ -116,7 +143,7 @@ void init_position_and_momentum(Parameters& parameters, Particle& particle, Labo
 	}
 }
 
-void read_config_renders(Setting* field_renders_config, vector<FieldRender>& renders, vector<string>& headers, vector<string>& sources)
+void read_config_renders(Setting* field_renders_config, vector<FieldRender>& renders, vector<string>& headers, vector<string>& sources, Pulse& laser)
 {
 	try 
 	{
@@ -211,6 +238,9 @@ void read_config_renders(Setting* field_renders_config, vector<FieldRender>& ren
 			
 			s += (bo::format("    double dt		__attribute__ ((unused)) = %.16E;\n") % (render.time_resolution  / 1000 * AU_TIME)).str();
 			s += "    // completed\n\n";
+			
+			
+			inject_laser_variables(s, laser, true);
 			
 			string formula = render_config["formula"];
 			s += (bo::format("%s\n") % (formula)).str();
@@ -675,22 +705,8 @@ void read_config(
 	
 	string s = (bo::format("Field field(double t, double x, double y, double z)\n")).str();
 	s += "{\n";
-	s += "// Injecting external variables\n";
-	for (map<string,int>::iterator	entry = laser.params_int.begin(); entry != laser.params_int.end(); ++entry) 
-		s += (bo::format("    int    % -12s\t= %d;\n") 		% entry->first % entry->second).str();
-	for (map<string,long>::iterator	entry = laser.params_int64.begin(); entry != laser.params_int64.end(); ++entry) 
-		s += (bo::format("    long   % -12s\t= %l;\n") 		% entry->first % entry->second).str();
-	for (map<string,double>::iterator	entry = laser.params_float.begin(); entry != laser.params_float.end(); ++entry) 
-		s += (bo::format("    double % -12s\t= %.16E;\n") 	% entry->first % entry->second).str();
-	for (map<string,string>::iterator	entry = laser.params_string.begin(); entry != laser.params_string.end(); ++entry)
-	{
-		string value = entry->second;
-		bo::replace_all(value, "\"", "\\\"");
-		s += (bo::format("    string % -12s\t= %s;\n") 		% entry->first % value).str();
-	}
-	for (map<string,bool>::iterator	entry = laser.params_boolean.begin(); entry != laser.params_boolean.end(); ++entry) 
-		s += (bo::format("    bool % -12s\t= %s;\n") 		% entry->first % (entry->second ? "true" : "false")).str();
-	s += "// completed\n\n";
+	
+	inject_laser_variables(s, laser, false);
 	
 	s += parameters.func_fields + "\n";
 	s += "}\n";
@@ -705,7 +721,7 @@ void read_config(
 	particle.charge 					= parameters.charge    				/ AU_CHARGE;
 	
 	Setting& field_renders_setting = config->lookup("field_renders");
-	read_config_renders(&field_renders_setting, field_renders, headers, sources);
+	read_config_renders(&field_renders_setting, field_renders, headers, sources, laser);
 
 	delete config;
 	
