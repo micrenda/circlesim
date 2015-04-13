@@ -312,20 +312,25 @@ void save_field_render_sh(FieldRenderResult& field_render_result, fs::path outpu
 		fprintf(file_sh, "\n");
 		
 		fprintf(file_sh, "echo \"Running ctioga2 ...\"\n");
+		fprintf(file_sh, "parallel <<EOF\n");
 		for (unsigned int t = 0; t < field_render_result.nt; t++)
 		{
 			string basename_time = (bo::format("%s_t%u") % basename_global % t).str();
 			fprintf(file_sh, "ctioga2 --no-mark --text-separator \\; --load 'field_render_%s_t%u.csv' -f '%s'  --name '%s'\n", field_render.id.c_str() , t, filename_ct.filename().string().c_str(), basename_time.c_str());
 		}
+		fprintf(file_sh, "EOF\n");
 		fprintf(file_sh, "\n");
 		
 		fprintf(file_sh, "echo \"Running pdftoppm ...\"\n");
+		fprintf(file_sh, "parallel <<EOF\n");
 		for (unsigned int t = 0; t < field_render_result.nt; t++)
 		{
 			string basename_time = (bo::format("%s_t%u") % basename_global % t).str();
 			fprintf(file_sh, (bo::format("pdftoppm -png -scale-to 1080 -singlefile '%s.pdf' '%s'\n") % basename_time % basename_time).str().c_str());
 		}
+		fprintf(file_sh, "EOF\n");
 		fprintf(file_sh, "\n");
+		
 		fprintf(file_sh, (bo::format("rm %s_t*.pdf\n") % basename_global).str().c_str());
 		fprintf(file_sh, "\n");
 

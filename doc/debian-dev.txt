@@ -14,7 +14,7 @@ BUILD:
 EXECUTION:
 	build-essential
 	java >= 6
-
+	parallel
 
 PLOTTING:
 	ctioga2
