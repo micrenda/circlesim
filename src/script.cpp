@@ -56,7 +56,7 @@ void build_auxiliary_library(vector<string>& headers, vector<string>& sources, f
 	// building
 	string cmd = (bo::format("g++ -std=c++11 -g -Wall -shared -fPIC -o %s %s -lm") % filename_so.string() % filename_cpp.string()).str();
 	
-	cout << bo::format("Building '%s' with cmd:") % filename_cpp.filename().string() << endl;
+	cout << bo::format("Building '%s' with cmd:") % filename_so.filename().string() << endl;
 	cout << "-----------------------------------------------------------" << endl;
 	cout << cmd << endl;
 	cout << "-----------------------------------------------------------" << endl;
