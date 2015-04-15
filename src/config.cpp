@@ -40,7 +40,7 @@ void inject_laser_variables(string& s, Pulse& laser, bool hide_unused)
 	if (hide_unused)
 		v_attr = "__attribute__ ((unused))";
 	
-	s += "// Injecting laser attributes\n";
+	s += "    // Injecting laser attributes\n";
 	for (map<string,int>::iterator	entry = laser.params_int.begin(); entry != laser.params_int.end(); ++entry) 
 		s += (bo::format("    int    %s % -12s\t= %d;\n") 		% v_attr % entry->first % entry->second).str();
 	for (map<string,long>::iterator	entry = laser.params_int64.begin(); entry != laser.params_int64.end(); ++entry) 
@@ -55,7 +55,7 @@ void inject_laser_variables(string& s, Pulse& laser, bool hide_unused)
 	}
 	for (map<string,bool>::iterator	entry = laser.params_boolean.begin(); entry != laser.params_boolean.end(); ++entry) 
 		s += (bo::format("    bool %s % -12s\t= %s;\n") 		% v_attr % entry->first % (entry->second ? "true" : "false")).str();
-	s += "// completed\n\n";	
+	s += "    // completed\n\n";	
 	
 }
 
