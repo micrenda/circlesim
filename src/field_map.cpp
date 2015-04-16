@@ -91,7 +91,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 						}
 					}
 				}
-				
 				save_field_render_data(field_render_result, data, output_dir);
 				
 				// Freeing the allocated memory
@@ -146,7 +145,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 						}
 					}
 				}
-				
 				save_field_render_data(field_render_result, data, output_dir);
 				
 				// Freeing the allocated memory
