@@ -41,20 +41,42 @@ void inject_laser_variables(string& s, Pulse& laser, bool hide_unused)
 		v_attr = "__attribute__ ((unused))";
 	
 	s += "    // Injecting laser attributes\n";
-	for (map<string,int>::iterator	entry = laser.params_int.begin(); entry != laser.params_int.end(); ++entry) 
-		s += (bo::format("    int    %s % -12s\t= %d;\n") 		% v_attr % entry->first % entry->second).str();
-	for (map<string,long>::iterator	entry = laser.params_int64.begin(); entry != laser.params_int64.end(); ++entry) 
-		s += (bo::format("    long   %s % -12s\t= %l;\n") 		% v_attr % entry->first % entry->second).str();
-	for (map<string,double>::iterator	entry = laser.params_float.begin(); entry != laser.params_float.end(); ++entry) 
-		s += (bo::format("    double %s % -12s\t= %.16E;\n") 	% v_attr % entry->first % entry->second).str();
-	for (map<string,string>::iterator	entry = laser.params_string.begin(); entry != laser.params_string.end(); ++entry)
+	for (map<string,int>::iterator	entry = laser.params.params_int.begin(); entry != laser.params.params_int.end(); ++entry) 
+		s += (bo::format("    const int    %s % -12s\t= %d;\n") 		% v_attr % entry->first % entry->second).str();
+	for (map<string,long>::iterator	entry = laser.params.params_int64.begin(); entry != laser.params.params_int64.end(); ++entry) 
+		s += (bo::format("    const long   %s % -12s\t= %l;\n") 		% v_attr % entry->first % entry->second).str();
+	for (map<string,double>::iterator	entry = laser.params.params_float.begin(); entry != laser.params.params_float.end(); ++entry) 
+		s += (bo::format("    const double %s % -12s\t= %.16E;\n") 	% v_attr % entry->first % entry->second).str();
+	for (map<string,string>::iterator	entry = laser.params.params_string.begin(); entry != laser.params.params_string.end(); ++entry)
 	{
 		string value = entry->second;
 		bo::replace_all(value, "\"", "\\\"");
-		s += (bo::format("    string %s % -12s\t= %s;\n") 		% v_attr % entry->first % value).str();
+		s += (bo::format("    const string %s % -12s\t= %s;\n") 		% v_attr % entry->first % value).str();
 	}
-	for (map<string,bool>::iterator	entry = laser.params_boolean.begin(); entry != laser.params_boolean.end(); ++entry) 
-		s += (bo::format("    bool %s % -12s\t= %s;\n") 		% v_attr % entry->first % (entry->second ? "true" : "false")).str();
+	for (map<string,bool>::iterator	entry = laser.params.params_boolean.begin(); entry != laser.params.params_boolean.end(); ++entry) 
+		s += (bo::format("    const bool   %s % -12s\t= %s;\n") 		% v_attr % entry->first % (entry->second ? "true" : "false")).str();
+	s += "    // completed\n\n";	
+	
+}
+
+void link_laser_variables(string& s, Pulse& laser, bool hide_unused)
+{
+	
+	string v_attr = "";
+	if (hide_unused)
+		v_attr = "__attribute__ ((unused))";
+	
+	s += "    // Linking laser attributes\n";
+	for (map<string,int>::iterator	entry = laser.params.params_int.begin(); entry != laser.params.params_int.end(); ++entry) 
+		s += (bo::format("    const int&    %s % -12s\t= params.params_int.at(\"%s\");\n") 		% v_attr % entry->first % entry->first).str();
+	for (map<string,long>::iterator	entry = laser.params.params_int64.begin(); entry != laser.params.params_int64.end(); ++entry) 
+		s += (bo::format("    const long&   %s % -12s\t= params.params_int64.at(\"%s\");\n") 		% v_attr % entry->first % entry->first).str();
+	for (map<string,double>::iterator	entry = laser.params.params_float.begin(); entry != laser.params.params_float.end(); ++entry) 
+		s += (bo::format("    const double& %s % -12s\t= params.params_float.at(\"%s\");\n") 	% v_attr % entry->first 	% entry->first).str();
+	for (map<string,string>::iterator	entry = laser.params.params_string.begin(); entry != laser.params.params_string.end(); ++entry)
+		s += (bo::format("    const string& %s % -12s\t= params.params_string.at(\"%s\");\n") 		% v_attr % entry->first % entry->first).str();
+	for (map<string,bool>::iterator	entry = laser.params.params_boolean.begin(); entry != laser.params.params_boolean.end(); ++entry) 
+		s += (bo::format("    const bool&   %s % -12s\t= params.params_boolean.at(\"%s\");\n") 		% v_attr % entry->first % entry->first).str();
 	s += "    // completed\n\n";	
 	
 }
@@ -672,10 +694,10 @@ void read_config(
 	simulation.duration					= parameters.simulation_duration 	/ AU_TIME;
 
 	
-	laser.params_int64		= laser_field_param_map_int64;
-	laser.params_float		= laser_field_param_map_float;
-	laser.params_string		= laser_field_param_map_string;
-	laser.params_boolean	= laser_field_param_map_boolean;
+	laser.params.params_int64		= laser_field_param_map_int64;
+	laser.params.params_float		= laser_field_param_map_float;
+	laser.params.params_string		= laser_field_param_map_string;
+	laser.params.params_boolean		= laser_field_param_map_boolean;
 	
 	if (parameters.timing_mode == "enter")
 		laser.timing_mode = ENTER;
@@ -700,19 +722,30 @@ void read_config(
 	
 	
 	// Loading field function
-	headers.push_back("extern \"C\" Field field(double t, double x, double y, double z);");
+	
+	headers.push_back("extern \"C\" Field field(double t, double x, double y, double z, const PulseParams& params);");
 	
 	
-	string s = (bo::format("Field field(double t, double x, double y, double z)\n")).str();
-	s += "{\n";
+	string s1 = "// This function is only for internal use\n";
+	s1 += (bo::format("Field field(double t, double x, double y, double z)\n")).str();
+	s1 += "{\n";
 	
-	inject_laser_variables(s, laser, false);
+	inject_laser_variables(s1, laser, false);
 	
-	s += parameters.func_fields + "\n";
-	s += "}\n";
+	s1 += parameters.func_fields + "\n";
+	s1 += "}\n";
 	
-	sources.push_back(s);
+	sources.push_back(s1);
 		
+	string s2 = (bo::format("Field field(double t, double x, double y, double z, const PulseParams& params)\n")).str();
+	s2 += "{\n";
+	
+	link_laser_variables(s2, laser, false);
+	
+	s2 += parameters.func_fields + "\n";
+	s2 += "}\n";
+	
+	sources.push_back(s2);
 
 	
 	

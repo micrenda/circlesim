@@ -48,7 +48,7 @@ void calculate_fields(double pos_t, double pos_x, double pos_y, double pos_z, co
 	double param_y				=	pos_y 			* AU_LENGTH;
 	double param_z				=	pos_z 			* AU_LENGTH;
   
-	field = function_field(param_time, param_x, param_y, param_z);
+	field = function_field(param_time, param_x, param_y, param_z, laser.params);
 
 	field.e_x /= AU_ELECTRIC_FIELD; 
 	field.e_y /= AU_ELECTRIC_FIELD;

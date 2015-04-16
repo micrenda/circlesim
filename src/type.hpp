@@ -126,17 +126,21 @@ typedef struct Simulation
 	
 } Simulation;
 
-typedef struct Pulse
+typedef struct PulseParams
 {
-	TimingMode	timing_mode;
-	double		timing_offset;
-
 	// These are the only parameter that are not converted to A.U. (the main rule is that all values inside the program must be converted to A.U.)
 	map<string, int>	params_int;
 	map<string, long>	params_int64;
 	map<string, double> params_float;
 	map<string, string> params_string;
 	map<string, bool>	params_boolean;
+} PulseParams;
+
+typedef struct Pulse
+{
+	TimingMode	timing_mode;
+	double		timing_offset;
+	PulseParams params;
 } Pulse;
 
 typedef struct Field
@@ -283,7 +287,7 @@ typedef struct SimluationResultFreeSummary
 	vector<SimluationResultFreeItem> items;
 } SimluationResultFreeSummary;
 
-typedef Field          (*FunctionFieldType) (double t, double x, double y, double z);
+typedef Field          (*FunctionFieldType) (double t, double x, double y, double z, const PulseParams& params);
 typedef vector<double> (*FunctionRenderType)(double t, double x, double y, double z);
 
 typedef struct FieldRender

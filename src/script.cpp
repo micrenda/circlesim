@@ -21,8 +21,7 @@ void build_auxiliary_library(vector<string>& headers, vector<string>& sources, f
 	{
 		cpp << source				<< endl;
 	}
-	cpp << "extern \"C\" double test(double a, double b) { return a + b; }" << endl;
-	
+
 	cpp.close();
 	
 	// Writing hpp
@@ -33,6 +32,7 @@ void build_auxiliary_library(vector<string>& headers, vector<string>& sources, f
 	hpp << "using namespace std;" 	<< endl;
 	hpp << "" 						<< endl;
 	hpp << "#include <vector>" 		<< endl;
+	hpp << "#include <map>" 		<< endl;
 	hpp << "" 						<< endl;
 	hpp << "" 						<< endl;
 	hpp << "typedef struct Field" 	<< endl;
@@ -46,6 +46,15 @@ void build_auxiliary_library(vector<string>& headers, vector<string>& sources, f
 	hpp << "	double b_z;"		<< endl;
 	hpp << "} Field;"				<< endl;
 	hpp << ""						<< endl;
+	hpp << "typedef struct PulseParams"				<< endl;
+	hpp << "{"										<< endl;
+	hpp << "	// These are the only parameter that are not converted to A.U. (the main rule is that all values inside the program must be converted to A.U.)" << endl;
+	hpp << "	map<string, int>	params_int;"	<< endl;
+	hpp << "	map<string, long>	params_int64;"	<< endl;
+	hpp << "	map<string, double> params_float;"	<< endl;
+	hpp << "	map<string, string> params_string;"	<< endl;
+	hpp << "	map<string, bool>	params_boolean;"	<< endl;
+	hpp << "} PulseParams;"	<< endl;
 	
 	for (string header: headers)
 	{
