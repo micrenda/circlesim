@@ -22,18 +22,18 @@ double momentum_to_energy_kinetic(double rest_mass, double momentum)
 
 double energy_total_to_momentum(double rest_mass, double energy)
 {
-	//	We use these formule to find the relativistic momentum:
-	// 	p = mv		E=mc²		where m = m₀ + mₖ
-	//	We define these two units:
-	//	β = v/c  			γ = 1 / √(1-v²/c²)
-	//	Combining the last two definitions we get
-	//  β = √(1-1/γ²)		γ = 1 / √(1-β²) 
+	//  We use these formule to find the relativistic momentum:
+	//  p = mv      E=mc²       where m = m₀ + mₖ
+	//  We define these two units:
+	//  β = v/c             γ = 1 / √(1-v²/c²)
+	//  Combining the last two definitions we get
+	//  β = √(1-1/γ²)       γ = 1 / √(1-β²) 
 	
 	
 	// Let's start:
 	//   p = mv = m₀γv = m₀γcβ
 	// Extracting γ from E we get:
-	//   γ = Ε/(m₀c)
+	//   γ = Ε/(m₀c²)
 	double gamma = energy / (rest_mass * C0 * C0);
 	// So now we know all except β. We can extract it from gamma using previous relations
 	//   β = √(1-1/γ²)
@@ -44,19 +44,19 @@ double energy_total_to_momentum(double rest_mass, double energy)
 
 double momentum_to_energy_total(double rest_mass, double momentum)
 {
-	//	We use these formule to find the relativistic momentum:
-	// 	p = mv		E=mc²		where m = m₀ + mₖ
-	//	We define these two units:
-	//	β = v/c  			γ = 1 / √(1-v²/c²)
-	//	Combining the last two definitions we get
-	//  β = √(1-1/γ²)		γ = 1 / √(1-β²) 
+	//  We use these formule to find the relativistic momentum:
+	//  p = mv      E=mc²       where m = m₀ + mₖ
+	//  We define these two units:
+	//  β = v/c             γ = 1 / √(1-v²/c²)
+	//  Combining the last two definitions we get
+	//  β = √(1-1/γ²)       γ = 1 / √(1-β²) 
 	
 	// Let's start:
 	//   E = mc² = m₀γc²
 	// Extracting γ from p we get:
-	// γ =  √(1+(p/(m₀c²))²) defining ζ = p/(m₀c²)
+	// γ =  √{1+[p/(m₀c)]²}, or defining ζ = p/(m₀c) we have γ =  √{1+ζ²}
 	//
-	double zeta = momentum / (rest_mass * C0 * C0);
+	double zeta = momentum / (rest_mass * C0);
 	double gamma = sqrt(1 + zeta * zeta);
 	// We now can get E
 	return rest_mass * gamma * C0 * C0;
@@ -128,8 +128,8 @@ void state_local_to_global(ParticleStateGlobal& state_global, ParticleStateLocal
  */
 //string format_with_suffix()
 //{
-//	
-//	}
+//  
+//  }
 
 
 
