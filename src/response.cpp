@@ -307,17 +307,24 @@ void calculateResponseAnalyses(
 		double delta_in;
 		double value_in;
 		
-		if (analysis.value_mode == PERCENTUAL)
+		
+		if (analysis.value_type == PERCENTUAL)
 		{
 			perct_in = analysis.change_from + (analysis.change_to - analysis.change_from) / analysis.steps * s;
 			delta_in = base_value_in * perct_in;
 			value_in = base_value_in + delta_in;
 		}
-		else
+		else if (analysis.value_type == VALUE_RELATIVE)
 		{
 			delta_in = analysis.change_from + (analysis.change_to - analysis.change_from) / analysis.steps * s;
 			perct_in = delta_in / base_value_in;
 			value_in = base_value_in + delta_in;
+		}
+		else if (analysis.value_type == VALUE_ABSOLUTE)
+		{
+			value_in = analysis.change_from + (analysis.change_to - analysis.change_from) / analysis.steps * s;
+			delta_in = value_in - base_value_in;
+			perct_in = delta_in / base_value_in;
 		}
 		
 		

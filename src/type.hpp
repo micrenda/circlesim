@@ -16,11 +16,11 @@ namespace fs = boost::filesystem;
 namespace ba = boost::algorithm;
 namespace bo = boost;
 
-typedef enum {FREE, NODE, UNKN}					RangeMode;
-typedef enum {XY, XZ, YZ} 						Plane;
-typedef enum {LINEAR, RANDOM} 					ChangeMode;
-typedef enum {PERCENTUAL, ABSOLUTE} 			ValueMode;
-typedef enum {ENTER, NEAREST, EXIT} 			TimingMode;
+typedef enum {FREE, NODE, UNKN}								RangeMode;
+typedef enum {XY, XZ, YZ} 									Plane;
+typedef enum {LINEAR, RANDOM} 								ResponseChangeType;
+typedef enum {PERCENTUAL, VALUE_RELATIVE, VALUE_ABSOLUTE} 	ResponseValueType;
+typedef enum {ENTER, NEAREST, EXIT} 						TimingMode;
 
 #define pow2(a) ((a) * (a)) 
 #define pow3(a) ((a) * (a) * (a)) 
@@ -239,8 +239,9 @@ typedef struct ResponseAnalysis
 	
 	unsigned int 	steps;
 	
-	ChangeMode		change_mode;
-	ValueMode		value_mode;
+	ResponseChangeType	change_type;
+	ResponseValueType	value_type;
+	
 } ResponseAnalysis;
 
 

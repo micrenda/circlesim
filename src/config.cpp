@@ -583,9 +583,9 @@ void read_config(
 					response_analysis.attribute_in	= what2[3];
 					
 					if (what2[4] == "linearly")
-						response_analysis.change_mode		= LINEAR;
+						response_analysis.change_type		= LINEAR;
 					else if (what2[4] == "randomly")
-						response_analysis.change_mode		= RANDOM;
+						response_analysis.change_type		= RANDOM;
 					else
 					{
 						printf("ERROR - Wrong value for '%s' expression. Allowed mode are: 'linerly' or 'randomly' but '%s' was found.\n", config_analysis.getName(), string(what2[4]).c_str());
@@ -598,13 +598,13 @@ void read_config(
 					{
 						if (what2[8] == "%")
 						{
-							response_analysis.value_mode    = PERCENTUAL;
+							response_analysis.value_type    = PERCENTUAL;
 							response_analysis.change_from	= -stod(what2[6]) / 100.d;
 							response_analysis.change_to		= +stod(what2[6]) / 100.d;
 						}
 						else
 						{
-							response_analysis.value_mode    = ABSOLUTE;
+							response_analysis.value_type    = VALUE_RELATIVE;
 							response_analysis.change_from	= -stod(what2[6]) / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
 							response_analysis.change_to		= +stod(what2[6]) / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
 						}
@@ -613,14 +613,14 @@ void read_config(
 					{
 						if (what2[12] == "%" && what2[15] == "%")
 						{
-							response_analysis.value_mode    = PERCENTUAL;
-							response_analysis.change_from	= stod(what2[10])  / 100.d;
+							response_analysis.value_type    = PERCENTUAL;
+							response_analysis.change_from	= stod(what2[10]) / 100.d;
 							response_analysis.change_to		= stod(what2[13]) / 100.d;
 						}
 						else if (what2[12] == "" && what2[15] == "")
 						{
-							response_analysis.value_mode    = ABSOLUTE;
-							response_analysis.change_from	= stod(what2[10])  / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
+							response_analysis.value_type    = VALUE_ABSOLUTE;
+							response_analysis.change_from	= stod(what2[10]) / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
 							response_analysis.change_to		= stod(what2[13]) / get_conversion_si_value(response_analysis.object_in, response_analysis.attribute_in);
 						}
 						else
