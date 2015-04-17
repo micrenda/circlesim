@@ -326,7 +326,11 @@ void calculateResponseAnalyses(
 			delta_in = value_in - base_value_in;
 			perct_in = delta_in / base_value_in;
 		}
-		
+		else
+		{
+			printf("ERROR - unexpected value for value_type\n");
+			exit(-1);	
+		}
 		
 		set_attribute(an_particle, an_particle_state, an_laser, analysis.object_in, analysis.attribute_in, value_in);
 		
