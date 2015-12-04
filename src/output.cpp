@@ -10,7 +10,6 @@ void setup_particle(ofstream& stream)
 	stream.setf(ios::scientific);
 	stream.precision(16);
 	stream
-		<< "#"
 		<< "time" 					<< ";" 
 		<< "position_x" 			<< ";" 
 		<< "position_y" 			<< ";"
@@ -25,7 +24,6 @@ void setup_node(ofstream& stream)
 	stream.setf(ios::scientific);
 	stream.precision(16);
 	stream 
-		<< "#"
 		<< "id" 					<< ";" 
 		<< "position_x" 			<< ";" 
 		<< "position_y" 			<< ";"
@@ -46,7 +44,6 @@ void setup_interaction(ofstream& stream)
 	stream.setf(ios::scientific);
 	stream.precision(16);
 	stream 
-		<< "#"
 		<< "time"					<< ";"
 		<< "relative_position_x" 	<< ";" 
 		<< "relative_position_y" 	<< ";"
@@ -75,7 +72,6 @@ void setup_response_analysis(ofstream& stream, ResponseAnalysis& response_analys
 	stream.precision(16);
 	
 	stream
-		<< "#"
 		<< (bo::format("in_%s_%s_perc (%%)")   % response_analysis.object_in  % response_analysis.attribute_in ).str()	<< ";"
 		<< (bo::format("in_%s_%s_delta (%s)")  % response_analysis.object_in  % response_analysis.attribute_in  % get_conversion_si_unit(response_analysis.object_in,  response_analysis.attribute_in )).str() << ";" 
 		<< (bo::format("in_%s_%s_abs (%s)")    % response_analysis.object_in  % response_analysis.attribute_in  % get_conversion_si_unit(response_analysis.object_in,  response_analysis.attribute_in )).str() << ";" ;

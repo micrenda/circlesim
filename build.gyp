@@ -46,6 +46,45 @@
 					
 				]
 			]
-		}
+		},
+ 		{
+                        'target_name': 'viewer',
+                        'type': 'executable',
+                        'dependencies': [],
+                        'defines':              [],
+                        'sources':
+                        [
+                                'src/config.cpp',
+                                'src/viewer.cpp'
+                        ],
+
+                        'libraries':    [],
+
+                        'conditions':
+                        [
+                                [
+                                        'OS=="linux"',
+                                        {
+                                                'cflags':               ['-std=c++11', '-Wall'],
+                                                'include_dirs':
+                                                [
+                                                        '/usr/include/libpng12/',
+                                                ],
+
+                                        }
+                                ],
+                                [
+                                        'TARGET=="debug"',
+                                        {
+                                                'cflags':               ['-O0 -g']
+                                        },
+                                        {
+                                                'cflags':               ['-O2'],
+                                        }
+
+                                ]
+                        ]
+                }
+
 	]
 }
