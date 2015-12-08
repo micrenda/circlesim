@@ -55,10 +55,11 @@
                         'sources':
                         [
                                 'src/config.cpp',
-                                'src/viewer.cpp'
+                                'src/viewer.cpp',
+                                'src/util.cpp'
                         ],
 
-                        'libraries':    [],
+                        'libraries':    ['-lpthread', '-lIrrlicht', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-lconfig++', '-larmadillo'],
 
                         'conditions':
                         [
@@ -66,10 +67,7 @@
                                         'OS=="linux"',
                                         {
                                                 'cflags':               ['-std=c++11', '-Wall'],
-                                                'include_dirs':
-                                                [
-                                                        '/usr/include/libpng12/',
-                                                ],
+                                                'include_dirs':			 [],
 
                                         }
                                 ],

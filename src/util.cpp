@@ -172,3 +172,86 @@ void scale_image(unsigned int& w, unsigned int& h, unsigned int max_w, unsigned 
 		}
 	}
 }
+
+
+
+
+void error_attribute_unknown(string object, string attribute)
+{
+	printf("ERROR - unable to understand %s attribute '%s'\n", object.c_str(), attribute.c_str());
+	exit(-1);	
+}
+
+string get_conversion_si_unit(string object, string attribute)
+{
+	if (object == "particle")
+	{
+
+		if (attribute == "position_x" || attribute == "position_y" || attribute == "position_z")
+			return "m";
+		else if (attribute == "position_phi" || attribute == "position_theta") 
+			return "rad";
+		else if (attribute == "position_rho")
+			return "m";
+		else if (attribute == "momentum_x" 	 || attribute == "momentum_y" || attribute == "momentum_z")
+			return "Kg m/s";
+		else if (attribute == "momentum_phi" || attribute == "momentum_theta")
+			return "rad";
+		else if (attribute == "momentum_rho")
+			return "Ns";
+		else if (attribute == "energy_x" 	|| attribute == "energy_y" || attribute == "energy_z")
+			return "J";
+		else if (attribute == "energy_phi" 	|| attribute == "energy_theta")
+			return "rad";
+		else if (attribute == "energy_rho")
+			return "J";
+		else if (attribute == "rest_mass")
+			return "Kg";
+		else if (attribute == "charge")
+			return "C";
+	}
+	else if (object == "laser")
+	{
+		return "arbitrary";
+	}
+	
+	error_attribute_unknown(object, attribute);
+	return "unknown";	
+}
+
+double get_conversion_si_value(string object, string attribute)
+{
+	if (object == "particle")
+	{
+
+		if (attribute == "position_x" || attribute == "position_y" || attribute == "position_z")
+			return AU_LENGTH;
+		else if (attribute == "position_phi" || attribute == "position_theta") 
+			return 1.d;
+		else if (attribute == "position_rho")
+			return AU_LENGTH;
+		else if (attribute == "momentum_x" || attribute == "momentum_y" || attribute == "momentum_z")
+			return AU_MOMENTUM;
+		else if (attribute == "momentum_phi" || attribute == "momentum_theta")
+			return 1.d;
+		else if (attribute == "momentum_rho")
+			return AU_MOMENTUM;
+		else if (attribute == "energy_x" || attribute == "energy_y" || attribute == "energy_z")
+			return AU_ENERGY;
+		else if (attribute == "energy_phi" || attribute == "energy_theta")
+			return 1.d;
+		else if (attribute == "energy_rho")
+			return AU_ENERGY;
+		else if (attribute == "rest_mass")
+			return AU_MASS;
+		else if (attribute == "charge")
+			return AU_CHARGE;
+	}
+	else if (object == "laser")
+	{
+		return 1.d;
+	}
+	
+	error_attribute_unknown(object, attribute);
+	return 0.d;	
+}

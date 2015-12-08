@@ -7,6 +7,10 @@ double momentum_to_energy_kinetic(double rest_mass, double momentum);
 double energy_total_to_momentum(double rest_mass, double energy);
 double momentum_to_energy_total(double rest_mass, double momentum);
 
+void error_attribute_unknown(string object, string attribute);
+string get_conversion_si_unit(string object, string attribute);
+double get_conversion_si_value(string object, string attribute);
+
 template <typename T> void spherical_to_cartesian(T rho, T theta, T phi, T& x, T& y, T& z);
 template <typename T> void cartesian_to_spherical(T x, T y, T z, T& theta, T& phi);
 

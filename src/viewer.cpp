@@ -4,6 +4,10 @@
 #include <boost/regex.hpp>
 #include <boost/algorithm/string.hpp>
 #include <getopt.h>
+#include <math.h>
+
+#include "type.hpp"
+#include "config.hpp"
 #include "csv.h"
 
 
@@ -15,11 +19,7 @@ using namespace video;
 using namespace io;
 using namespace gui;
 
-using namespace std;
 
-namespace fs = boost::filesystem;
-namespace ba = boost::algorithm;
-namespace bo = boost;
 
 void print_help()
 {
@@ -34,8 +34,22 @@ void print_help()
 	printf("\n");
 }
 
-
-
+typedef struct ParticleRecord
+{
+	double time;
+	double relative_position_x;
+	double relative_position_y;
+	double relative_position_z;
+	double relative_momentum_x;
+	double relative_momentum_y;
+	double relative_momentum_z;
+	double field_e_x;
+	double field_e_y;
+	double field_e_z;
+	double field_b_x;
+	double field_b_y;
+	double field_b_z;
+} ParticleRecord;
 
 class MyEventReceiver : public IEventReceiver
 {
@@ -67,24 +81,30 @@ public:
 
 };
 
+
+int last_fps = -1;
+unsigned int then;
+const float speed_linear  = 15.f  / (1 / AU_TIME);
+const float speed_angular = 15.f/ (1 / AU_TIME) ;
+
+// This value is used to convert between real length (in meters) into pixel length
+double length_au_to_pixels_ratio;
+
 void update_camera_info(IGUIEditBox* text_camera, vector3df camera_position)
 {
-	text_camera->setText( (bo::wformat(L"Camera\nx=%1$+.3f, y=%2$+.3f, z=%3$+.3f\nρ=%4$+.3f, ϑ=%5$+.3f, φ=%6$+.3f") % camera_position.X % camera_position.Y % camera_position.Z % camera_position.X % camera_position.Y % camera_position.Z).str().c_str());
+	text_camera->setText( (bo::wformat(L"Camera\nx=%1$+.3Em, y=%2$+.3Em, z=%3$+.3Em\nρ=%4$+.3Em, ϑ=%5$+.3f, φ=%6$+.3f\n")
+	% (camera_position.X / length_au_to_pixels_ratio * AU_LENGTH)
+	% (camera_position.Y / length_au_to_pixels_ratio * AU_LENGTH)
+	% (camera_position.Z / length_au_to_pixels_ratio * AU_LENGTH)
+	% 0 
+	% 0
+	% 0).str().c_str());
 }
 
 
 
 
-int last_fps = -1;
-unsigned int then;
-const float speed_linear = 15.f;
-const float speed_angular = 15.f;
 
-
-// This value is used to convert between real length (in meters) into pixel length
-double length_conv_ratio;
-// This value is used to convert between real time (in seconds) into frame time
-double time_conv_ratio;
 
 
 int main(int argc, char *argv[])
@@ -136,7 +156,7 @@ int main(int argc, char *argv[])
 			base_dir = fs::path(argv[optind++]);
 		else
 		{
-			printf("Only one base directory can be provided\n", base_dir.c_str());
+			printf("Only one base directory can be provided\n");
 			exit(-1);
 		}
     }
@@ -144,7 +164,7 @@ int main(int argc, char *argv[])
 	if (base_dir == fs::path(""))
 	{
 		printf("Please specify the base directory.\n");
-		print_help();
+
 		exit(-1);
 	}
 	
@@ -156,8 +176,7 @@ int main(int argc, char *argv[])
 		
 	if (current_interaction < 0)
 	{
-		printf("Please specify the interaction.\n");
-		print_help();
+		printf("Please specify the interaction using the \"-i <n>\" flag.\n");
 		exit(-1);
 	}
 
@@ -188,7 +207,6 @@ int main(int argc, char *argv[])
 	if (current_node < 0)
 	{
 		printf("Unable to find interaction %d in directory '%s'.\n", current_interaction, base_dir.c_str());
-		print_help();
 		exit(-1);
 	}
 	
@@ -198,22 +216,19 @@ int main(int argc, char *argv[])
 	// Reading the configuration files
 	
 	fs::path cfg_file = base_dir / fs::path("parameters_si.cfg");
+	
+	
+	Simulation          simulation;
+	Pulse               laser;
+	Particle            particle;
+	Laboratory                  laboratory;
+	ParticleStateGlobal         particle_state;
+	vector<FieldRender>         field_renders;
+	vector<ResponseAnalysis>    response_analyses;
+	vector<std::string> headers;
+	vector<std::string> sources;
+	
 	read_config(cfg_file, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, headers, sources);
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	
 	
 	
@@ -266,13 +281,16 @@ int main(int argc, char *argv[])
     unsigned border_sides  = 100;
     SColor   border_color  = SColor(0xff, 0xff, 0xff, 0xff);
     
+    length_au_to_pixels_ratio = border_radius / simulation.laser_influence_radius;
+    printf("length_to_pixel_ratio = %E\n", length_au_to_pixels_ratio);
+    
     float    border_side = border_radius * 2 * M_PI / border_sides;
     
     vector3df border_start_position_xy = vector3df(border_radius, 0, 0);
     vector3df border_start_position_xz = vector3df(0, 0, border_radius);
     vector3df border_start_position_yz = vector3df(0, border_radius, 0);
     
-    for (int s = 0; s < border_sides; s++)
+    for (unsigned int s = 0; s < border_sides; s++)
 	{
 		IMesh* cyl_mesh = smgr->getGeometryCreator()->createCylinderMesh(0.1, border_side, 20, border_color, false, 0.f);
 		
@@ -299,6 +317,26 @@ int main(int argc, char *argv[])
     IMeshSceneNode* particle_node = smgr->addMeshSceneNode(particle_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
 	//particle_node->setMaterialTexture(0, particle_texture);
 	
+	// Reading input file to count how many record there are inside
+	
+	ifstream f((base_dir / interaction_subdir / fs::path("interaction.csv")).string());
+	std::string line;
+	unsigned int records_count = 0;
+	while (std::getline(f, line)) records_count++;
+	
+	if (records_count > 0) // Removing the line containing the header
+		records_count--;
+	
+	if (records_count <= 0)
+	{
+		printf("In the file '%s' there are no records, unable to trace particle path.\n", "interaction.csv");
+		exit(-1);
+	}
+	
+	f.close();
+	
+	
+	
 	// Read input files
 	csv::CSVReader<13, csv::trim_chars<>, csv::no_quote_escape<';'>> in((base_dir / interaction_subdir / fs::path("interaction.csv")).string());
 	
@@ -316,27 +354,115 @@ int main(int argc, char *argv[])
 		"field_b_x",
 		"field_b_y",
 		"field_b_z");
-		
-	long double particle_time;
-	long double relative_position_x, relative_position_y, relative_position_z;
-	long double relative_momentum_x, relative_momentum_y, relative_momentum_z;
-	long double field_e_x, field_e_y, field_e_z;
-	long double	field_b_x, field_b_y, field_b_z;
-		
 	
+	ParticleRecord* records = (ParticleRecord*) malloc(sizeof(ParticleRecord) * records_count);
+	
+	unsigned int records_loaded = 0;
+	for (unsigned int i = 0; i < records_count; i++)
+	{
+		ParticleRecord& record = records[i];
+		
+		double time;
+		double relative_position_x;
+		double relative_position_y;
+		double relative_position_z;
+		double relative_momentum_x;
+		double relative_momentum_y;
+		double relative_momentum_z;
+		double field_e_x;
+		double field_e_y;
+		double field_e_z;
+		double field_b_x;
+		double field_b_y;
+		double field_b_z;
 
+		bool loaded = in.read_row(time,
+			relative_position_x,   relative_position_y,   relative_position_z,
+			relative_momentum_x, relative_momentum_y, relative_momentum_z,
+			field_e_x, field_e_y, field_e_z,
+			field_b_x, field_b_y, field_b_z);
+			
+		if (loaded)
+			records_loaded++;
+		else
+			continue;
+			
+		record.time 				= time / AU_TIME;
+		
+		record.relative_position_x 	= relative_position_x / AU_LENGTH;
+		record.relative_position_y  = relative_position_y / AU_LENGTH;
+		record.relative_position_z  = relative_position_z / AU_LENGTH;
+
+		record.relative_momentum_x  = relative_momentum_x / AU_MOMENTUM;
+		record.relative_momentum_y  = relative_momentum_y / AU_MOMENTUM;
+		record.relative_momentum_z  = relative_momentum_z / AU_MOMENTUM;
+		
+		record.field_e_x = field_e_x / AU_ELECTRIC_FIELD;
+		record.field_e_y = field_e_y / AU_ELECTRIC_FIELD;
+		record.field_e_z = field_e_z / AU_ELECTRIC_FIELD;
+		
+		record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
+		record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
+		record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
+	}
+	
+	printf("Found %ud record and loaded %ud records from file '%s'\n", records_count, records_loaded, fs::path("interaction.csv").c_str());
+
+    
+    
+    // Calculating the time_au_to_seconds_ratio. On the beginning it will be calculated in a way that
+    // the movement of the records contained in interaction.csv file will be playied in 60 seconds.
+    
+    
+    
+    // The ration between the time in speed in real (AU) and the speed we see at screen.
+    // It is a dimensionless value. A value of 10 means that the value is slowed down 10 times.
+    // It is initialized in a way that, at the beginning, the full movie will be played in one minute
+    
+    bool   movie_direction = true; // True from past to future, False from future to past
+    double movie_start		= records[0].time;
+    double movie_end		= records[records_loaded-1].time;
+    double movie_duration   = movie_end - movie_start;
+    double movie_speed     	= 1.d / ((60.d / AU_TIME) / movie_duration);
+    
+
+	bool key_add_previous_status = false;
+	bool key_sub_previous_status = false;
+	bool key_mul_previous_status = false;
+	bool key_div_previous_status = false;
+	bool key_dec_previous_status = false;
+    
+    
+    
     
     vector3df camera_position = vector3df(0, -60, 30);
     
     ICameraSceneNode* camera_node = smgr->addCameraSceneNode(0, camera_position, axis_x_node->getAbsolutePosition());
 
-    then = device->getTimer()->getTime();
+    then  = device->getTimer()->getTime();;
+    
+    double       movie_current_time 	= movie_start;
+    unsigned int movie_current_record 	= 0;
     
     while(device->run())
     {
 		const unsigned int now = device->getTimer()->getTime();
-		const double delta_time = (now - then) / 1000.f;
+		const double delta_time = ((now - then) / 1000.f) / AU_TIME;
 		then = now;
+		
+		if (movie_direction)
+		{
+			movie_current_time += delta_time * movie_speed;
+			while (movie_current_time > movie_end)
+				movie_current_time -= movie_duration;
+		}
+		else
+		{
+			movie_current_time -= delta_time * movie_speed;
+			while (movie_current_time < movie_start)
+				movie_current_time += movie_duration;
+		}
+		
 		
 		if(event_receiver.isKeyDown(KEY_LEFT))
             camera_position.rotateXYBy(speed_angular * delta_time, vector3df(0, 0, 0));
@@ -381,6 +507,71 @@ int main(int argc, char *argv[])
 			camera_position.Z = rho * cos(theta);
 			
 		}
+		
+
+		
+		if(event_receiver.isKeyDown(KEY_ADD))
+		{
+			if (!key_add_previous_status)
+            {
+				movie_speed *= 1.1;
+				printf("Changed movie speed: %E\n", 1 / movie_speed);
+			}
+			key_add_previous_status = true;
+        }
+        else
+			key_add_previous_status = false;
+			
+		if(event_receiver.isKeyDown(KEY_SUBTRACT ))
+		{
+			if (!key_sub_previous_status)
+            {
+				movie_speed *= 0.9;
+				printf("Changed movie speed: %E\n", 1 / movie_speed);
+			}
+			key_sub_previous_status = true;
+		}
+		else
+			key_sub_previous_status = false;
+			
+        if(event_receiver.isKeyDown(KEY_MULTIPLY))
+        {
+			if (!key_mul_previous_status)
+            {
+				movie_speed *= 10.0;
+				printf("Changed movie speed: %E\n", 1 / movie_speed);
+			}
+			key_mul_previous_status = true;
+		}
+		else
+			key_mul_previous_status = false;
+			
+		if(event_receiver.isKeyDown(KEY_DIVIDE ))
+		{
+			if (!key_div_previous_status)
+            {
+				movie_speed *=  0.1;   
+				printf("Changed movie speed: %E\n", 1 / movie_speed);
+			}
+			key_div_previous_status = true;
+		}
+		else
+			key_div_previous_status = false;
+		 
+		 
+		if(event_receiver.isKeyDown(KEY_DECIMAL ) || event_receiver.isKeyDown(KEY_PERIOD))
+		{
+			if (!key_dec_previous_status)
+            {
+				movie_direction = !movie_direction; 
+				printf("Changing direction\n");  
+			}
+			key_dec_previous_status = true;
+		}
+		else
+			key_dec_previous_status = false;
+		 
+		 
 		 
 		update_camera_info(text_camera, camera_position);
 		
@@ -388,18 +579,134 @@ int main(int argc, char *argv[])
 		camera_node->setPosition(camera_position);
 		camera_node->setTarget(axis_x_node->getAbsolutePosition());
 		camera_node->setUpVector(vector3df(0, 0, 1));
-		
-		
-		in.read_row(particle_time,
-			relative_position_x, relative_position_y, relative_position_z,
-			relative_momentum_x, relative_momentum_y, relative_momentum_z,
-			field_e_x, field_e_y, field_e_z,
-			field_b_x, field_b_y, field_b_z);
 			
 		
 		// drawing particle
-		particle_node->setPosition(vector3df(relative_position_x, relative_position_y, relative_position_z));
 		
+		bool found = false;
+		
+		
+		if (movie_direction)
+		{
+			// Searching particle record
+			for (unsigned int i = movie_current_record; i < records_loaded; i++)
+			{
+				if (records[i].time <=  movie_current_time)
+				{
+					if (i < records_loaded - 1)
+					{
+						if (records[i+1].time > movie_current_time)
+						{
+							movie_current_record = i;
+							found = true;
+							break;
+						}
+					}
+					else
+					{
+						movie_current_record = i;
+						found = true;
+						break;
+					}
+				}
+				else
+				{
+					found = false;
+					break;
+				}
+				
+			}
+			
+			if (!found)
+			{
+				// Starting from the beginning
+				for (unsigned int i = 0; i < movie_current_record; i++)
+				{
+					if (records[i].time <=  movie_current_time)
+					{
+						if (records[i+1].time > movie_current_time)
+						{
+							movie_current_record = i;
+							found = true;
+							break;
+						}
+					}
+					else
+					{
+						found = false;
+						break;
+					}
+				}
+			}
+		}
+		else
+		{
+			// Searching particle record
+			for (unsigned int i = movie_current_record; i >= 0; i--)
+			{
+				if (records[i].time >=  movie_current_time)
+				{
+					if (i > 0)
+					{
+						if (records[i-1].time < movie_current_time)
+						{
+							movie_current_record = i;
+							found = true;
+							break;
+						}
+					}
+					else
+					{
+						movie_current_record = i;
+						found = true;
+						break;
+					}
+				}
+				else
+				{
+					found = false;
+					break;
+				}
+				
+			}
+			
+			if (!found)
+			{
+				// Starting from the end
+				for (unsigned int i = records_loaded - 1; i > movie_current_record; i--)
+				{
+					if (records[i].time >=  movie_current_time)
+					{
+						if (records[i-1].time < movie_current_time)
+						{
+							movie_current_record = i;
+							found = true;
+							break;
+						}
+					}
+					else
+					{
+						found = false;
+						break;
+					}
+				}
+			}
+			
+		}
+		
+		
+		
+		if (!found)
+		{
+			//TODO: Prepare a better error message
+			printf("Unable to find the right frame sequence. [TODO: Prepare a better error message].\n");
+			exit(-1);
+		}
+		
+		
+		
+		ParticleRecord& current_record = records[movie_current_record];
+		particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio, current_record.relative_position_y * length_au_to_pixels_ratio, current_record.relative_position_z * length_au_to_pixels_ratio));
 		
 		driver->beginScene(true, true, SColor(255,100,101,140));
         smgr->drawAll();
@@ -410,6 +717,7 @@ int main(int argc, char *argv[])
         
 	}
 	
+	free(records);
 	device->drop();
     return 0;
 }
