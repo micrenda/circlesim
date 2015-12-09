@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 	
 
 	MyEventReceiver event_receiver;
-	IrrlichtDevice *device = createDevice( video::EDT_SOFTWARE, dimension2d<u32>(640, 480), 16, false, false, false, &event_receiver);
+	IrrlichtDevice *device = createDevice( video::EDT_OPENGL, dimension2d<u32>(640, 480), 16, false, false, false, &event_receiver);
 
     if (!device)
         return 1;
@@ -263,7 +263,7 @@ int main(int argc, char *argv[])
     IGUIEnvironment* guienv = device->getGUIEnvironment();
     
     
-    smgr->setAmbientLight(video::SColorf(0.3,0.3,0.3,1));
+    smgr->setAmbientLight(video::SColorf(0.2,0.2,0.2,1));
     
 	IGUIEditBox* text_camera = guienv->addEditBox(L"Camera position: N/A",	rect<s32>(10,10,200,40), false);
 	text_camera->setMultiLine(true);
@@ -282,15 +282,23 @@ int main(int argc, char *argv[])
    //ISceneNode *cube = smgr->addCubeSceneNode(15.0f, 0, -1, vector3df(150,10,10));
    //cube->setMaterialFlag(EMF_LIGHTING, false);
    // cube->setMaterialTexture( 0, driver->getTexture("sydney.bmp") );
+   
     
     
     IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0, 90));
     IMeshSceneNode* axis_y_node =  smgr->addMeshSceneNode(axis_y_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0,  0));
     IMeshSceneNode* axis_z_node =  smgr->addMeshSceneNode(axis_z_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 90, 0,  0));
     
-    //axis_x_node->setMaterialFlag(video::EMF_LIGHTING, false);
-    //axis_y_node->setMaterialFlag(video::EMF_LIGHTING, false);
-    //axis_z_node->setMaterialFlag(video::EMF_LIGHTING, false);
+    axis_x_node->setMaterialFlag(video::EMF_LIGHTING, true);
+    axis_y_node->setMaterialFlag(video::EMF_LIGHTING, true);
+    axis_z_node->setMaterialFlag(video::EMF_LIGHTING, true);
+    
+    //axis_x_node->getMaterial(0).Shininess = 20.0f;
+	//axis_x_node->getMaterial(0).SpecularColor.set(80,80,80,80);
+	//axis_x_node->getMaterial(0).AmbientColor.set(10,10,10,10);
+	//axis_x_node->getMaterial(0).DiffuseColor.set(20,20,20,20);
+	//axis_x_node->getMaterial(0).EmissiveColor.set(0,0,0,0); 
+
     
     float    border_radius = 40;
     unsigned border_sides  = 100;
@@ -330,7 +338,8 @@ int main(int argc, char *argv[])
     
     IAnimatedMesh*  particle_mesh = smgr->addSphereMesh ("particle", 1.f);
     IMeshSceneNode* particle_node = smgr->addMeshSceneNode(particle_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
-	//particle_node->setMaterialTexture(0, particle_texture);
+	particle_node->setMaterialFlag(video::EMF_LIGHTING, true); 
+	//particle_node->getMaterial(0).Shininess = 20.0f;
 	
 	// Reading input file to count how many record there are inside
 	
@@ -421,10 +430,12 @@ int main(int argc, char *argv[])
 		record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
 	}
 	
+	
+	
 	if (records_count == records_loaded)
-		printf("Found and loaded %u records from file '%s'\n", records_count, fs::path("interaction.csv").c_str());
+		printf("Found and loaded %u records from file '%s' (memory usage: %.2f Mb)\n", records_loaded, fs::path("interaction.csv").c_str(), sizeof(ParticleRecord) * records_loaded / 1024.d / 1024.d);
 	else
-		printf("WARN: Found %u record but only loaded %d records from file '%s'\n", records_count, records_loaded, fs::path("interaction.csv").c_str());
+		printf("WARN: Found %u record but only loaded %d records from file '%s' (memory usage: %.2f Mb)\n", records_count, records_loaded, fs::path("interaction.csv").c_str(), sizeof(ParticleRecord) * records_loaded / 1024.d / 1024.d);
 
     
     
@@ -621,7 +632,8 @@ int main(int argc, char *argv[])
 		camera_node->setPosition(camera_position);
 		camera_node->setTarget(axis_x_node->getAbsolutePosition());
 		camera_node->setUpVector(vector3df(0, 0, 1));
-			
+		
+		smgr->addLightSceneNode(0, vector3df(2.* border_radius, 2.* border_radius, 2.* border_radius), video::SColorf(0.60f, 0.60f, 0.60f), 1.0 * border_radius);
 		
 		// drawing particle
 		if (movie_running)
