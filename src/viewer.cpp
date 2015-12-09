@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
 	//driver->setRenderTarget(particle_texture);
 	//driver->draw2DRectangle(SColor(0xFF, 0x53, 0xA1, 0x62), rect<s32>(position2d<s32>(0,0),position2d<s32>(128,128)));
     
-    IAnimatedMesh*  particle_mesh = smgr->addSphereMesh ("particle", 1.f);
+    IAnimatedMesh*  particle_mesh = smgr->addSphereMesh ("particle", 0.15f);
     IMeshSceneNode* particle_node = smgr->addMeshSceneNode(particle_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
 	//particle_node->setMaterialTexture(0, particle_texture);
 	

@@ -10,6 +10,7 @@ BUILD:
 	libboost-regex1.55-dev
 	libarmadillo-dev
 	libpng++-dev
+	libirrlicht-dev
 
 EXECUTION:
 	build-essential
