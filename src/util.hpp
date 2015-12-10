@@ -84,13 +84,13 @@ template<typename T> void spherical_to_cartesian(T rho, T theta, T phi, T& x, T&
 
 template<typename T> void cartesian_to_spherical(T x, T y, T z, T& theta, T& phi)
 {
-	theta	= acos(z / sqrt(x*x + y*y + z*z));
+	theta	= acos(z / hypot(hypot(x, y), z));
 	
 	if (y == 0 && x == 0)
 		phi		= 0; // We cover the case when we select the nord or south pole
 	else
-		phi		= atan(y / x);
-	
+		phi		= atan2(y, x);
+		
 	unique_spherical_angles(theta, phi);
 }
 

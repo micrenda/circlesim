@@ -9,6 +9,7 @@
 #include "type.hpp"
 #include "config.hpp"
 #include "csv.h"
+#include "util.hpp"
 
 
 using namespace irr;
@@ -105,19 +106,31 @@ const float speed_angular = 15.f/ (1 / AU_TIME) ;
 // This value is used to convert between real length (in meters) into pixel length
 double length_au_to_pixels_ratio;
 
-void update_camera_info(IGUIEditBox* text_camera, vector3df camera_position)
+
+
+
+void update_camera_position(IGUIEditBox* text_camera,  vector3df camera_position, ILightSceneNode* light_node)
 {
-	text_camera->setText( (bo::wformat(L"Camera\nx=%1$+.3Em, y=%2$+.3Em, z=%3$+.3Em\nρ=%4$+.3Em, ϑ=%5$+.3f, φ=%6$+.3f\n")
+	float rho, theta, phi;
+	
+	cartesian_to_spherical(camera_position.X, camera_position.Y, camera_position.Z, theta, phi);
+	
+	rho = vector_module(camera_position.X, camera_position.Y, camera_position.Z);
+	
+	float light_x, light_y, light_z;
+	spherical_to_cartesian(200.f, theta, phi, light_x, light_y, light_z);
+	
+	light_node->setPosition(vector3df(light_x, light_y, light_z));
+
+
+	text_camera->setText( (bo::wformat(L"Camera\nx=%1$+.3Em, y=%2$+.3Em, z=%3$+.3Em\nrho=%4$+.3Em, theta=%5$+.0f, phi=%6$+.0f\n")
 	% (camera_position.X / length_au_to_pixels_ratio * AU_LENGTH)
 	% (camera_position.Y / length_au_to_pixels_ratio * AU_LENGTH)
 	% (camera_position.Z / length_au_to_pixels_ratio * AU_LENGTH)
-	% 0 
-	% 0
-	% 0).str().c_str());
+	% (rho / length_au_to_pixels_ratio * AU_LENGTH)
+	% (theta / M_PI * 180.f)
+	% (phi   / M_PI * 180.f)).str().c_str());
 }
-
-
-
 
 
 
@@ -268,24 +281,15 @@ int main(int argc, char *argv[])
 	IGUIEditBox* text_camera = guienv->addEditBox(L"Camera position: N/A",	rect<s32>(10,10,200,40), false);
 	text_camera->setMultiLine(true);
 	
-	//IAnimatedMesh* mesh = smgr->getMesh("sydney.md2");
-    //if (!mesh)
-    //{
-    //    device->drop();
-    //    return 1;
-    //}
     
-    IAnimatedMesh* axis_x_mesh = smgr->addArrowMesh("x-axis", 0xFFFFA7A7, 0xFFFFA7A7,  10, 20, 10.0, 8.0, 0.3, 1.0);
-    IAnimatedMesh* axis_y_mesh = smgr->addArrowMesh("y-axis", 0xFFA7FFA7, 0xFFA7FFA7,  10, 20, 10.0, 8.0, 0.3, 1.0);
-    IAnimatedMesh* axis_z_mesh = smgr->addArrowMesh("z-axis", 0xFFA7A7FF, 0xFFA7A7FF,  10, 20, 10.0, 8.0, 0.3, 1.0);
+    IAnimatedMesh* axis_x_mesh = smgr->addArrowMesh("x-axis", 0xFFAF6767, 0xFFAF6767,  10, 20, 10.0, 8.0, 0.3, 1.0);
+    IAnimatedMesh* axis_y_mesh = smgr->addArrowMesh("y-axis", 0xFF67AF67, 0xFF67AF67,  10, 20, 10.0, 8.0, 0.3, 1.0);
+    IAnimatedMesh* axis_z_mesh = smgr->addArrowMesh("z-axis", 0xFF6767AF, 0xFF6767AF,  10, 20, 10.0, 8.0, 0.3, 1.0);
      
-   //ISceneNode *cube = smgr->addCubeSceneNode(15.0f, 0, -1, vector3df(150,10,10));
-   //cube->setMaterialFlag(EMF_LIGHTING, false);
-   // cube->setMaterialTexture( 0, driver->getTexture("sydney.bmp") );
+
    
     
-    
-    IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0, 90));
+    IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0, -90));
     IMeshSceneNode* axis_y_node =  smgr->addMeshSceneNode(axis_y_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0,  0));
     IMeshSceneNode* axis_z_node =  smgr->addMeshSceneNode(axis_z_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 90, 0,  0));
     
@@ -321,9 +325,9 @@ int main(int argc, char *argv[])
 		vector3df border_position_xz= border_start_position_xz;
 		vector3df border_position_yz= border_start_position_yz;
 		
-		border_position_xy.rotateXYBy(360.f / border_sides * s, vector3df(0, 0, 0));
-		border_position_xz.rotateXZBy(360.f / border_sides * s, vector3df(0, 0, 0));
-		border_position_yz.rotateYZBy(360.f / border_sides * s, vector3df(0, 0, 0));
+		border_position_xy.rotateXYBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
+		border_position_xz.rotateXZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
+		border_position_yz.rotateYZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
 		
 		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xy, vector3df(0, 0, 360.f * s / border_sides ));
 		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xz, vector3df(-360.f * s / border_sides, 0	, 90));
@@ -336,7 +340,7 @@ int main(int argc, char *argv[])
 	//driver->setRenderTarget(particle_texture);
 	//driver->draw2DRectangle(SColor(0xFF, 0x53, 0xA1, 0x62), rect<s32>(position2d<s32>(0,0),position2d<s32>(128,128)));
     
-    IAnimatedMesh*  particle_mesh = smgr->addSphereMesh ("particle", 0.15f);
+    IAnimatedMesh*  particle_mesh = smgr->addSphereMesh ("particle", 0.30f);
     IMeshSceneNode* particle_node = smgr->addMeshSceneNode(particle_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
 	particle_node->setMaterialFlag(video::EMF_LIGHTING, true); 
 	//particle_node->getMaterial(0).Shininess = 20.0f;
@@ -467,7 +471,7 @@ int main(int argc, char *argv[])
     
     
     
-    vector3df camera_position = vector3df(0, -60, 30);
+    vector3df camera_position = vector3df(border_radius, border_radius, border_radius);
     
     ICameraSceneNode* camera_node = smgr->addCameraSceneNode(0, camera_position, axis_x_node->getAbsolutePosition());
 
@@ -626,14 +630,16 @@ int main(int argc, char *argv[])
 			key_space_previous_status = false;
 		 
 		 
-		update_camera_info(text_camera, camera_position);
+		
 		
 		
 		camera_node->setPosition(camera_position);
 		camera_node->setTarget(axis_x_node->getAbsolutePosition());
 		camera_node->setUpVector(vector3df(0, 0, 1));
 		
-		smgr->addLightSceneNode(0, vector3df(2.* border_radius, 2.* border_radius, 2.* border_radius), video::SColorf(0.60f, 0.60f, 0.60f), 1.0 * border_radius);
+		ILightSceneNode* light_node = smgr->addLightSceneNode(0, vector3df(2.* border_radius, 2.* border_radius, 2.* border_radius), video::SColorf(0.60f, 0.60f, 0.60f), 1.0 * border_radius);
+		
+		update_camera_position(text_camera, camera_position, light_node);
 		
 		// drawing particle
 		if (movie_running)
