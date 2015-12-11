@@ -212,6 +212,51 @@ void write_node(ofstream& stream, Node& node)
 		<< node.axis(2,1)				<< ";"
 		<< node.axis(2,2)				<< endl;
 }
+void save_field_render_cfg(FieldRenderResult& field_render_result,  fs::path output_dir)
+{
+	FieldRender& field_render = field_render_result.render;
+	
+	// Writing the render parameter file
+	FILE* file_param=fopen((output_dir / fs::path((bo::format("field_render_%s.cfg") % field_render.id).str())).string().c_str(), "w");
+	
+	fprintf(file_param, "# All values are in SI units\n");
+	fprintf(file_param, "render_param:\n");
+	fprintf(file_param, "{\n");
+	
+	switch (field_render.plane)
+	{
+		case XY:
+			fprintf(file_param, "plane				= \"%s\"\n", "xy");
+			break;
+		case XZ:
+			fprintf(file_param, "plane				= \"%s\"\n", "xz");
+			break;
+		case YZ:
+			fprintf(file_param, "plane				= \"%s\"\n", "yz");
+			break;
+		default:
+			fprintf(file_param, "plane				= \"%s\"\n", "??");
+			break; 
+	}
+	 
+	fprintf(file_param, "anchor				= \"origin\"\n");
+	fprintf(file_param, "axis_cut			= %.16E\n", field_render.axis_cut * AU_LENGTH);
+	fprintf(file_param, "\n");
+	fprintf(file_param, "space_resolution 	= %.16E\n", field_render.space_resolution * AU_LENGTH);
+	fprintf(file_param, "space_size_x 		= %.16E\n", field_render.space_size_x * AU_LENGTH);
+	fprintf(file_param, "space_size_y 		= %.16E\n", field_render.space_size_y * AU_LENGTH);
+	fprintf(file_param, "space_size_z 		= %.16E\n", field_render.space_size_z * AU_LENGTH);
+	fprintf(file_param, "\n");
+	fprintf(file_param, "time_start			= %.16E\n", field_render.time_start * AU_TIME);
+	fprintf(file_param, "time_end			= %.16E\n", field_render.time_end   * AU_TIME);
+	fprintf(file_param, "time_resolution 	= %.16E\n", field_render.time_resolution * AU_TIME);
+
+	fprintf(file_param, "}\n");
+	
+	
+	
+	fclose(file_param);
+}
 
 void save_field_render_data(FieldRenderResult& field_render_result, FieldRenderData& field_render_data, fs::path output_dir)
 {
@@ -221,10 +266,11 @@ void save_field_render_data(FieldRenderResult& field_render_result, FieldRenderD
 	unsigned int nb = field_render_result.nb;
 
 	FieldRender& field_render = field_render_result.render;
-
+	
+	// Writing the render data file
 	FILE* file_csv=fopen((output_dir / fs::path((bo::format("field_render_%s_t%u.csv") % field_render.id % t).str())).string().c_str(), "w");
 
-	fprintf(file_csv, (bo::format("#time;%s;%s") % field_render_result.axis1_label % field_render_result.axis2_label).str().c_str());
+	fprintf(file_csv, (bo::format("time;%s;%s") % field_render_result.axis1_label % field_render_result.axis2_label).str().c_str());
 	for (unsigned short c = 0; c < field_render.count; c++)
 		fprintf(file_csv, (bo::format(";value_%u") % c).str().c_str());
 	fprintf(file_csv, "\n");
