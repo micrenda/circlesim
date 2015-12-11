@@ -239,7 +239,21 @@ void save_field_render_cfg(FieldRenderResult& field_render_result,  fs::path out
 			break; 
 	}
 	 
-	fprintf(file_param, "anchor				= \"origin\"\n");
+	switch (field_render.anchor)
+	{
+		case ORIGIN:
+			fprintf(file_param, "anchor				= \"%s\"\n", "origin");
+		break;
+		
+		case PARTICLE:
+			fprintf(file_param, "anchor				= \"%s\"\n", "particle");
+		break;
+		
+		default:
+			fprintf(file_param, "anchor				= \"%s\"\n", "origin");
+		break;
+	}
+	
 	fprintf(file_param, "axis_cut			= %.16E\n", field_render.axis_cut * AU_LENGTH);
 	fprintf(file_param, "\n");
 	fprintf(file_param, "space_resolution 	= %.16E\n", field_render.space_resolution * AU_LENGTH);
@@ -270,20 +284,48 @@ void save_field_render_data(FieldRenderResult& field_render_result, FieldRenderD
 	// Writing the render data file
 	FILE* file_csv=fopen((output_dir / fs::path((bo::format("field_render_%s_t%u.csv") % field_render.id % t).str())).string().c_str(), "w");
 
-	fprintf(file_csv, (bo::format("time;%s;%s") % field_render_result.axis1_label % field_render_result.axis2_label).str().c_str());
+	fprintf(file_csv, "time;x;y;z");
 	for (unsigned short c = 0; c < field_render.count; c++)
 		fprintf(file_csv, (bo::format(";value_%u") % c).str().c_str());
 	fprintf(file_csv, "\n");
 
 	double time = field_render_result.time_start + t * (field_render_result.time_end - field_render_result.time_start);
-
+	
+	double pos_cut = field_render.axis_cut;
+	
 	for (unsigned int a = 0; a < na; a++)
 	{
 		double pos_a = -field_render_result.length_a/2 + field_render_result.length_a / na * a;
 		for (unsigned int b = 0; b < nb; b++)
 		{
 			double pos_b = -field_render_result.length_b/2 + field_render_result.length_b / nb * b;
-			fprintf(file_csv, "%.16E;%.16E;%.16E", time * AU_TIME, pos_a * AU_LENGTH, pos_b * AU_LENGTH);
+			
+			double pos_x;
+			double pos_y;
+			double pos_z;
+			
+			switch (field_render.plane)
+			{
+				case XY:
+					pos_x = pos_a;
+					pos_y = pos_b;
+					pos_z = pos_cut;
+				break;
+				
+				case XZ:
+					pos_x = pos_a;
+					pos_y = pos_cut;
+					pos_z = pos_b;
+				break;
+				
+				case YZ:
+					pos_x = pos_cut;
+					pos_y = pos_a;
+					pos_z = pos_b;
+				break;
+			}
+			
+			fprintf(file_csv, "%.16E;%.16E;%.16E;%.16E", time * AU_TIME, pos_x * AU_LENGTH, pos_y * AU_LENGTH, pos_z * AU_LENGTH);
 			
 			for (unsigned short c = 0; c < field_render.count; c++)
 				fprintf(file_csv, ";%.16E", field_render_data.values[a][b][c]);
@@ -327,11 +369,35 @@ void save_field_render_ct2(FieldRenderResult& field_render_result, fs::path outp
 		bo::replace_all(color_range, "max", 	(bo::format("%E") % render_limit.value_max).str());
 
 		
-		fprintf(file_ct, "plot @'$2:$3:$%u'  /color-map \"%s\" /zaxis zvalues\n", 4+c, color_range.c_str());
-		fprintf(file_ct, "\n");
-		fprintf(file_ct, "xlabel '$%s$ [$m$]'\n", field_render_result.axis1_label.c_str());
-		fprintf(file_ct, "ylabel '$%s$ [$m$]'\n", field_render_result.axis2_label.c_str());
 		
+		
+		
+		switch (field_render.plane)
+		{
+			case XY:
+				fprintf(file_ct, "plot @'$2:$3:$%u'  /color-map \"%s\" /zaxis zvalues\n", 5+c, color_range.c_str());
+				fprintf(file_ct, "xlabel '$x$ [$m$]'\n");
+				fprintf(file_ct, "ylabel '$y$ [$m$]'\n");
+			break;
+			
+			case XZ:
+				fprintf(file_ct, "plot @'$2:$4:$%u'  /color-map \"%s\" /zaxis zvalues\n", 5+c, color_range.c_str());
+				fprintf(file_ct, "xlabel '$x$ [$m$]'\n");
+				fprintf(file_ct, "ylabel '$z$ [$m$]'\n");
+			break;
+			
+			case YZ:
+				fprintf(file_ct, "plot @'$3:$4:$%u'  /color-map \"%s\" /zaxis zvalues\n", 5+c, color_range.c_str());
+				fprintf(file_ct, "xlabel '$y$ [$m$]'\n");
+				fprintf(file_ct, "ylabel '$z$ [$m$]'\n");
+			break;
+			
+			default:
+				fprintf(file_ct, "ERROR: Unable to determinate plane\n");
+				fprintf(file_ct, "xlabel '$?$ [$m$]'\n");
+				fprintf(file_ct, "ylabel '$?$ [$m$]'\n");
+			break;
+		}
 		fclose(file_ct);
 	}
 }

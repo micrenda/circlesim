@@ -226,6 +226,14 @@ void read_config_renders(Setting* field_renders_config, vector<FieldRender>& ren
 				render.plane = XZ;
 			if (plane == "yz")
 				render.plane = YZ;
+				
+			string anchor = "origin";
+			if (render_config.exists("anchor"))	anchor = (const char *) render_config["anchor"]; else missing_param("anchor");
+			
+			if (anchor == "origin")
+				render.anchor = ORIGIN;
+			if (anchor == "particle")
+				render.anchor = PARTICLE;
 
 			if (render_config.exists("axis_cut")) 			render.axis_cut 		= (double)render_config["axis_cut"] 			/ AU_LENGTH;	else render.axis_cut = 0;
 			if (render_config.exists("space_resolution")) 	render.space_resolution	= (double)render_config["space_resolution"] / AU_LENGTH;	else missing_param("space_resolution");

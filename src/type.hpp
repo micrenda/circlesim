@@ -15,6 +15,7 @@ namespace fs = boost::filesystem;
 namespace ba = boost::algorithm;
 namespace bo = boost;
 
+typedef enum {ORIGIN, PARTICLE}								Anchor;
 typedef enum {FREE, NODE, UNKN}								RangeMode;
 typedef enum {XY, XZ, YZ} 									Plane;
 typedef enum {LINEAR, RANDOM} 								ResponseChangeType;
@@ -300,6 +301,7 @@ typedef struct FieldRender
 	vector<string>  colors;
 	
 	Plane plane;
+	Anchor anchor;
 
 	double axis_cut;
 	double space_resolution;
@@ -342,9 +344,6 @@ typedef struct FieldRenderResult
 {
 	unsigned int   	node;
 	unsigned int 	interaction;
-	
-	string axis1_label;
-	string axis2_label;
 	
 	FieldRender	render;
 

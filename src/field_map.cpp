@@ -56,8 +56,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 	switch(field_render.plane)
 	{
 		case XY:
-			field_render_result.axis1_label = "x";
-			field_render_result.axis2_label = "y";
 			field_render_result.na = ni;
 			field_render_result.nb = nj;
 			field_render_result.length_a = field_render.space_size_x;
@@ -113,8 +111,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 		break;
 		
 		case XZ:
-			field_render_result.axis1_label = "x";
-			field_render_result.axis2_label = "z";
 			field_render_result.na = ni;
 			field_render_result.nb = nk;
 			field_render_result.length_a = field_render.space_size_x;
@@ -169,8 +165,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 		break;
 		
 		case YZ:
-			field_render_result.axis1_label = "y";
-			field_render_result.axis2_label = "z";
 			field_render_result.na = nj;
 			field_render_result.nb = nk;
 			field_render_result.length_a = field_render.space_size_y;
