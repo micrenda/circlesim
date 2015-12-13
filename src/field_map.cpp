@@ -1,4 +1,6 @@
 #include <math.h>
+#include <iostream>
+#include <fstream>
 #include "output.hpp"
 #include "plot.hpp"
 #include "field_map.hpp"
@@ -15,6 +17,8 @@ void update_limits(FieldRenderResultLimit& limit, double value)
 void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& field_render, unsigned int interaction, int node,  Pulse& laser, FunctionFieldType function_field, fs::path output_dir)
 {
 	
+	
+		
 	// Initializing field_render_result
 	
 	field_render_result.node 		= node;
@@ -38,6 +42,18 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 	
 	field_render_result.nt = nt;
 	
+	
+	vector<ofstream*> bindata_files;
+	
+	for (unsigned int r = 0; r < field_render.count; r++)
+	{
+		ofstream* file =new ofstream((output_dir / fs::path((bo::format("field_render_%s_r%u.dat") % field_render.id % r).str())).string().c_str(), ios::binary);
+		bindata_files.push_back(file);
+	}
+	
+	
+	
+	
 
 	for (unsigned short c = 0; c < field_render.count; c++)
 	{
@@ -60,6 +76,8 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			field_render_result.nb = nj;
 			field_render_result.length_a = field_render.space_size_x;
 			field_render_result.length_b = field_render.space_size_y;
+			
+			save_field_render_cfg (field_render_result,       output_dir);
 			
 			#pragma omp parallel for ordered schedule(static, 1)
 			for (unsigned int t = 0; t < nt; t++)
@@ -90,8 +108,12 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 					}
 				}
 				
-				save_field_render_cfg (field_render_result,       output_dir);
-				save_field_render_data(field_render_result, data, output_dir);
+				//save_field_render_data(field_render_result, data, output_dir);
+				
+				
+				#pragma omp ordered
+				
+				write_field_render_bindata(bindata_files, field_render_result, data);	
 				
 				// Freeing the allocated memory
 				for (unsigned int s2 = 0; s2 < field_render_result.na; s2++)
@@ -104,7 +126,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 				}
 				delete []  data.values;
 				
-				#pragma omp ordered
 				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
 				fflush(stdout);
 			}
@@ -116,6 +137,8 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			field_render_result.length_a = field_render.space_size_x;
 			field_render_result.length_b = field_render.space_size_z;
 		
+			save_field_render_cfg (field_render_result,       output_dir);
+			
 			#pragma omp parallel for ordered schedule(static, 1)
 			for (unsigned int t = 0; t < nt; t++)
 			{
@@ -144,8 +167,11 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 					}
 				}
 				
-				save_field_render_cfg (field_render_result,       output_dir);
-				save_field_render_data(field_render_result, data, output_dir);
+				//save_field_render_data(field_render_result, data, output_dir);
+				
+				#pragma omp ordered
+				
+				write_field_render_bindata(bindata_files, field_render_result, data);	
 				
 				// Freeing the allocated memory
 				for (unsigned int s2 = 0; s2 < field_render_result.na; s2++)
@@ -158,7 +184,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 				}
 				delete [] data.values;
 				
-				#pragma omp ordered
 				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
 				fflush(stdout);
 			}
@@ -169,6 +194,8 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			field_render_result.nb = nk;
 			field_render_result.length_a = field_render.space_size_y;
 			field_render_result.length_b = field_render.space_size_z;
+			
+			save_field_render_cfg (field_render_result,       output_dir);
 			
 			#pragma omp parallel for ordered schedule(static, 1)
 			for (unsigned int t = 0; t < nt; t++)
@@ -199,8 +226,11 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 					}
 				}
 				
-				save_field_render_cfg (field_render_result,       output_dir);
-				save_field_render_data(field_render_result, data, output_dir);
+				//save_field_render_data(field_render_result, data, output_dir);
+				
+				#pragma omp ordered
+				
+				write_field_render_bindata(bindata_files, field_render_result, data);	
 				
 				// Freeing the allocated memory
 				for (unsigned int s2 = 0; s2 < field_render_result.na; s2++)
@@ -213,13 +243,20 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 				}
 				delete [] data.values;
 				
-				#pragma omp ordered
 				printf("\rRendering %s: %.3f%%", field_render.id.c_str(), 100.d * (t+1) / nt);
 				fflush(stdout);
 			}
 		break;
 		
 	}
+	
+	//
+	for (unsigned int r = 0; r < field_render.count; r++)
+	{
+		bindata_files[r]->close();
+	}
+	
+	
 	
 	// Creating files needed to create the video
 	save_field_render_ct2(field_render_result, output_dir);

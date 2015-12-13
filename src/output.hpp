@@ -13,6 +13,7 @@ void write_particle			(ofstream& stream, double current_time, ParticleStateGloba
 void write_interaction		(ofstream& stream, double current_time, ParticleStateLocal&  state, Field& field);
 void write_node				(ofstream& stream, Node& node);
 void write_response_analysis(ofstream& stream, ResponseAnalysis& response_analysis, double perc_in,  double delta_in, double value_in, vector<double> perct_out, vector<double> delta_out, vector<double> value_out);
+void write_field_render_bindata(vector<ofstream*> files, FieldRenderResult& field_render_result, FieldRenderData& field_render_data);
 
 void save_field_render_cfg	(FieldRenderResult& field_render_result, fs::path output_dir);
 void save_field_render_data	(FieldRenderResult& field_render_result, FieldRenderData& field_render_data, fs::path output_dir);

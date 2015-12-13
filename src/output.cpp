@@ -90,6 +90,8 @@ void setup_response_analysis(ofstream& stream, ResponseAnalysis& response_analys
 }
 
 
+
+
 void write_response_analysis(ofstream& stream, ResponseAnalysis& response_analysis, double perc_in,  double delta_in, double value_in, vector<double> perct_out, vector<double> delta_out, vector<double> value_out)
 {
 	double unit_in  = get_conversion_si_value(response_analysis.object_in,  response_analysis.attribute_in);
@@ -261,9 +263,14 @@ void save_field_render_cfg(FieldRenderResult& field_render_result,  fs::path out
 	fprintf(file_param, "space_size_y 		= %.16E\n", field_render.space_size_y * AU_LENGTH);
 	fprintf(file_param, "space_size_z 		= %.16E\n", field_render.space_size_z * AU_LENGTH);
 	fprintf(file_param, "\n");
-	fprintf(file_param, "time_start			= %.16E\n", field_render.time_start * AU_TIME);
-	fprintf(file_param, "time_end			= %.16E\n", field_render.time_end   * AU_TIME);
+	fprintf(file_param, "time_start			= %.16E\n", field_render.time_start 	 * AU_TIME);
+	fprintf(file_param, "time_end			= %.16E\n", field_render.time_end   	 * AU_TIME);
 	fprintf(file_param, "time_resolution 	= %.16E\n", field_render.time_resolution * AU_TIME);
+	fprintf(file_param, "\n");
+	fprintf(file_param, "nt					= %u\n", 	field_render_result.nt);
+	fprintf(file_param, "na					= %u\n", 	field_render_result.na);
+	fprintf(file_param, "nb				 	= %u\n", 	field_render_result.nb);
+	
 
 	fprintf(file_param, "}\n");
 	
@@ -271,6 +278,30 @@ void save_field_render_cfg(FieldRenderResult& field_render_result,  fs::path out
 	
 	fclose(file_param);
 }
+
+void write_field_render_bindata(vector<ofstream*> files,FieldRenderResult& field_render_result, FieldRenderData& field_render_data)
+{
+	FieldRender& field_render = field_render_result.render;
+	
+	for (unsigned int r = 0; r < field_render.count; r++)
+	{
+		ofstream* file = files[r];
+		
+		unsigned int na = field_render_result.na;
+		unsigned int nb = field_render_result.nb;
+		
+		double buffer[na*nb];
+		
+		unsigned int i = 0;
+		
+		for (unsigned int a = 0; a < na; a++)
+			for (unsigned int b = 0; b < nb; b++)
+				buffer[i++]=field_render_data.values[a][b][r];
+		
+		file->write((char*)buffer, sizeof(double) * na * nb);
+	}
+}
+
 
 void save_field_render_data(FieldRenderResult& field_render_result, FieldRenderData& field_render_data, fs::path output_dir)
 {
