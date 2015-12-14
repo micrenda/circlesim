@@ -1,15 +1,27 @@
 
 
+void perform_render(
+	fs::path base_dir,
+	fs::path interaction_base_path,
+	fs::path render_file_path,
+	fs::path subrender_file_path,
+	unsigned int i,
+	string       r,
+	unsigned int s);
+{
+	
+}
+
+
 int main(int argc, char *argv[])
 {
 	
-	fs::path base_dir 			= fs::path("");
-	fs::path output_dir 			= fs::path("");
+	fs::path base_dir 		= fs::path("");
 	
 	
-	vector<int> 	arg_interactions;
+	vector<unsigned int> 	arg_interactions;
 	vector<string>	arg_renders;
-	vector<int>		arg_subrenders;
+	vector<unsigned int>		arg_subrenders;
 
 	int flag;
 	static struct option long_options[] = {
@@ -17,7 +29,6 @@ int main(int argc, char *argv[])
 		{"interaction",	    1, 0, 'i'},
 		{"render",	    1, 0, 'r'},
 		{"subrender",	1, 0, 's'},
-		{"output",		1, 0, 'o'},
 		{NULL, 0, NULL, 0}
 	};
 	
@@ -85,7 +96,7 @@ int main(int argc, char *argv[])
 	// Getting current node
 	static const bo::regex regex_interaction("^i([0-9]+)n([0-9]+)$");
 	
-	vector<int> 	selected_interactions;
+	vector<unsigned int> 	selected_interactions;
 	
 	if (arg_interactions.empty())
 	{
@@ -106,7 +117,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		for (int i : arg_interactions)
+		for (unsigned int i : arg_interactions)
 		{
 			selected_interactions.push_back(i);
 		}
@@ -116,7 +127,7 @@ int main(int argc, char *argv[])
 	
 	
 	
-	for (int i : arg_interactions)
+	for (unsigned int i : arg_interactions)
 	{
 		fs::path interaction_base_path;
 		
@@ -190,7 +201,7 @@ int main(int argc, char *argv[])
 			
 			// Now we have a verified interaction and render, let search for subrender
 			static const bo::regex_subrender("^field_render_([[:print:]]+)_r([0-9]+).dat$");
-			vector<int> selected_subrenders;
+			vector<unsigned int> selected_subrenders;
 			
 			if (arg_subrenders.empty())
 			{
@@ -212,12 +223,12 @@ int main(int argc, char *argv[])
 			}
 			else
 			{
-				for (int s : arg_subrenders)
+				for (unsigned int s : arg_subrenders)
 					selected_subrenders.push_back(s);
 			}
 			
 			
-			for (int s: selected_subrenders)
+			for (unsigned int s: selected_subrenders)
 			{
 				
 				fs::path subrender_file_path = interaction_base_path / fs::path((bo::format("field_render_%s_r%i.dat") % r % s).str());
@@ -232,10 +243,7 @@ int main(int argc, char *argv[])
 				
 				
 				// Ok, let render our file
-				start_render(base_dir, )
-				
-				
-				
+				perform_render(base_dir, interaction_base_path, render_file_path, subrender_file_path);
 				
 					
 			}
