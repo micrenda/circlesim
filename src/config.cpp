@@ -771,3 +771,75 @@ void read_config(
 	
 
 }
+
+void read_config_render_movie(fs::path& cfg_file, FieldRenderMovie& field_render_movie)
+{
+	
+	try 
+	{
+		Config* config = new Config;
+		
+		config->readFile(cfg_file.c_str());
+		
+		Setting&  common	 = config->lookup("render_param");
+		
+		
+		if (!common.exists("plane")) 				missing_param("plane");
+		if (!common.exists("anchor")) 				missing_param("anchor");
+		if (!common.exists("axis_cut")) 			missing_param("axis_cut");
+		if (!common.exists("space_resolution")) 	missing_param("space_resolution");
+		
+		if (!common.exists("space_size_x")) 		missing_param("space_size_x");
+		if (!common.exists("space_size_y")) 		missing_param("space_size_y");
+		if (!common.exists("space_size_z")) 		missing_param("space_size_z");
+		
+		if (!common.exists("time_start")) 			missing_param("time_start");
+		if (!common.exists("time_end")) 			missing_param("time_end");
+		if (!common.exists("time_resolution")) 		missing_param("time_resolution");
+		
+		if (!common.exists("nt")) 					missing_param("nt");
+		if (!common.exists("na")) 					missing_param("na");
+		if (!common.exists("nb")) 					missing_param("nb");
+		
+		
+		string plane = string((const char *) common["plane"]);
+			
+		if (plane == "xy")
+			common.plane = XY;
+		if (plane == "xz")
+			common.plane = XZ;
+		if (plane == "yz")
+			common.plane = YZ;
+			
+		string anchor = string((const char *) common["anchor"]);
+			
+		if (plane == "origin")
+			common.anchor = ORIGIN;
+		if (plane == "particle")
+			common.anchor = PARTICLE;
+			
+			
+		common.space_resolution = ((double)common["space_resolution"]) 	/ AU_LENGTH;
+		
+		common.space_size_x 	= ((double)common["space_size_x"]) 		/ AU_LENGTH;
+		common.space_size_y 	= ((double)common["space_size_y"]) 		/ AU_LENGTH;
+		common.space_size_z 	= ((double)common["space_size_z"]) 		/ AU_LENGTH;
+			
+		common.time_start 		= ((double)common["time_start"]) 		/ AU_TIME;
+		common.time_end 		= ((double)common["time_end"]) 			/ AU_TIME;
+		common.time_resolution 	= ((double)common["time_resolution"]) 	/ AU_TIME;
+		
+		
+		common.nt 	= ((unsigned int)common["nt"]);
+		common.na 	= ((unsigned int)common["na"]);
+		common.nb 	= ((unsigned int)common["nb"]);
+		
+	}
+	catch (ParseException& e)  
+	{
+		printf("Error while reading configuration file: %s\n", e.getFile());
+		printf("Line %d: %s\n", e.getLine(), e.getError());
+		exit(-1);
+	}
+	
+}

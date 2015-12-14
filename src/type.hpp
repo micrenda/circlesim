@@ -398,5 +398,28 @@ inline bool operator<(const FieldRender& lhs, 		const FieldRender& rhs) 		{ retu
 inline bool operator<(const ResponseAnalysis& lhs, 	const ResponseAnalysis& rhs)	{ return lhs.id <  rhs.id; }
 
 
+typedef struct FieldRenderMovie
+{
+	string plane;
+	Anchor anchor;
+	double axis_cut;
+
+	double space_resolution;
+	double space_size_x;
+	double space_size_y;
+	double space_size_z;
+
+	double time_start;
+	double time_end;
+	double time_resolution;
+	
+	unsigned int nt;
+	unsigned int na;
+	unsigned int nb;
+}
+
+
+
+
 
 #endif

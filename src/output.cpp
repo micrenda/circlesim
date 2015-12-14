@@ -222,7 +222,7 @@ void save_field_render_cfg(FieldRenderResult& field_render_result,  fs::path out
 	FILE* file_param=fopen((output_dir / fs::path((bo::format("field_render_%s.cfg") % field_render.id).str())).string().c_str(), "w");
 	
 	fprintf(file_param, "# All values are in SI units\n");
-	fprintf(file_param, "render_param:\n");
+	fprintf(file_param, "common:\n");
 	fprintf(file_param, "{\n");
 	
 	switch (field_render.plane)

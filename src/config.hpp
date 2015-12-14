@@ -11,3 +11,6 @@ void read_config(
 	vector<ResponseAnalysis>& response_analyses,
 	vector<string>& sources,
 	vector<string>& headers);
+
+
+void read_config_render_movie(fs::path& cfg_file, FieldRenderMovie& field_render_movie);
