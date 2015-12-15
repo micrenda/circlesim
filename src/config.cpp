@@ -208,7 +208,7 @@ void read_config_renders(Setting* field_renders_config, vector<FieldRender>& ren
 				{
 					string color_id = (bo::format("color_%u") % (c+1)).str();
 					if (render_config.exists(color_id))
-						render.colors.push_back(render_config[color_id.c_st()]);
+						render.colors.push_back(render_config[color_id.c_str()]);
 					else
 						missing_param(color_id);
 				}
