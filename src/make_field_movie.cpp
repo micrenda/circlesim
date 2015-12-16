@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 				std::string dir_name = std::string(dir_iter->path().filename().string());
 				
 				bo::match_results<std::string::const_iterator> what;
-				if (bo::regex_match(dir_name, what, e))
+				if (bo::regex_match(dir_name, what, regex_interaction))
 				{
 					selected_interactions.push_back(stoi(what[0]))
 				}
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 		
 		
 		// Ok, we have the interaction folder, now we start to look for render 
-		static const bo::regex_render("^field_render_([[:print:]]+)\.cfg$");
+		static const bo::regex_render("^field_render_([[:print:]]+)\\.cfg$");
 		vector<string>	selected_renders;
 		
 		if (arg_render_bases.empty())

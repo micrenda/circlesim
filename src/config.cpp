@@ -772,7 +772,7 @@ void read_config(
 
 }
 
-void read_config_render_movie(fs::path& cfg_file, FieldRenderMovie& field_render_movie)
+void read_config_render_movie(fs::path& cfg_file, FieldMovieConfig& movie_config)
 {
 	
 	try 
@@ -782,7 +782,6 @@ void read_config_render_movie(fs::path& cfg_file, FieldRenderMovie& field_render
 		config->readFile(cfg_file.c_str());
 		
 		Setting&  common	 = config->lookup("render_param");
-		
 		
 		if (!common.exists("plane")) 				missing_param("plane");
 		if (!common.exists("anchor")) 				missing_param("anchor");
@@ -802,37 +801,39 @@ void read_config_render_movie(fs::path& cfg_file, FieldRenderMovie& field_render
 		if (!common.exists("nb")) 					missing_param("nb");
 		
 		
+		
+		
 		string plane = string((const char *) common["plane"]);
 			
 		if (plane == "xy")
-			common.plane = XY;
+			movie_config.plane = XY;
 		if (plane == "xz")
-			common.plane = XZ;
+			movie_config.plane = XZ;
 		if (plane == "yz")
-			common.plane = YZ;
+			movie_config.plane = YZ;
 			
 		string anchor = string((const char *) common["anchor"]);
 			
 		if (plane == "origin")
-			common.anchor = ORIGIN;
+			movie_config.anchor = ORIGIN;
 		if (plane == "particle")
-			common.anchor = PARTICLE;
+			movie_config.anchor = PARTICLE;
 			
 			
-		common.space_resolution = ((double)common["space_resolution"]) 	/ AU_LENGTH;
+		movie_config.space_resolution = ((double)common["space_resolution"]) 	/ AU_LENGTH;
 		
-		common.space_size_x 	= ((double)common["space_size_x"]) 		/ AU_LENGTH;
-		common.space_size_y 	= ((double)common["space_size_y"]) 		/ AU_LENGTH;
-		common.space_size_z 	= ((double)common["space_size_z"]) 		/ AU_LENGTH;
+		movie_config.space_size_x 	= ((double)common["space_size_x"]) 		/ AU_LENGTH;
+		movie_config.space_size_y 	= ((double)common["space_size_y"]) 		/ AU_LENGTH;
+		movie_config.space_size_z 	= ((double)common["space_size_z"]) 		/ AU_LENGTH;
 			
-		common.time_start 		= ((double)common["time_start"]) 		/ AU_TIME;
-		common.time_end 		= ((double)common["time_end"]) 			/ AU_TIME;
-		common.time_resolution 	= ((double)common["time_resolution"]) 	/ AU_TIME;
+		movie_config.time_start 		= ((double)common["time_start"]) 		/ AU_TIME;
+		movie_config.time_end 		= ((double)common["time_end"]) 			/ AU_TIME;
+		movie_config.time_resolution 	= ((double)common["time_resolution"]) 	/ AU_TIME;
 		
 		
-		common.nt 	= ((unsigned int)common["nt"]);
-		common.na 	= ((unsigned int)common["na"]);
-		common.nb 	= ((unsigned int)common["nb"]);
+		movie_config.nt 	= ((unsigned int)common["nt"]);
+		movie_config.na 	= ((unsigned int)common["na"]);
+		movie_config.nb 	= ((unsigned int)common["nb"]);
 		
 	}
 	catch (ParseException& e)  

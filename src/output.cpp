@@ -274,6 +274,18 @@ void save_field_render_cfg(FieldRenderResult& field_render_result,  fs::path out
 
 	fprintf(file_param, "}\n");
 	
+	fprintf(file_param, "\n");
+	
+	for (unsigned int s = 0; s < field_render.count; s++)
+	{
+		fprintf(file_param, "subrender_%u:\n", s);
+		fprintf(file_param, "{\n");
+		fprintf(file_param, "label = \"%s\"\n", field_render.titles[s].c_str());
+		fprintf(file_param, "color = \"%s\"\n", field_render.colors[s].c_str());
+		fprintf(file_param, "}\n");
+		fprintf(file_param, "\n");
+	}
+	
 	
 	
 	fclose(file_param);
@@ -353,6 +365,12 @@ void save_field_render_data(FieldRenderResult& field_render_result, FieldRenderD
 					pos_x = pos_cut;
 					pos_y = pos_a;
 					pos_z = pos_b;
+				break;
+				
+				default:
+					pos_x = 0;
+					pos_y = 0;
+					pos_z = 0;
 				break;
 			}
 			

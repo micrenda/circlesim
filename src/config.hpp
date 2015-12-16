@@ -13,4 +13,4 @@ void read_config(
 	vector<string>& headers);
 
 
-void read_config_render_movie(fs::path& cfg_file, FieldRenderMovie& field_render_movie);
+void read_config_render_movie(fs::path& cfg_file, FieldMovieConfig& config);

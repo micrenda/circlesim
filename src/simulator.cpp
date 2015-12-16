@@ -113,12 +113,12 @@ int gsl_odeiv_func_laser(double t, const double y[], double f[], void *params)
 	calculate_fields(pos_t, pos_x, pos_y, pos_z, laser, field, function_field);
 	
 	double e_x = field.e_x;
-	double e_y = field.e_x;
-	double e_z = field.e_x;
+	double e_y = field.e_y;
+	double e_z = field.e_z;
 	
-	double b_x = field.e_x;
-	double b_y = field.e_y;
-	double b_z = field.e_z;
+	double b_x = field.b_x;
+	double b_y = field.b_y;
+	double b_z = field.b_z;
 	
 	// In out formulas we use B instead of H and we use the relation B = H/c₀
 	// Formulas (3),(4),(5)

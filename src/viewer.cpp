@@ -1,4 +1,5 @@
 #include <irrlicht/irrlicht.h>
+#include <irrlicht/driverChoice.h>
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
@@ -107,6 +108,21 @@ const float speed_angular = 15.f/ (1 / AU_TIME) ;
 double length_au_to_pixels_ratio;
 
 
+void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie)
+{
+	ifstream* file = new ifstream(dat_file.string().c_str(), ios::binary);
+	
+	
+	field_movie.frames = new FieldMovieFrame[cfg.nt];
+	
+	for (unsigned int t = 0; t < cfg.nt; t++)
+	{
+		FieldMovieFrame& frame = field_movie.frames[t];
+		frame.values = new double[cfg.na * cfg.nb];
+		file->read((char*)frame.values, sizeof(double) * cfg.na * cfg.nb);
+	}
+}
+
 
 
 void update_camera_position(IGUIEditBox* text_camera,  vector3df camera_position, ILightSceneNode* light_node)
@@ -137,10 +153,9 @@ void update_camera_position(IGUIEditBox* text_camera,  vector3df camera_position
 
 int main(int argc, char *argv[])
 {
-	
 	fs::path base_dir 			= fs::path("");
 	fs::path interaction_subdir = fs::path("");
-	
+	bool ask_video_driver = false;
 	
 	int current_interaction = -1;
 	int current_node		= -1;
@@ -149,6 +164,7 @@ int main(int argc, char *argv[])
 	static struct option long_options[] = {
 		{"help",   		0, 0, 'h'},
 		{"interaction",	1, 0, 'i'},
+		{"ask-video-driver",	0, 0, 'd'},
 		{NULL, 0, NULL, 0}
 	};
 	
@@ -163,6 +179,9 @@ int main(int argc, char *argv[])
 		case 'h':
 			print_help();
 			exit(0);
+			break;
+		case 'd':
+			ask_video_driver = true;
 			break;
 		case '?':
 			print_help();
@@ -212,7 +231,7 @@ int main(int argc, char *argv[])
 	// Getting current node
 	static const bo::regex e("^i([0-9]+)n([0-9]+)$");
 	
-	fs::directory_iterator end_iter;
+	fs::directory_iterator end_iter;	
 	for( fs::directory_iterator dir_iter(base_dir) ; dir_iter != end_iter ; ++dir_iter)
 	{
 		if (fs::is_directory(dir_iter->status()))
@@ -261,9 +280,23 @@ int main(int argc, char *argv[])
 	
 	print_key_summary();
 	
+	
+	video::E_DRIVER_TYPE driverType;
+	
+	if (ask_video_driver)
+	{
+		driverType = driverChoiceConsole();
+		if (driverType == video::EDT_COUNT)
+		{
+			printf("No video driver selected.\n");
+			return 1;
+		}
+	}
+	else
+		driverType = video::EDT_OPENGL;
 
 	MyEventReceiver event_receiver;
-	IrrlichtDevice *device = createDevice( video::EDT_OPENGL, dimension2d<u32>(640, 480), 16, false, false, false, &event_receiver);
+	IrrlichtDevice *device = createDevice(driverType, dimension2d<u32>(640, 480), 16, false, false, false, &event_receiver);
 
     if (!device)
         return 1;
@@ -443,6 +476,56 @@ int main(int argc, char *argv[])
 
     
     
+    
+    // Detecting if there was some field render files that could be used
+    static const bo::regex regex_render("^field_render_([[:print:]]+)\\.cfg$");
+    
+	vector<FieldMovieConfig> render_cfgs;
+	
+
+	for( fs::directory_iterator file_iter(interaction_subdir) ; file_iter != end_iter ; ++file_iter)
+	{
+		if (fs::is_regular_file(file_iter->status()))
+		{
+			std::string file_name = std::string(file_iter->path().filename().string());
+			
+			bo::match_results<std::string::const_iterator> what;
+			if (bo::regex_match(file_name, what, regex_render))
+			{
+				FieldMovieConfig render_cfg;
+				render_cfg.name = what[1];
+				
+				fs::path file = *file_iter;
+				read_config_render_movie(file, render_cfg);
+				render_cfgs.push_back(render_cfg);
+			}
+		}
+	}
+	
+	
+	
+	
+	if (!render_cfgs.empty())
+	{
+		unsigned int subs = 0;
+		for (FieldMovieConfig& render_cfg: render_cfgs)
+			subs += render_cfg.subrenders_count;
+		
+		printf("Found %u field render files, with a total of %u subrenders.\nTo show them use one of these flags:\n", (unsigned int) render_cfgs.size(), subs);
+		
+		printf("__________________________________________________________");
+		
+		for (FieldMovieConfig render_cfg: render_cfgs)
+		{
+			for (unsigned int s = 0; s < render_cfg.subrenders_count; s++)
+			printf("--field %s.%u\n", render_cfg.name.c_str(), s);
+		}
+		
+		printf("__________________________________________________________");
+		
+	}
+		
+    
     // Calculating the time_au_to_seconds_ratio. On the beginning it will be calculated in a way that
     // the movement of the records contained in interaction.csv file will be playied in 60 seconds.
     
@@ -452,7 +535,7 @@ int main(int argc, char *argv[])
     // It is a dimensionless value. A value of 10 means that the value is slowed down 10 times.
     // It is initialized in a way that, at the beginning, the full movie will be played in one minute
     
-    bool   movie_running	    = true;
+    bool   movie_running    = true;
     bool   movie_direction  = true; // True -> Forward, False -> Backward
     double movie_start		= records[0].time;
     double movie_end		= records[records_loaded-1].time;

@@ -12,8 +12,8 @@ BUILD:
 		libpng-devel
 		libpng12-devel
 		irrlicht-devel
-		libpng++-devel
-		does not exists a package in Fedora. You must download and compile from here: http://www.nongnu.org/pngpp/
+		
+		libpng++-devel: does not exists a package in Fedora. You must download and compile from here: http://www.nongnu.org/pngpp/
 	
 
 EXECUTION:

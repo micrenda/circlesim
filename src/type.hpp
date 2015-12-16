@@ -397,9 +397,15 @@ typedef function<void(ResponseAnalysis& analisys, unsigned int step)> 		Function
 inline bool operator<(const FieldRender& lhs, 		const FieldRender& rhs) 		{ return lhs.id <  rhs.id; }
 inline bool operator<(const ResponseAnalysis& lhs, 	const ResponseAnalysis& rhs)	{ return lhs.id <  rhs.id; }
 
-
-typedef struct FieldRenderMovie
+typedef struct FieldMovieSubConfig
 {
+	
+} FieldMovieSubConfig;
+
+typedef struct FieldMovieConfig
+{
+	string name;
+	
 	string plane;
 	Anchor anchor;
 	double axis_cut;
@@ -416,8 +422,25 @@ typedef struct FieldRenderMovie
 	unsigned int nt;
 	unsigned int na;
 	unsigned int nb;
-}
+	
+	unsigned int subrenders_count;
+	FieldMovieSubConfig* subrenders;
+	
+	
+} FieldMovieConfig;
 
+
+typedef struct FieldMovieFrame
+{
+	double* values;
+} FieldMovieFrame;
+
+
+typedef struct FieldMovie
+{
+	FieldMovieFrame* frames;
+	
+} FieldMovie;
 
 
 
