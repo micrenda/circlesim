@@ -1,0 +1,36 @@
+# Packages to be installed to use circlesim (Based on Fedora 23)
+
+BUILD:
+
+	1. Install these packages:
+		gyp
+		gcc-c++
+		libconfig-devel
+		boost-devel
+		armadillo-devel
+		gsl-devel
+		libpng-devel
+		libpng12-devel
+		irrlicht-devel
+		libpng++-devel
+		does not exists a package in Fedora. You must download and compile from here: http://www.nongnu.org/pngpp/
+	
+
+EXECUTION:
+	gcc-c++
+	java-1.8.0-openjdk-headless
+	
+
+PLOTTING:
+	ctioga2:
+		Perform these steps:
+		1. Install these packages: rubygems, ruby-devel, zlib-devel, redhat-rpm-config
+		2. Execute as root: "gem install ctioga2 --no-document"
+	
+	ffmpeg:
+		
+		This rpm does not exists in standard Fedora repo. You can get it from rpmfusion executing as root this command:
+		rpm -Uvh http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-stable.noarch.rpm http://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-stable.noarch.rpm
+		
+		Install these packages: ffmpeg, poppler-utils
+	
