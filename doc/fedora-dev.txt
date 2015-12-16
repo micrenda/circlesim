@@ -24,7 +24,7 @@ EXECUTION:
 PLOTTING:
 	ctioga2:
 		Perform these steps:
-		1. Install these packages: rubygems, ruby-devel, zlib-devel, redhat-rpm-config
+		1. Install these packages: rubygems, ruby-devel, zlib-devel, redhat-rpm-config, texlive-latex-bin-bin
 		2. Execute as root: "gem install ctioga2 --no-document"
 	
 	ffmpeg:
