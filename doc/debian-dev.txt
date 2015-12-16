@@ -1,4 +1,4 @@
-# Packages to be installed to use circlesim
+# Packages to be installed to use circlesim (Based on Debian 8)
 
 BUILD:
 	build-essential
