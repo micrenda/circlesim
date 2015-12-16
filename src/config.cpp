@@ -781,7 +781,7 @@ void read_config_render_movie(fs::path& cfg_file, FieldMovieConfig& movie_config
 		
 		config->readFile(cfg_file.c_str());
 		
-		Setting&  common	 = config->lookup("render_param");
+		Setting&  common	 = config->lookup("common");
 		
 		if (!common.exists("plane")) 				missing_param("plane");
 		if (!common.exists("anchor")) 				missing_param("anchor");
@@ -834,6 +834,15 @@ void read_config_render_movie(fs::path& cfg_file, FieldMovieConfig& movie_config
 		movie_config.nt 	= ((unsigned int)common["nt"]);
 		movie_config.na 	= ((unsigned int)common["na"]);
 		movie_config.nb 	= ((unsigned int)common["nb"]);
+		
+		
+		unsigned int s = 0;
+		
+		while (config->exists((bo::format("subrender_%u") % s).str()))
+			s++;
+		
+		movie_config.subrenders_count = s;
+		
 		
 	}
 	catch (ParseException& e)  

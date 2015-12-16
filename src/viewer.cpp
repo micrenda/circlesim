@@ -483,7 +483,7 @@ int main(int argc, char *argv[])
 	vector<FieldMovieConfig> render_cfgs;
 	
 
-	for( fs::directory_iterator file_iter(interaction_subdir) ; file_iter != end_iter ; ++file_iter)
+	for( fs::directory_iterator file_iter(base_dir/interaction_subdir) ; file_iter != end_iter ; ++file_iter)
 	{
 		if (fs::is_regular_file(file_iter->status()))
 		{
@@ -495,7 +495,7 @@ int main(int argc, char *argv[])
 				FieldMovieConfig render_cfg;
 				render_cfg.name = what[1];
 				
-				fs::path file = *file_iter;
+				fs::path file =  *file_iter;
 				read_config_render_movie(file, render_cfg);
 				render_cfgs.push_back(render_cfg);
 			}
@@ -513,7 +513,7 @@ int main(int argc, char *argv[])
 		
 		printf("Found %u field render files, with a total of %u subrenders.\nTo show them use one of these flags:\n", (unsigned int) render_cfgs.size(), subs);
 		
-		printf("__________________________________________________________");
+		printf("__________________________________________________________\n");
 		
 		for (FieldMovieConfig render_cfg: render_cfgs)
 		{
@@ -521,7 +521,12 @@ int main(int argc, char *argv[])
 			printf("--field %s.%u\n", render_cfg.name.c_str(), s);
 		}
 		
-		printf("__________________________________________________________");
+		printf("__________________________________________________________\n");
+		printf("┌────────────────────────────────────────────────────────────┐\n");
+		printf("│ Field renders available                                    │\n");
+		printf("├────────────────────────────────────────────────────────────┤\n");
+		printf("│                                                            │\n");
+		printf("└────────────────────────────────────────────────────────────┘\n");
 		
 	}
 		
