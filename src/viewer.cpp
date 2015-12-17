@@ -33,6 +33,7 @@ void print_help()
 	printf("\n");
 	printf("  -h  --help			Print this help menu\n");
 	printf("  -i  --interaction 	Specify which interaction to render\n");
+	printf("  -f  --field		 	Specify if a field must be rendered\n");
 	printf("\n");
 }
 
@@ -110,17 +111,25 @@ double length_au_to_pixels_ratio;
 
 void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie)
 {
-	ifstream* file = new ifstream(dat_file.string().c_str(), ios::binary);
-	
+	ifstream file(dat_file.string(), ios::in | ios::binary);
 	
 	field_movie.frames = new FieldMovieFrame[cfg.nt];
 	
 	for (unsigned int t = 0; t < cfg.nt; t++)
 	{
+		
 		FieldMovieFrame& frame = field_movie.frames[t];
+		
 		frame.values = new double[cfg.na * cfg.nb];
-		file->read((char*)frame.values, sizeof(double) * cfg.na * cfg.nb);
+		
+		file.read((char*)frame.values, sizeof(double) * cfg.na * cfg.nb);
+		
+		//printf("Read %u + %u: %E,%E,%E\n", t, (unsigned int) file.gcount(), frame.values[300*300+0], frame.values[300*300+1], frame.values[300*300+2]);
 	}
+	
+	file.close();
+	
+	printf("Loaded %s: (memory usage: %.2f Mb)\n", dat_file.c_str(), sizeof(double) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
 }
 
 
@@ -155,7 +164,10 @@ int main(int argc, char *argv[])
 {
 	fs::path base_dir 			= fs::path("");
 	fs::path interaction_subdir = fs::path("");
+	
 	bool ask_video_driver = false;
+	
+	std::string selected_field_render;
 	
 	int current_interaction = -1;
 	int current_node		= -1;
@@ -165,11 +177,12 @@ int main(int argc, char *argv[])
 		{"help",   		0, 0, 'h'},
 		{"interaction",	1, 0, 'i'},
 		{"ask-video-driver",	0, 0, 'd'},
+		{"field",	1, 0, 'f'},
 		{NULL, 0, NULL, 0}
 	};
 	
 	int option_index = 0;
-	while ((flag = getopt_long(argc, argv, "hi:", long_options, &option_index)) != -1)
+	while ((flag = getopt_long(argc, argv, "hi:f:", long_options, &option_index)) != -1)
 	{
 		switch (flag)
 		{
@@ -182,6 +195,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			ask_video_driver = true;
+			break;
+		case 'f':
+			selected_field_render = std::string(optarg);
 			break;
 		case '?':
 			print_help();
@@ -502,33 +518,82 @@ int main(int argc, char *argv[])
 		}
 	}
 	
+	bool has_field_movie = false;
+	FieldMovie field_movie;
+	
+	
+	if (!selected_field_render.empty())
+	{
+		static const bo::regex regex_render_flag("^([[:print:]]+)\\.([\\d]+)$");
+		bo::match_results<std::string::const_iterator> what;
+		if (bo::regex_match(selected_field_render, what, regex_render_flag))
+		{
+			std::string       render   = what[1];
+			unsigned int subrender = stoi(what[2]);
+			
+			FieldMovieConfig selected_render_cfg;
+			bool found = false;
+			
+			for (FieldMovieConfig render_cfg: render_cfgs)
+			{
+				if (render_cfg.name == render)
+				{
+					selected_render_cfg = render_cfg;
+					found = true;
+					break;
+				}
+			}
+			
+			if (found)
+			{
+				if (subrender >= 0 and subrender <= selected_render_cfg.subrenders_count - 1)
+				{
+					std::string dat_filename = (bo::format("field_render_%s_r%u.dat") % selected_render_cfg.name % subrender).str();
+					load_field(selected_render_cfg, base_dir / interaction_subdir / fs::path(dat_filename), field_movie);
+					has_field_movie = true;
+				}
+				else
+				{
+					printf("Unable to find the subrender %u. Please specify a subrender between %u and %u.\n", subrender, 0, selected_render_cfg.subrenders_count);
+					exit(-1);
+				}
+			}
+			else
+			{
+				printf("Unable to find the render '%s'\n", render.c_str());
+				exit(-1);
+			}
+		}
+		else
+		{
+			printf("Unable to understand the field flag: %s\n", selected_field_render.c_str());
+			exit(-1);
+		}
+	}
 	
 	
 	
 	if (!render_cfgs.empty())
 	{
-		unsigned int subs = 0;
-		for (FieldMovieConfig& render_cfg: render_cfgs)
-			subs += render_cfg.subrenders_count;
 		
-		printf("Found %u field render files, with a total of %u subrenders.\nTo show them use one of these flags:\n", (unsigned int) render_cfgs.size(), subs);
-		
-		printf("__________________________________________________________\n");
+		printf("┌────────────────────────────────────────────────────────────┐\n");
+		printf("│ Field renders available  ( use --field <render>.<n> )      │\n");
+		printf("├────────────────────────────────────────────────────────────┤\n");
 		
 		for (FieldMovieConfig render_cfg: render_cfgs)
 		{
-			for (unsigned int s = 0; s < render_cfg.subrenders_count; s++)
-			printf("--field %s.%u\n", render_cfg.name.c_str(), s);
+			
+			printf("│ %-49s %2u .. %-2u │\n", render_cfg.name.c_str(), 0, render_cfg.subrenders_count);
+
 		}
 		
-		printf("__________________________________________________________\n");
-		printf("┌────────────────────────────────────────────────────────────┐\n");
-		printf("│ Field renders available                                    │\n");
-		printf("├────────────────────────────────────────────────────────────┤\n");
-		printf("│                                                            │\n");
+		
 		printf("└────────────────────────────────────────────────────────────┘\n");
 		
 	}
+	
+	
+	
 		
     
     // Calculating the time_au_to_seconds_ratio. On the beginning it will be calculated in a way that
