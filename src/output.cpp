@@ -282,6 +282,13 @@ void save_field_render_cfg(FieldRenderResult& field_render_result,  fs::path out
 		fprintf(file_param, "{\n");
 		fprintf(file_param, "label = \"%s\"\n", field_render.titles[s].c_str());
 		fprintf(file_param, "color = \"%s\"\n", field_render.colors[s].c_str());
+		
+		FieldRenderResultLimit& limit = field_render.limits[s];
+		
+		fprintf(file_param, "value_min     = %.16E\n", limit.value_min);
+		fprintf(file_param, "value_max     = %.16E\n", limit.value_max);
+		fprintf(file_param, "value_min_abs = %.16E\n", limit.value_min_abs);
+		fprintf(file_param, "value_max_abs = %.16E\n", limit.value_max_abs);
 		fprintf(file_param, "}\n");
 		fprintf(file_param, "\n");
 	}

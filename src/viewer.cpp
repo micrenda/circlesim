@@ -115,21 +115,27 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
 	
 	field_movie.frames = new FieldMovieFrame[cfg.nt];
 	
+	unsigned int len = cfg.na * cfg.nb;
+	
+	double* values = new double[len];
+	
 	for (unsigned int t = 0; t < cfg.nt; t++)
 	{
 		
 		FieldMovieFrame& frame = field_movie.frames[t];
 		
-		frame.values = new double[cfg.na * cfg.nb];
+		file.read((char*)values, sizeof(double) * len);
 		
-		file.read((char*)frame.values, sizeof(double) * cfg.na * cfg.nb);
+		frame.values = new unsigned int[len];
 		
-		//printf("Read %u + %u: %E,%E,%E\n", t, (unsigned int) file.gcount(), frame.values[300*300+0], frame.values[300*300+1], frame.values[300*300+2]);
+		for (unsigned int i = 0; i < len; i++)
+			frame.values[i] = tmp_values[i];
 	}
 	
 	file.close();
 	
-	printf("Loaded %s: (memory usage: %.2f Mb)\n", dat_file.c_str(), sizeof(double) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
+	printf("Loaded file %s: \n", dat_file.c_str()); 
+	printf("containing %u frames of %u x %u pixels (memory usage: %.2f Mb)\n", cfg.nt, cfg.na, cfg.nb, sizeof(float) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
 }
 
 
@@ -573,6 +579,12 @@ int main(int argc, char *argv[])
 	
 	
 	
+	if (has_field_movie)
+	{
+		
+	}
+	
+	
 	if (!render_cfgs.empty())
 	{
 		
@@ -583,7 +595,7 @@ int main(int argc, char *argv[])
 		for (FieldMovieConfig render_cfg: render_cfgs)
 		{
 			
-			printf("│ %-49s %2u .. %-2u │\n", render_cfg.name.c_str(), 0, render_cfg.subrenders_count);
+			printf("│ %-49s %2u .. %-2u │\n", render_cfg.name.c_str(), 0, render_cfg.subrenders_count - 1);
 
 		}
 		

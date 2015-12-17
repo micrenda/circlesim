@@ -323,7 +323,7 @@ typedef struct FieldRender
 
 } FieldRender;
 
-typedef struct FieldRenderLimit
+typedef struct FieldRenderResultLimit
 {
 	double value_min;
 	double value_max;
@@ -399,7 +399,10 @@ inline bool operator<(const ResponseAnalysis& lhs, 	const ResponseAnalysis& rhs)
 
 typedef struct FieldMovieSubConfig
 {
-	
+	double value_min;
+	double value_max;
+	double value_min_abs;
+	double value_max_abs;
 } FieldMovieSubConfig;
 
 typedef struct FieldMovieConfig
@@ -432,7 +435,7 @@ typedef struct FieldMovieConfig
 
 typedef struct FieldMovieFrame
 {
-	double* values;
+	unsigned int* values;
 } FieldMovieFrame;
 
 

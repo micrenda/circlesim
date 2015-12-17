@@ -42,12 +42,15 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 	
 	field_render_result.nt = nt;
 	
-	
+	vector<fs::path>  bindata_paths;
 	vector<ofstream*> bindata_files;
 	
 	for (unsigned int r = 0; r < field_render.count; r++)
 	{
-		ofstream* file =new ofstream((output_dir / fs::path((bo::format("field_render_%s_r%u.dat") % field_render.id % r).str())).string().c_str(), ios::binary);
+		fs::path path  = output_dir / fs::path((bo::format("field_render_%s_r%u.dat.tmp") % field_render.id % r).str());
+		ofstream* file = new ofstream(path.string(), ios::binary);
+		
+		bindata_paths.push_back(path);
 		bindata_files.push_back(file);
 	}
 	
@@ -76,8 +79,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			field_render_result.nb = nj;
 			field_render_result.length_a = field_render.space_size_x;
 			field_render_result.length_b = field_render.space_size_y;
-			
-			save_field_render_cfg (field_render_result,       output_dir);
 			
 			#pragma omp parallel for ordered schedule(static, 1)
 			for (unsigned int t = 0; t < nt; t++)
@@ -112,7 +113,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 				
 				
 				#pragma omp ordered
-				
 				write_field_render_bindata(bindata_files, field_render_result, data);	
 				
 				// Freeing the allocated memory
@@ -137,8 +137,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			field_render_result.length_a = field_render.space_size_x;
 			field_render_result.length_b = field_render.space_size_z;
 		
-			save_field_render_cfg (field_render_result,       output_dir);
-			
 			#pragma omp parallel for ordered schedule(static, 1)
 			for (unsigned int t = 0; t < nt; t++)
 			{
@@ -195,8 +193,6 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 			field_render_result.length_a = field_render.space_size_y;
 			field_render_result.length_b = field_render.space_size_z;
 			
-			save_field_render_cfg (field_render_result,       output_dir);
-			
 			#pragma omp parallel for ordered schedule(static, 1)
 			for (unsigned int t = 0; t < nt; t++)
 			{
@@ -250,10 +246,17 @@ void calculate_field_map(FieldRenderResult& field_render_result, FieldRender& fi
 		
 	}
 	
+	
+	save_field_render_cfg (field_render_result, output_dir);
+	
 	//
 	for (unsigned int r = 0; r < field_render.count; r++)
 	{
 		bindata_files[r]->close();
+		
+		fs::path orig = bindata_paths[r];
+		fs::path dest = fs::change_extension(orig, "");
+		fs::rename(orig, dest);
 	}
 	
 	
