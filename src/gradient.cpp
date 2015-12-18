@@ -7,10 +7,10 @@
 
 using namespace bo;
 
-Gradient::Gradient(std::string s, double value_min, double value_max, double value_min_abs, double value_max_abs)
+Gradient::Gradient(std::string& s, double value_min, double value_max, double value_min_abs, double value_max_abs)
 {
 	
-	static const bo::regex regex_color("^\\#(\\d{1,6})(\\(([\\+\\-])?([\\_a-z]+\\))?$");
+	static const bo::regex regex_color("^\\#([0-9a-f]{1,6})(\\(([\\+\\-])?([\\_a-z]+)\\))?$");
 	
 	erase_all(s, " ");
 	to_lower(s);
@@ -31,7 +31,7 @@ Gradient::Gradient(std::string s, double value_min, double value_max, double val
 		else if (regex_match(token, what, regex_color))
 		{
 			item.has_color = true;
-			item.color = stoul(what[1]);
+			item.color = stoul("0x"+what[1]);
 			
 			if (!string(what[2]).empty())
 			{
@@ -83,13 +83,13 @@ Gradient::Gradient(std::string s, double value_min, double value_max, double val
 		exit(-1);
 	}
 	
-	if (items[0].has_color)
+	if (!items[0].has_color)
 	{
 		printf("A gradient must have the first color specified\n");
 		exit(-1);
 	}
 	
-	if (items[items.size()-1].has_color)
+	if (!items[items.size()-1].has_color)
 	{
 		printf("A gradient must have the last color specified\n");
 		exit(-1);
@@ -199,14 +199,12 @@ unsigned int Gradient::get_color(double value)
 	return 0;
 }
 
-double Gradient::get_percentual(double value)
+double Gradient::get_lowest_value()
 {
-	unsigned int s = items.size();
-	
-	if (value < items[0].value)
-		return 0.d;
-	if (value > items[s-1].value)
-		return 1.d;
-	
-	return (value - items[0].value) / (items[s-1].value - items[0].value);
+	return items[0].value;
+}
+
+double Gradient::get_highest_value()
+{
+	return items[items.size()-1].value;
 }

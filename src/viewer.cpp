@@ -122,13 +122,18 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
 	FieldMovieSubConfig& subrender = cfg.subrenders[subrender_id];
 	Gradient gradient = Gradient(subrender.color, subrender.value_min, subrender.value_max, subrender.value_min_abs, subrender.value_max_abs);
 	
+	double lowest  = gradient.get_lowest_value();
+	double highest = gradient.get_highest_value();
 	// Initializing palette color
 	for (unsigned int i = 0; i <= UCHAR_MAX; i++)
-		palette[i] = gradient.get_color(subrender.value_min + (subrender.value_max - subrender.value_min) / (UCHAR_MAX+1) * i);
+		palette[i] = gradient.get_color(lowest + (highest - lowest) / (UCHAR_MAX+1) * i);
 	
 	
 	
 	double* values = new double[len];
+	
+	printf("Loading file %s ", dat_file.filename().c_str());
+	cout<<flush;
 	
 	for (unsigned int t = 0; t < cfg.nt; t++)
 	{
@@ -140,13 +145,26 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
 		frame.values = new unsigned char[len];
 		
 		for (unsigned int i = 0; i < len; i++)
-			frame.values[i] = (values[i] - subrender.value_min) / (subrender.value_max - subrender.value_min) * (UCHAR_MAX+1);
+		{
+			double value = values[i];
+			
+			if (value < lowest)
+				frame.values[i] = 0;
+			else if (value > highest)
+				frame.values[i] = UCHAR_MAX;
+			else
+				frame.values[i] = (value - lowest) / (highest - lowest) * (UCHAR_MAX+1);
+		}
+		
+		printf(".");
+		cout<<flush;
 	}
+	printf(" done.\n");
+	cout<<flush;
 	
 	file.close();
 	
-	printf("Loaded file %s: \n", dat_file.c_str()); 
-	printf("containing %u frames of %u x %u pixels (memory usage: %.2f Mb)\n", cfg.nt, cfg.na, cfg.nb, sizeof(unsigned char) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
+	printf("Loaded %s: %u frames of %u x %u pixels (memory usage: %.2f Mb)\n",  cfg.name.c_str(), cfg.nt, cfg.na, cfg.nb, sizeof(unsigned char) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
 }
 
 
@@ -311,111 +329,16 @@ int main(int argc, char *argv[])
 	read_config(cfg_file, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, headers, sources);
 	
 	
-	print_key_summary();
 	
 	
-	video::E_DRIVER_TYPE driverType;
 	
-	if (ask_video_driver)
-	{
-		driverType = driverChoiceConsole();
-		if (driverType == video::EDT_COUNT)
-		{
-			printf("No video driver selected.\n");
-			return 1;
-		}
-	}
-	else
-		driverType = video::EDT_OPENGL;
-
-	MyEventReceiver event_receiver;
-	IrrlichtDevice *device = createDevice(driverType, dimension2d<u32>(640, 480), 16, false, false, false, &event_receiver);
-
-    if (!device)
-        return 1;
-        
-    device->setWindowCaption(L"Circlesim viewer");
-    
-    
-    IVideoDriver* driver = device->getVideoDriver();
-    ISceneManager* smgr = device->getSceneManager();
-    IGUIEnvironment* guienv = device->getGUIEnvironment();
-    
-    
-    smgr->setAmbientLight(video::SColorf(0.2,0.2,0.2,1));
-    
-	IGUIEditBox* text_camera = guienv->addEditBox(L"Camera position: N/A",	rect<s32>(10,10,200,40), false);
-	text_camera->setMultiLine(true);
-	
-    
-    IAnimatedMesh* axis_x_mesh = smgr->addArrowMesh("x-axis", 0xFFAF6767, 0xFFAF6767,  10, 20, 10.0, 8.0, 0.3, 1.0);
-    IAnimatedMesh* axis_y_mesh = smgr->addArrowMesh("y-axis", 0xFF67AF67, 0xFF67AF67,  10, 20, 10.0, 8.0, 0.3, 1.0);
-    IAnimatedMesh* axis_z_mesh = smgr->addArrowMesh("z-axis", 0xFF6767AF, 0xFF6767AF,  10, 20, 10.0, 8.0, 0.3, 1.0);
-     
-
-   
-    
-    IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0, -90));
-    IMeshSceneNode* axis_y_node =  smgr->addMeshSceneNode(axis_y_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0,  0));
-    IMeshSceneNode* axis_z_node =  smgr->addMeshSceneNode(axis_z_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 90, 0,  0));
-    
-    axis_x_node->setMaterialFlag(video::EMF_LIGHTING, true);
-    axis_y_node->setMaterialFlag(video::EMF_LIGHTING, true);
-    axis_z_node->setMaterialFlag(video::EMF_LIGHTING, true);
-    
-    //axis_x_node->getMaterial(0).Shininess = 20.0f;
-	//axis_x_node->getMaterial(0).SpecularColor.set(80,80,80,80);
-	//axis_x_node->getMaterial(0).AmbientColor.set(10,10,10,10);
-	//axis_x_node->getMaterial(0).DiffuseColor.set(20,20,20,20);
-	//axis_x_node->getMaterial(0).EmissiveColor.set(0,0,0,0); 
-
-    
-    float    border_radius = 40;
-    unsigned border_sides  = 100;
-    SColor   border_color  = SColor(0xff, 0xff, 0xff, 0xff);
-    
-    length_au_to_pixels_ratio = border_radius / simulation.laser_influence_radius;
-    printf("length_to_pixel_ratio = %E\n", length_au_to_pixels_ratio);
-    
-    float    border_side = border_radius * 2 * M_PI / border_sides;
-    
-    vector3df border_start_position_xy = vector3df(border_radius, 0, 0);
-    vector3df border_start_position_xz = vector3df(0, 0, border_radius);
-    vector3df border_start_position_yz = vector3df(0, border_radius, 0);
-    
-    for (unsigned int s = 0; s < border_sides; s++)
-	{
-		IMesh* cyl_mesh = smgr->getGeometryCreator()->createCylinderMesh(0.1, border_side, 20, border_color, false, 0.f);
-		
-		vector3df border_position_xy= border_start_position_xy;
-		vector3df border_position_xz= border_start_position_xz;
-		vector3df border_position_yz= border_start_position_yz;
-		
-		border_position_xy.rotateXYBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
-		border_position_xz.rotateXZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
-		border_position_yz.rotateYZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
-		
-		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xy, vector3df(0, 0, 360.f * s / border_sides ));
-		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xz, vector3df(-360.f * s / border_sides, 0	, 90));
-		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_yz, vector3df(90+360.f * s / border_sides, 0, 0));
-	}
-    
-    // Particle
-    
-    //ITexture * particle_texture = driver->addRenderTargetTexture(dimension2d<u32>(128, 128));
-	//driver->setRenderTarget(particle_texture);
-	//driver->draw2DRectangle(SColor(0xFF, 0x53, 0xA1, 0x62), rect<s32>(position2d<s32>(0,0),position2d<s32>(128,128)));
-    
-    IAnimatedMesh*  particle_mesh = smgr->addSphereMesh ("particle", 0.30f);
-    IMeshSceneNode* particle_node = smgr->addMeshSceneNode(particle_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
-	particle_node->setMaterialFlag(video::EMF_LIGHTING, true); 
-	//particle_node->getMaterial(0).Shininess = 20.0f;
 	
 	// Reading input file to count how many record there are inside
+	unsigned int records_count = 0;
 	
 	ifstream f((base_dir / interaction_subdir / fs::path("interaction.csv")).string());
 	std::string line;
-	unsigned int records_count = 0;
+	
 	while (std::getline(f, line)) records_count++;
 	
 	if (records_count > 0) // Removing the line containing the header
@@ -428,8 +351,6 @@ int main(int argc, char *argv[])
 	}
 	
 	f.close();
-	
-	
 	
 	// Read input files
 	csv::CSVReader<13, csv::trim_chars<>, csv::no_quote_escape<';'>> in((base_dir / interaction_subdir / fs::path("interaction.csv")).string());
@@ -619,11 +540,131 @@ int main(int argc, char *argv[])
 	
 	
 		
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	print_key_summary();
+	
+	
+	video::E_DRIVER_TYPE driverType;
+	
+	if (ask_video_driver)
+	{
+		driverType = driverChoiceConsole();
+		if (driverType == video::EDT_COUNT)
+		{
+			printf("No video driver selected.\n");
+			return 1;
+		}
+	}
+	else
+		driverType = video::EDT_OPENGL;
+
+	MyEventReceiver event_receiver;
+	IrrlichtDevice *device = createDevice(driverType, dimension2d<u32>(640, 480), 16, false, false, false, &event_receiver);
+
+    if (!device)
+        return 1;
+        
+    device->setWindowCaption(L"Circlesim viewer");
     
-    // Calculating the time_au_to_seconds_ratio. On the beginning it will be calculated in a way that
-    // the movement of the records contained in interaction.csv file will be playied in 60 seconds.
+    
+    IVideoDriver* driver = device->getVideoDriver();
+    ISceneManager* smgr = device->getSceneManager();
+    IGUIEnvironment* guienv = device->getGUIEnvironment();
     
     
+    smgr->setAmbientLight(video::SColorf(0.2,0.2,0.2,1));
+    
+	IGUIEditBox* text_camera = guienv->addEditBox(L"Camera position: N/A",	rect<s32>(10,10,200,40), false);
+	text_camera->setMultiLine(true);
+	
+    
+    IAnimatedMesh* axis_x_mesh = smgr->addArrowMesh("x-axis", 0xFFAF6767, 0xFFAF6767,  10, 20, 10.0, 8.0, 0.3, 1.0);
+    IAnimatedMesh* axis_y_mesh = smgr->addArrowMesh("y-axis", 0xFF67AF67, 0xFF67AF67,  10, 20, 10.0, 8.0, 0.3, 1.0);
+    IAnimatedMesh* axis_z_mesh = smgr->addArrowMesh("z-axis", 0xFF6767AF, 0xFF6767AF,  10, 20, 10.0, 8.0, 0.3, 1.0);
+     
+
+   
+    
+    IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0, -90));
+    IMeshSceneNode* axis_y_node =  smgr->addMeshSceneNode(axis_y_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0,  0));
+    IMeshSceneNode* axis_z_node =  smgr->addMeshSceneNode(axis_z_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 90, 0,  0));
+    
+    axis_x_node->setMaterialFlag(video::EMF_LIGHTING, true);
+    axis_y_node->setMaterialFlag(video::EMF_LIGHTING, true);
+    axis_z_node->setMaterialFlag(video::EMF_LIGHTING, true);
+    
+    //axis_x_node->getMaterial(0).Shininess = 20.0f;
+	//axis_x_node->getMaterial(0).SpecularColor.set(80,80,80,80);
+	//axis_x_node->getMaterial(0).AmbientColor.set(10,10,10,10);
+	//axis_x_node->getMaterial(0).DiffuseColor.set(20,20,20,20);
+	//axis_x_node->getMaterial(0).EmissiveColor.set(0,0,0,0); 
+
+    
+    float    border_radius = 40;
+    unsigned border_sides  = 100;
+    SColor   border_color  = SColor(0xff, 0xff, 0xff, 0xff);
+    
+    length_au_to_pixels_ratio = border_radius / simulation.laser_influence_radius;
+    printf("length_to_pixel_ratio = %E\n", length_au_to_pixels_ratio);
+    
+    float    border_side = border_radius * 2 * M_PI / border_sides;
+    
+    vector3df border_start_position_xy = vector3df(border_radius, 0, 0);
+    vector3df border_start_position_xz = vector3df(0, 0, border_radius);
+    vector3df border_start_position_yz = vector3df(0, border_radius, 0);
+    
+    for (unsigned int s = 0; s < border_sides; s++)
+	{
+		IMesh* cyl_mesh = smgr->getGeometryCreator()->createCylinderMesh(0.1, border_side, 20, border_color, false, 0.f);
+		
+		vector3df border_position_xy= border_start_position_xy;
+		vector3df border_position_xz= border_start_position_xz;
+		vector3df border_position_yz= border_start_position_yz;
+		
+		border_position_xy.rotateXYBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
+		border_position_xz.rotateXZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
+		border_position_yz.rotateYZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
+		
+		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xy, vector3df(0, 0, 360.f * s / border_sides ));
+		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xz, vector3df(-360.f * s / border_sides, 0	, 90));
+		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_yz, vector3df(90+360.f * s / border_sides, 0, 0));
+	}
+    
+    // Particle
+    
+    //ITexture * particle_texture = driver->addRenderTargetTexture(dimension2d<u32>(128, 128));
+	//driver->setRenderTarget(particle_texture);
+	//driver->draw2DRectangle(SColor(0xFF, 0x53, 0xA1, 0x62), rect<s32>(position2d<s32>(0,0),position2d<s32>(128,128)));
+    
+    IAnimatedMesh*  particle_mesh = smgr->addSphereMesh ("particle", 0.30f);
+    IMeshSceneNode* particle_node = smgr->addMeshSceneNode(particle_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
+	particle_node->setMaterialFlag(video::EMF_LIGHTING, true); 
+	//particle_node->getMaterial(0).Shininess = 20.0f;
+	
+	
+	
+	
+	
     
     // The ration between the time in speed in real (AU) and the speed we see at screen.
     // It is a dimensionless value. A value of 10 means that the value is slowed down 10 times.

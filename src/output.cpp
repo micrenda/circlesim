@@ -280,10 +280,10 @@ void save_field_render_cfg(FieldRenderResult& field_render_result,  fs::path out
 	{
 		fprintf(file_param, "subrender_%u:\n", s);
 		fprintf(file_param, "{\n");
-		fprintf(file_param, "label = \"%s\"\n", field_render.titles[s].c_str());
+		fprintf(file_param, "title = \"%s\"\n", field_render.titles[s].c_str());
 		fprintf(file_param, "color = \"%s\"\n", field_render.colors[s].c_str());
 		
-		FieldRenderResultLimit& limit = field_render.limits[s];
+		FieldRenderResultLimit& limit = field_render_result.limits[s];
 		
 		fprintf(file_param, "value_min     = %.16E\n", limit.value_min);
 		fprintf(file_param, "value_max     = %.16E\n", limit.value_max);

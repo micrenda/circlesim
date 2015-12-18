@@ -847,10 +847,10 @@ void read_config_render_movie(fs::path& cfg_file, FieldMovieConfig& movie_config
 			subconfig.title = string((const char *) config_subrender["title"]);
 			subconfig.color = string((const char *) config_subrender["color"]);
 			
-			subconfig.value_min     = config_subrender["min"];
-			subconfig.value_max     = config_subrender["max"];
-			subconfig.value_min_abs = config_subrender["min_abs"];
-			subconfig.value_max_abs = config_subrender["max_abs"];
+			subconfig.value_min     = config_subrender["value_min"];
+			subconfig.value_max     = config_subrender["value_max"];
+			subconfig.value_min_abs = config_subrender["value_min_abs"];
+			subconfig.value_max_abs = config_subrender["value_max_abs"];
 			
 			movie_config.subrenders.push_back(subconfig);
 			s++;
