@@ -399,6 +399,9 @@ inline bool operator<(const ResponseAnalysis& lhs, 	const ResponseAnalysis& rhs)
 
 typedef struct FieldMovieSubConfig
 {
+	string title;
+	string color;
+	
 	double value_min;
 	double value_max;
 	double value_min_abs;
@@ -426,8 +429,7 @@ typedef struct FieldMovieConfig
 	unsigned int na;
 	unsigned int nb;
 	
-	unsigned int subrenders_count;
-	FieldMovieSubConfig* subrenders;
+	vector<FieldMovieSubConfig> subrenders;
 	
 	
 } FieldMovieConfig;
@@ -435,7 +437,7 @@ typedef struct FieldMovieConfig
 
 typedef struct FieldMovieFrame
 {
-	unsigned int* values;
+	unsigned char* values;
 } FieldMovieFrame;
 
 

@@ -839,10 +839,22 @@ void read_config_render_movie(fs::path& cfg_file, FieldMovieConfig& movie_config
 		unsigned int s = 0;
 		
 		while (config->exists((bo::format("subrender_%u") % s).str()))
+		{
+			Setting& config_subrender = config->lookup((bo::format("subrender_%u") % s).str());
+			
+			FieldMovieSubConfig subconfig;
+			
+			subconfig.title = string((const char *) config_subrender["title"]);
+			subconfig.color = string((const char *) config_subrender["color"]);
+			
+			subconfig.value_min     = config_subrender["min"];
+			subconfig.value_max     = config_subrender["max"];
+			subconfig.value_min_abs = config_subrender["min_abs"];
+			subconfig.value_max_abs = config_subrender["max_abs"];
+			
+			movie_config.subrenders.push_back(subconfig);
 			s++;
-		
-		movie_config.subrenders_count = s;
-		
+		}
 		
 	}
 	catch (ParseException& e)  

@@ -11,6 +11,7 @@
 #include "config.hpp"
 #include "csv.h"
 #include "util.hpp"
+#include "gradient.hpp"
 
 
 using namespace irr;
@@ -109,13 +110,23 @@ const float speed_angular = 15.f/ (1 / AU_TIME) ;
 double length_au_to_pixels_ratio;
 
 
-void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie)
+void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie, unsigned int subrender_id, unsigned int* palette)
 {
 	ifstream file(dat_file.string(), ios::in | ios::binary);
 	
 	field_movie.frames = new FieldMovieFrame[cfg.nt];
 	
 	unsigned int len = cfg.na * cfg.nb;
+	
+	
+	FieldMovieSubConfig& subrender = cfg.subrenders[subrender_id];
+	Gradient gradient = Gradient(subrender.color, subrender.value_min, subrender.value_max, subrender.value_min_abs, subrender.value_max_abs);
+	
+	// Initializing palette color
+	for (unsigned int i = 0; i <= UCHAR_MAX; i++)
+		palette[i] = gradient.get_color(subrender.value_min + (subrender.value_max - subrender.value_min) / (UCHAR_MAX+1) * i);
+	
+	
 	
 	double* values = new double[len];
 	
@@ -126,16 +137,16 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
 		
 		file.read((char*)values, sizeof(double) * len);
 		
-		frame.values = new unsigned int[len];
+		frame.values = new unsigned char[len];
 		
 		for (unsigned int i = 0; i < len; i++)
-			frame.values[i] = tmp_values[i];
+			frame.values[i] = (values[i] - subrender.value_min) / (subrender.value_max - subrender.value_min) * (UCHAR_MAX+1);
 	}
 	
 	file.close();
 	
 	printf("Loaded file %s: \n", dat_file.c_str()); 
-	printf("containing %u frames of %u x %u pixels (memory usage: %.2f Mb)\n", cfg.nt, cfg.na, cfg.nb, sizeof(float) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
+	printf("containing %u frames of %u x %u pixels (memory usage: %.2f Mb)\n", cfg.nt, cfg.na, cfg.nb, sizeof(unsigned char) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
 }
 
 
@@ -526,6 +537,7 @@ int main(int argc, char *argv[])
 	
 	bool has_field_movie = false;
 	FieldMovie field_movie;
+	unsigned int* field_movie_palette = new unsigned int[UCHAR_MAX + 1];
 	
 	
 	if (!selected_field_render.empty())
@@ -552,15 +564,15 @@ int main(int argc, char *argv[])
 			
 			if (found)
 			{
-				if (subrender >= 0 and subrender <= selected_render_cfg.subrenders_count - 1)
+				if (subrender >= 0 and subrender <= selected_render_cfg.subrenders.size() - 1)
 				{
 					std::string dat_filename = (bo::format("field_render_%s_r%u.dat") % selected_render_cfg.name % subrender).str();
-					load_field(selected_render_cfg, base_dir / interaction_subdir / fs::path(dat_filename), field_movie);
+					load_field(selected_render_cfg, base_dir / interaction_subdir / fs::path(dat_filename), field_movie, subrender, field_movie_palette);
 					has_field_movie = true;
 				}
 				else
 				{
-					printf("Unable to find the subrender %u. Please specify a subrender between %u and %u.\n", subrender, 0, selected_render_cfg.subrenders_count);
+					printf("Unable to find the subrender %u. Please specify a subrender between %u and %u.\n", subrender, 0, (unsigned int) selected_render_cfg.subrenders.size() - 1);
 					exit(-1);
 				}
 			}
@@ -595,7 +607,7 @@ int main(int argc, char *argv[])
 		for (FieldMovieConfig render_cfg: render_cfgs)
 		{
 			
-			printf("│ %-49s %2u .. %-2u │\n", render_cfg.name.c_str(), 0, render_cfg.subrenders_count - 1);
+			printf("│ %-49s %2u .. %-2u │\n", render_cfg.name.c_str(), 0, (unsigned int) render_cfg.subrenders.size() - 1);
 
 		}
 		
