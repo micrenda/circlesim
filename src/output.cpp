@@ -423,6 +423,7 @@ void save_field_render_ct2(FieldRenderResult& field_render_result, fs::path outp
 		bo::replace_all(color_range, "max_abs", (bo::format("%E") % render_limit.value_max_abs).str());
 		bo::replace_all(color_range, "min", 	(bo::format("%E") % render_limit.value_min).str());
 		bo::replace_all(color_range, "max", 	(bo::format("%E") % render_limit.value_max).str());
+		bo::replace_all(color_range, "zero", 	(bo::format("%E") % 0.d).str());
 
 		
 		

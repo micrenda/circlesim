@@ -17,7 +17,8 @@
 				'src/response.cpp',
 				'src/labmap.cpp',
 				'src/script.cpp',
-				'src/field_map.cpp'
+				'src/field_map.cpp',
+				'src/gradient.cpp'
 			],
 		
 			'libraries': 	['-fopenmp', '-lgsl', '-lgslcblas', '-lconfig++', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-larmadillo' , '-ldl', '-lpng12'],	
@@ -56,7 +57,8 @@
                         [
                                 'src/config.cpp',
                                 'src/viewer.cpp',
-                                'src/util.cpp'
+                                'src/util.cpp',
+								'src/gradient.cpp'
                         ],
 
                         'libraries':    ['-lpthread', '-lIrrlicht', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-lconfig++', '-larmadillo'],
