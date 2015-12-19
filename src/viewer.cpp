@@ -712,7 +712,7 @@ int main(int argc, char *argv[])
 		}
 		
 		
-		m_vertices[i] = S3DVertex(pos_x, pos_y, pos_z, norm_x, norm_y, norm_z, SColor(255,255,255,255), 0, 0);
+		m_vertices[i] = S3DVertex(pos_x, pos_y, pos_z, norm_x, norm_y, norm_z, SColor(255,120,200,120), a, b);
 	}
 	
 	unsigned int d = 0;
