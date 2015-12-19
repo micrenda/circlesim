@@ -26,59 +26,59 @@ using namespace gui;
 
 void print_help()
 {
-	std::string exe_name = "viewer";
-	
-	printf("Usage:\n\n");
-	printf("  %s <base_directory> -i <n>\n", exe_name.c_str());
-	printf("  %s -h\n", exe_name.c_str());
-	printf("\n");
-	printf("  -h  --help			Print this help menu\n");
-	printf("  -i  --interaction 	Specify which interaction to render\n");
-	printf("  -f  --field		 	Specify if a field must be rendered\n");
-	printf("\n");
+    std::string exe_name = "viewer";
+    
+    printf("Usage:\n\n");
+    printf("  %s <base_directory> -i <n>\n", exe_name.c_str());
+    printf("  %s -h\n", exe_name.c_str());
+    printf("\n");
+    printf("  -h  --help            Print this help menu\n");
+    printf("  -i  --interaction     Specify which interaction to render\n");
+    printf("  -f  --field           Specify if a field must be rendered\n");
+    printf("\n");
 }
 
 void print_key_summary()
 {
-	printf("┌────────────────────────────────────────────────────────────┐\n");
-	printf("│ Keybindings                                                │\n");
-	printf("├────────────────────────────────────────────────────────────┤\n");
-	printf("│ ← → ↑ ↓            Move camera left, right, up, down       │\n");
-	printf("│ + -                Increase / decrease movie speed by 10%%  │\n");
-	printf("│ * /                Increase / decrease movie speed by 10x  │\n");
-	printf("│ Page Dw, Page Up   Zoom in  / zoom out                     │\n");
-	printf("│ .                  Play movie forward                      │\n");
-	printf("│ ,                  Play movie backward                     │\n");
-	printf("│ Space              Stop / Play movie                       │\n");
-	printf("└────────────────────────────────────────────────────────────┘\n");
+    printf("┌────────────────────────────────────────────────────────────┐\n");
+    printf("│ Keybindings                                                │\n");
+    printf("├────────────────────────────────────────────────────────────┤\n");
+    printf("│ ← → ↑ ↓            Move camera left, right, up, down       │\n");
+    printf("│ + -                Increase / decrease movie speed by 10%%  │\n");
+    printf("│ * /                Increase / decrease movie speed by 10x  │\n");
+    printf("│ Page Dw, Page Up   Zoom in  / zoom out                     │\n");
+    printf("│ .                  Play movie forward                      │\n");
+    printf("│ ,                  Play movie backward                     │\n");
+    printf("│ Space              Stop / Play movie                       │\n");
+    printf("└────────────────────────────────────────────────────────────┘\n");
 }
 
 typedef struct ParticleRecord
 {
-	double time;
-	double relative_position_x;
-	double relative_position_y;
-	double relative_position_z;
-	double relative_momentum_x;
-	double relative_momentum_y;
-	double relative_momentum_z;
-	double field_e_x;
-	double field_e_y;
-	double field_e_z;
-	double field_b_x;
-	double field_b_y;
-	double field_b_z;
+    double time;
+    double relative_position_x;
+    double relative_position_y;
+    double relative_position_z;
+    double relative_momentum_x;
+    double relative_momentum_y;
+    double relative_momentum_z;
+    double field_e_x;
+    double field_e_y;
+    double field_e_z;
+    double field_b_x;
+    double field_b_y;
+    double field_b_z;
 } ParticleRecord;
 
 class MyEventReceiver : public IEventReceiver
 {
-	
+    
 private:
     bool keys_store[KEY_KEY_CODES_COUNT];
     
 public:
 
-	MyEventReceiver()
+    MyEventReceiver()
     {
         for (u32 i=0; i<KEY_KEY_CODES_COUNT; ++i)
             keys_store[i] = false;
@@ -112,84 +112,84 @@ double length_au_to_pixels_ratio;
 
 void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie, unsigned int subrender_id, unsigned int* palette)
 {
-	ifstream file(dat_file.string(), ios::in | ios::binary);
-	
-	field_movie.frames = new FieldMovieFrame[cfg.nt];
-	
-	unsigned int len = cfg.na * cfg.nb;
-	
-	
-	FieldMovieSubConfig& subrender = cfg.subrenders[subrender_id];
-	Gradient gradient = Gradient(subrender.color, subrender.value_min, subrender.value_max, subrender.value_min_abs, subrender.value_max_abs);
-	
-	double lowest  = gradient.get_lowest_value();
-	double highest = gradient.get_highest_value();
-	// Initializing palette color
-	for (unsigned int i = 0; i <= UCHAR_MAX; i++)
-		palette[i] = gradient.get_color(lowest + (highest - lowest) / (UCHAR_MAX+1) * i);
-	
-	
-	
-	double* values = new double[len];
-	
-	printf("Loading file %s ", dat_file.filename().c_str());
-	cout<<flush;
-	
-	for (unsigned int t = 0; t < cfg.nt; t++)
-	{
-		
-		FieldMovieFrame& frame = field_movie.frames[t];
-		
-		file.read((char*)values, sizeof(double) * len);
-		
-		frame.values = new unsigned char[len];
-		
-		for (unsigned int i = 0; i < len; i++)
-		{
-			double value = values[i];
-			
-			if (value < lowest)
-				frame.values[i] = 0;
-			else if (value > highest)
-				frame.values[i] = UCHAR_MAX;
-			else
-				frame.values[i] = (value - lowest) / (highest - lowest) * (UCHAR_MAX+1);
-		}
-		
-		printf(".");
-		cout<<flush;
-	}
-	printf(" done.\n");
-	cout<<flush;
-	
-	file.close();
-	
-	printf("Loaded %s: %u frames of %u x %u pixels (memory usage: %.2f Mb)\n",  cfg.name.c_str(), cfg.nt, cfg.na, cfg.nb, sizeof(unsigned char) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
+    ifstream file(dat_file.string(), ios::in | ios::binary);
+    
+    field_movie.frames = new FieldMovieFrame[cfg.nt];
+    
+    unsigned int len = cfg.na * cfg.nb;
+    
+    
+    FieldMovieSubConfig& subrender = cfg.subrenders[subrender_id];
+    Gradient gradient = Gradient(subrender.color, subrender.value_min, subrender.value_max, subrender.value_min_abs, subrender.value_max_abs);
+    
+    double lowest  = gradient.get_lowest_value();
+    double highest = gradient.get_highest_value();
+    // Initializing palette color
+    for (unsigned int i = 0; i <= UCHAR_MAX; i++)
+        palette[i] = gradient.get_color(lowest + (highest - lowest) / (UCHAR_MAX+1) * i);
+    
+    
+    
+    double* values = new double[len];
+    
+    printf("Loading file %s ", dat_file.filename().c_str());
+    cout<<flush;
+    
+    for (unsigned int t = 0; t < cfg.nt; t++)
+    {
+        
+        FieldMovieFrame& frame = field_movie.frames[t];
+        
+        file.read((char*)values, sizeof(double) * len);
+        
+        frame.values = new unsigned char[len];
+        
+        for (unsigned int i = 0; i < len; i++)
+        {
+            double value = values[i];
+            
+            if (value < lowest)
+                frame.values[i] = 0;
+            else if (value > highest)
+                frame.values[i] = UCHAR_MAX;
+            else
+                frame.values[i] = (value - lowest) / (highest - lowest) * (UCHAR_MAX+1);
+        }
+        
+        printf(".");
+        cout<<flush;
+    }
+    printf(" done.\n");
+    cout<<flush;
+    
+    file.close();
+    
+    printf("Loaded %s: %u frames of %u x %u pixels (memory usage: %.2f Mb)\n",  cfg.name.c_str(), cfg.nt, cfg.na, cfg.nb, sizeof(unsigned char) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
 }
 
 
 
 void update_camera_position(IGUIEditBox* text_camera,  vector3df camera_position, ILightSceneNode* light_node)
 {
-	float rho, theta, phi;
-	
-	cartesian_to_spherical(camera_position.X, camera_position.Y, camera_position.Z, theta, phi);
-	
-	rho = vector_module(camera_position.X, camera_position.Y, camera_position.Z);
-	
-	float light_x, light_y, light_z;
-	spherical_to_cartesian(200.f, theta, phi, light_x, light_y, light_z);
-	
-	light_node->setPosition(vector3df(light_x, light_y, light_z));
+    float rho, theta, phi;
+    
+    cartesian_to_spherical(camera_position.X, camera_position.Y, camera_position.Z, theta, phi);
+    
+    rho = vector_module(camera_position.X, camera_position.Y, camera_position.Z);
+    
+    float light_x, light_y, light_z;
+    spherical_to_cartesian(200.f, theta, phi, light_x, light_y, light_z);
+    
+    light_node->setPosition(vector3df(light_x, light_y, light_z));
 
 
-	text_camera->setText( (bo::wformat(L"Camera\nx=%1$+.3Em, y=%2$+.3Em, z=%3$+.3Em\nrho=%4$+.3Em, theta=%5$+.0f, phi=%6$+.0f\n")
-	% (camera_position.X / length_au_to_pixels_ratio * AU_LENGTH)
-	% (camera_position.Y / length_au_to_pixels_ratio * AU_LENGTH)
-	% (camera_position.Z / length_au_to_pixels_ratio * AU_LENGTH)
-	% (rho / length_au_to_pixels_ratio * AU_LENGTH)
-	% (theta / M_PI * 180.f)
-	% (phi   / M_PI * 180.f)).str().c_str());
+    text_camera->setText( (bo::wformat(L"Camera\nx=%1$+.3Em, y=%2$+.3Em, z=%3$+.3Em\nrho=%4$+.3Em, theta=%5$+.0f, phi=%6$+.0f\n")
+    % (camera_position.X / length_au_to_pixels_ratio * AU_LENGTH)
+    % (camera_position.Y / length_au_to_pixels_ratio * AU_LENGTH)
+    % (camera_position.Z / length_au_to_pixels_ratio * AU_LENGTH)
+    % (rho / length_au_to_pixels_ratio * AU_LENGTH)
+    % (theta / M_PI * 180.f)
+    % (phi   / M_PI * 180.f)).str().c_str());
 }
 
 
@@ -197,236 +197,236 @@ void update_camera_position(IGUIEditBox* text_camera,  vector3df camera_position
 
 int main(int argc, char *argv[])
 {
-	fs::path base_dir 			= fs::path("");
-	fs::path interaction_subdir = fs::path("");
-	
-	bool ask_video_driver = false;
-	
-	std::string selected_field_render;
-	
-	int current_interaction = -1;
-	int current_node		= -1;
+    fs::path base_dir           = fs::path("");
+    fs::path interaction_subdir = fs::path("");
+    
+    bool ask_video_driver = false;
+    
+    std::string selected_field_render;
+    
+    int current_interaction = -1;
+    int current_node        = -1;
 
-	int flag;
-	static struct option long_options[] = {
-		{"help",   		0, 0, 'h'},
-		{"interaction",	1, 0, 'i'},
-		{"ask-video-driver",	0, 0, 'd'},
-		{"field",	1, 0, 'f'},
-		{NULL, 0, NULL, 0}
-	};
-	
-	int option_index = 0;
-	while ((flag = getopt_long(argc, argv, "hi:f:", long_options, &option_index)) != -1)
-	{
-		switch (flag)
-		{
-		case 'i':
-			current_interaction = stoi(optarg);
-			break;
-		case 'h':
-			print_help();
-			exit(0);
-			break;
-		case 'd':
-			ask_video_driver = true;
-			break;
-		case 'f':
-			selected_field_render = std::string(optarg);
-			break;
-		case '?':
-			print_help();
-			exit(-1);
-			break;
-		default:
-			printf ("?? getopt returned character code 0%o ??\n", flag);
-			exit(-1);
-			break;
-		}
-	}
-	
+    int flag;
+    static struct option long_options[] = {
+        {"help",        0, 0, 'h'},
+        {"interaction", 1, 0, 'i'},
+        {"ask-video-driver",    0, 0, 'd'},
+        {"field",   1, 0, 'f'},
+        {NULL, 0, NULL, 0}
+    };
+    
+    int option_index = 0;
+    while ((flag = getopt_long(argc, argv, "hi:f:", long_options, &option_index)) != -1)
+    {
+        switch (flag)
+        {
+        case 'i':
+            current_interaction = stoi(optarg);
+            break;
+        case 'h':
+            print_help();
+            exit(0);
+            break;
+        case 'd':
+            ask_video_driver = true;
+            break;
+        case 'f':
+            selected_field_render = std::string(optarg);
+            break;
+        case '?':
+            print_help();
+            exit(-1);
+            break;
+        default:
+            printf ("?? getopt returned character code 0%o ??\n", flag);
+            exit(-1);
+            break;
+        }
+    }
+    
 
-	
-	if (optind < argc)
+    
+    if (optind < argc)
     {
      
-		if (optind == argc - 1)
-			base_dir = fs::path(argv[optind++]);
-		else
-		{
-			printf("Only one base directory can be provided\n");
-			exit(-1);
-		}
+        if (optind == argc - 1)
+            base_dir = fs::path(argv[optind++]);
+        else
+        {
+            printf("Only one base directory can be provided\n");
+            exit(-1);
+        }
     }
-	
-	if (base_dir == fs::path(""))
-	{
-		printf("Please specify the base directory.\n");
+    
+    if (base_dir == fs::path(""))
+    {
+        printf("Please specify the base directory.\n");
 
-		exit(-1);
-	}
-	
-	if (!fs::is_directory(base_dir))
-	{
-		printf("Directory '%s' does not exists\n", base_dir.c_str());
-		exit(-1);
-	}
-		
-	if (current_interaction < 0)
-	{
-		printf("Please specify the interaction using the \"-i <n>\" flag.\n");
-		exit(-1);
-	}
+        exit(-1);
+    }
+    
+    if (!fs::is_directory(base_dir))
+    {
+        printf("Directory '%s' does not exists\n", base_dir.c_str());
+        exit(-1);
+    }
+        
+    if (current_interaction < 0)
+    {
+        printf("Please specify the interaction using the \"-i <n>\" flag.\n");
+        exit(-1);
+    }
 
 
-	// Getting current node
-	static const bo::regex e("^i([0-9]+)n([0-9]+)$");
-	
-	fs::directory_iterator end_iter;	
-	for( fs::directory_iterator dir_iter(base_dir) ; dir_iter != end_iter ; ++dir_iter)
-	{
-		if (fs::is_directory(dir_iter->status()))
-		{
-			std::string dir_name = std::string(dir_iter->path().filename().string());
-			
-			bo::match_results<std::string::const_iterator> what;
-			if (bo::regex_match(dir_name, what, e))
-			{
-				if (stoi(what[1]) == current_interaction)
-				{
-					current_node = stoi(what[2]);
-					break;
-				}
-			}
-		}
-	}
-	
-	
-	if (current_node < 0)
-	{
-		printf("Unable to find interaction %d in directory '%s'.\n", current_interaction, base_dir.c_str());
-		exit(-1);
-	}
-	
-	
-	interaction_subdir = fs::path((bo::format("i%dn%d") % current_interaction % current_node).str());
+    // Getting current node
+    static const bo::regex e("^i([0-9]+)n([0-9]+)$");
+    
+    fs::directory_iterator end_iter;    
+    for( fs::directory_iterator dir_iter(base_dir) ; dir_iter != end_iter ; ++dir_iter)
+    {
+        if (fs::is_directory(dir_iter->status()))
+        {
+            std::string dir_name = std::string(dir_iter->path().filename().string());
+            
+            bo::match_results<std::string::const_iterator> what;
+            if (bo::regex_match(dir_name, what, e))
+            {
+                if (stoi(what[1]) == current_interaction)
+                {
+                    current_node = stoi(what[2]);
+                    break;
+                }
+            }
+        }
+    }
+    
+    
+    if (current_node < 0)
+    {
+        printf("Unable to find interaction %d in directory '%s'.\n", current_interaction, base_dir.c_str());
+        exit(-1);
+    }
+    
+    
+    interaction_subdir = fs::path((bo::format("i%dn%d") % current_interaction % current_node).str());
 
-	// Reading the configuration files
-	
-	fs::path cfg_file = base_dir / fs::path("parameters_si.cfg");
-	
-	
-	Simulation          simulation;
-	Pulse               laser;
-	Particle            particle;
-	Laboratory                  laboratory;
-	ParticleStateGlobal         particle_state;
-	vector<FieldRender>         field_renders;
-	vector<ResponseAnalysis>    response_analyses;
-	vector<std::string> headers;
-	vector<std::string> sources;
-	
-	read_config(cfg_file, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, headers, sources);
-	
-	
-	
-	
-	
-	
-	// Reading input file to count how many record there are inside
-	unsigned int records_count = 0;
-	
-	ifstream f((base_dir / interaction_subdir / fs::path("interaction.csv")).string());
-	std::string line;
-	
-	while (std::getline(f, line)) records_count++;
-	
-	if (records_count > 0) // Removing the line containing the header
-		records_count--;
-	
-	if (records_count <= 0)
-	{
-		printf("In the file '%s' there are no records, unable to trace particle path.\n", "interaction.csv");
-		exit(-1);
-	}
-	
-	f.close();
-	
-	// Read input files
-	csv::CSVReader<13, csv::trim_chars<>, csv::no_quote_escape<';'>> in((base_dir / interaction_subdir / fs::path("interaction.csv")).string());
-	
-	in.read_header(csv::ignore_extra_column,  
-		"time",
-		"relative_position_x",
-		"relative_position_y",
-		"relative_position_z",
-		"relative_momentum_x",
-		"relative_momentum_y",
-		"relative_momentum_z",
-		"field_e_x",
-		"field_e_y",
-		"field_e_z",
-		"field_b_x",
-		"field_b_y",
-		"field_b_z");
-	
-	ParticleRecord* records = (ParticleRecord*) malloc(sizeof(ParticleRecord) * records_count);
-	
-	unsigned int records_loaded = 0;
-	for (unsigned int i = 0; i < records_count; i++)
-	{
-		ParticleRecord& record = records[i];
-		
-		double time;
-		double relative_position_x;
-		double relative_position_y;
-		double relative_position_z;
-		double relative_momentum_x;
-		double relative_momentum_y;
-		double relative_momentum_z;
-		double field_e_x;
-		double field_e_y;
-		double field_e_z;
-		double field_b_x;
-		double field_b_y;
-		double field_b_z;
+    // Reading the configuration files
+    
+    fs::path cfg_file = base_dir / fs::path("parameters_si.cfg");
+    
+    
+    Simulation          simulation;
+    Pulse               laser;
+    Particle            particle;
+    Laboratory                  laboratory;
+    ParticleStateGlobal         particle_state;
+    vector<FieldRender>         field_renders;
+    vector<ResponseAnalysis>    response_analyses;
+    vector<std::string> headers;
+    vector<std::string> sources;
+    
+    read_config(cfg_file, simulation, laser, particle, particle_state, laboratory, field_renders, response_analyses, headers, sources);
+    
+    
+    
+    
+    
+    
+    // Reading input file to count how many record there are inside
+    unsigned int records_count = 0;
+    
+    ifstream f((base_dir / interaction_subdir / fs::path("interaction.csv")).string());
+    std::string line;
+    
+    while (std::getline(f, line)) records_count++;
+    
+    if (records_count > 0) // Removing the line containing the header
+        records_count--;
+    
+    if (records_count <= 0)
+    {
+        printf("In the file '%s' there are no records, unable to trace particle path.\n", "interaction.csv");
+        exit(-1);
+    }
+    
+    f.close();
+    
+    // Read input files
+    csv::CSVReader<13, csv::trim_chars<>, csv::no_quote_escape<';'>> in((base_dir / interaction_subdir / fs::path("interaction.csv")).string());
+    
+    in.read_header(csv::ignore_extra_column,  
+        "time",
+        "relative_position_x",
+        "relative_position_y",
+        "relative_position_z",
+        "relative_momentum_x",
+        "relative_momentum_y",
+        "relative_momentum_z",
+        "field_e_x",
+        "field_e_y",
+        "field_e_z",
+        "field_b_x",
+        "field_b_y",
+        "field_b_z");
+    
+    ParticleRecord* records = (ParticleRecord*) malloc(sizeof(ParticleRecord) * records_count);
+    
+    unsigned int records_loaded = 0;
+    for (unsigned int i = 0; i < records_count; i++)
+    {
+        ParticleRecord& record = records[i];
+        
+        double time;
+        double relative_position_x;
+        double relative_position_y;
+        double relative_position_z;
+        double relative_momentum_x;
+        double relative_momentum_y;
+        double relative_momentum_z;
+        double field_e_x;
+        double field_e_y;
+        double field_e_z;
+        double field_b_x;
+        double field_b_y;
+        double field_b_z;
 
-		bool loaded = in.read_row(time,
-			relative_position_x,   relative_position_y,   relative_position_z,
-			relative_momentum_x, relative_momentum_y, relative_momentum_z,
-			field_e_x, field_e_y, field_e_z,
-			field_b_x, field_b_y, field_b_z);
-			
-		if (loaded)
-			records_loaded++;
-		else
-			continue;
-			
-		record.time 				= time / AU_TIME;
-		
-		record.relative_position_x 	= relative_position_x / AU_LENGTH;
-		record.relative_position_y  = relative_position_y / AU_LENGTH;
-		record.relative_position_z  = relative_position_z / AU_LENGTH;
+        bool loaded = in.read_row(time,
+            relative_position_x,   relative_position_y,   relative_position_z,
+            relative_momentum_x, relative_momentum_y, relative_momentum_z,
+            field_e_x, field_e_y, field_e_z,
+            field_b_x, field_b_y, field_b_z);
+            
+        if (loaded)
+            records_loaded++;
+        else
+            continue;
+            
+        record.time                 = time / AU_TIME;
+        
+        record.relative_position_x  = relative_position_x / AU_LENGTH;
+        record.relative_position_y  = relative_position_y / AU_LENGTH;
+        record.relative_position_z  = relative_position_z / AU_LENGTH;
 
-		record.relative_momentum_x  = relative_momentum_x / AU_MOMENTUM;
-		record.relative_momentum_y  = relative_momentum_y / AU_MOMENTUM;
-		record.relative_momentum_z  = relative_momentum_z / AU_MOMENTUM;
-		
-		record.field_e_x = field_e_x / AU_ELECTRIC_FIELD;
-		record.field_e_y = field_e_y / AU_ELECTRIC_FIELD;
-		record.field_e_z = field_e_z / AU_ELECTRIC_FIELD;
-		
-		record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
-		record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
-		record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
-	}
-	
-	
-	
-	if (records_count == records_loaded)
-		printf("Found and loaded %u records from file '%s' (memory usage: %.2f Mb)\n", records_loaded, fs::path("interaction.csv").c_str(), sizeof(ParticleRecord) * records_loaded / 1024.d / 1024.d);
-	else
-		printf("WARN: Found %u record but only loaded %d records from file '%s' (memory usage: %.2f Mb)\n", records_count, records_loaded, fs::path("interaction.csv").c_str(), sizeof(ParticleRecord) * records_loaded / 1024.d / 1024.d);
+        record.relative_momentum_x  = relative_momentum_x / AU_MOMENTUM;
+        record.relative_momentum_y  = relative_momentum_y / AU_MOMENTUM;
+        record.relative_momentum_z  = relative_momentum_z / AU_MOMENTUM;
+        
+        record.field_e_x = field_e_x / AU_ELECTRIC_FIELD;
+        record.field_e_y = field_e_y / AU_ELECTRIC_FIELD;
+        record.field_e_z = field_e_z / AU_ELECTRIC_FIELD;
+        
+        record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
+        record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
+        record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
+    }
+    
+    
+    
+    if (records_count == records_loaded)
+        printf("Found and loaded %u records from file '%s' (memory usage: %.2f Mb)\n", records_loaded, fs::path("interaction.csv").c_str(), sizeof(ParticleRecord) * records_loaded / 1024.d / 1024.d);
+    else
+        printf("WARN: Found %u record but only loaded %d records from file '%s' (memory usage: %.2f Mb)\n", records_count, records_loaded, fs::path("interaction.csv").c_str(), sizeof(ParticleRecord) * records_loaded / 1024.d / 1024.d);
 
     
     
@@ -434,154 +434,154 @@ int main(int argc, char *argv[])
     // Detecting if there was some field render files that could be used
     static const bo::regex regex_render("^field_render_([[:print:]]+)\\.cfg$");
     
-	vector<FieldMovieConfig> render_cfgs;
-	
+    vector<FieldMovieConfig> render_cfgs;
+    
 
-	for( fs::directory_iterator file_iter(base_dir/interaction_subdir) ; file_iter != end_iter ; ++file_iter)
-	{
-		if (fs::is_regular_file(file_iter->status()))
-		{
-			std::string file_name = std::string(file_iter->path().filename().string());
-			
-			bo::match_results<std::string::const_iterator> what;
-			if (bo::regex_match(file_name, what, regex_render))
-			{
-				FieldMovieConfig render_cfg;
-				render_cfg.name = what[1];
-				
-				fs::path file =  *file_iter;
-				read_config_render_movie(file, render_cfg);
-				render_cfgs.push_back(render_cfg);
-			}
-		}
-	}
-	
-	bool has_field_movie = false;
-	FieldMovie field_movie;
-	FieldMovieConfig selected_render_cfg;
-	
-	unsigned int* field_movie_palette = new unsigned int[UCHAR_MAX + 1];
-	
-	
-	if (!selected_field_render.empty())
-	{
-		static const bo::regex regex_render_flag("^([[:print:]]+)\\.([\\d]+)$");
-		bo::match_results<std::string::const_iterator> what;
-		if (bo::regex_match(selected_field_render, what, regex_render_flag))
-		{
-			std::string       render   = what[1];
-			unsigned int subrender = stoi(what[2]);
-			
-			
-			bool found = false;
-			
-			for (FieldMovieConfig render_cfg: render_cfgs)
-			{
-				if (render_cfg.name == render)
-				{
-					selected_render_cfg = render_cfg;
-					found = true;
-					break;
-				}
-			}
-			
-			if (found)
-			{
-				if (subrender >= 0 and subrender <= selected_render_cfg.subrenders.size() - 1)
-				{
-					std::string dat_filename = (bo::format("field_render_%s_r%u.dat") % selected_render_cfg.name % subrender).str();
-					load_field(selected_render_cfg, base_dir / interaction_subdir / fs::path(dat_filename), field_movie, subrender, field_movie_palette);
-					has_field_movie = true;
-				}
-				else
-				{
-					printf("Unable to find the subrender %u. Please specify a subrender between %u and %u.\n", subrender, 0, (unsigned int) selected_render_cfg.subrenders.size() - 1);
-					exit(-1);
-				}
-			}
-			else
-			{
-				printf("Unable to find the render '%s'\n", render.c_str());
-				exit(-1);
-			}
-		}
-		else
-		{
-			printf("Unable to understand the field flag: %s\n", selected_field_render.c_str());
-			exit(-1);
-		}
-	}
-	
-	
-	
-	if (has_field_movie)
-	{
-		
-	}
-	
-	
-	if (!render_cfgs.empty())
-	{
-		
-		printf("┌────────────────────────────────────────────────────────────┐\n");
-		printf("│ Field renders available  ( use --field <render>.<n> )      │\n");
-		printf("├────────────────────────────────────────────────────────────┤\n");
-		
-		for (FieldMovieConfig render_cfg: render_cfgs)
-		{
-			
-			printf("│ %-49s %2u .. %-2u │\n", render_cfg.name.c_str(), 0, (unsigned int) render_cfg.subrenders.size() - 1);
+    for( fs::directory_iterator file_iter(base_dir/interaction_subdir) ; file_iter != end_iter ; ++file_iter)
+    {
+        if (fs::is_regular_file(file_iter->status()))
+        {
+            std::string file_name = std::string(file_iter->path().filename().string());
+            
+            bo::match_results<std::string::const_iterator> what;
+            if (bo::regex_match(file_name, what, regex_render))
+            {
+                FieldMovieConfig render_cfg;
+                render_cfg.name = what[1];
+                
+                fs::path file =  *file_iter;
+                read_config_render_movie(file, render_cfg);
+                render_cfgs.push_back(render_cfg);
+            }
+        }
+    }
+    
+    bool has_field_movie = false;
+    FieldMovie field_movie;
+    FieldMovieConfig selected_render_cfg;
+    
+    unsigned int* field_movie_palette = new unsigned int[UCHAR_MAX + 1];
+    
+    
+    if (!selected_field_render.empty())
+    {
+        static const bo::regex regex_render_flag("^([[:print:]]+)\\.([\\d]+)$");
+        bo::match_results<std::string::const_iterator> what;
+        if (bo::regex_match(selected_field_render, what, regex_render_flag))
+        {
+            std::string       render   = what[1];
+            unsigned int subrender = stoi(what[2]);
+            
+            
+            bool found = false;
+            
+            for (FieldMovieConfig render_cfg: render_cfgs)
+            {
+                if (render_cfg.name == render)
+                {
+                    selected_render_cfg = render_cfg;
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (found)
+            {
+                if (subrender >= 0 and subrender <= selected_render_cfg.subrenders.size() - 1)
+                {
+                    std::string dat_filename = (bo::format("field_render_%s_r%u.dat") % selected_render_cfg.name % subrender).str();
+                    load_field(selected_render_cfg, base_dir / interaction_subdir / fs::path(dat_filename), field_movie, subrender, field_movie_palette);
+                    has_field_movie = true;
+                }
+                else
+                {
+                    printf("Unable to find the subrender %u. Please specify a subrender between %u and %u.\n", subrender, 0, (unsigned int) selected_render_cfg.subrenders.size() - 1);
+                    exit(-1);
+                }
+            }
+            else
+            {
+                printf("Unable to find the render '%s'\n", render.c_str());
+                exit(-1);
+            }
+        }
+        else
+        {
+            printf("Unable to understand the field flag: %s\n", selected_field_render.c_str());
+            exit(-1);
+        }
+    }
+    
+    
+    
+    if (has_field_movie)
+    {
+        
+    }
+    
+    
+    if (!render_cfgs.empty())
+    {
+        
+        printf("┌────────────────────────────────────────────────────────────┐\n");
+        printf("│ Field renders available  ( use --field <render>.<n> )      │\n");
+        printf("├────────────────────────────────────────────────────────────┤\n");
+        
+        for (FieldMovieConfig render_cfg: render_cfgs)
+        {
+            
+            printf("│ %-49s %2u .. %-2u │\n", render_cfg.name.c_str(), 0, (unsigned int) render_cfg.subrenders.size() - 1);
 
-		}
-		
-		
-		printf("└────────────────────────────────────────────────────────────┘\n");
-		
-	}
-	
-	
-	
-		
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	print_key_summary();
-	
-	
-	video::E_DRIVER_TYPE driverType;
-	
-	if (ask_video_driver)
-	{
-		driverType = driverChoiceConsole();
-		if (driverType == video::EDT_COUNT)
-		{
-			printf("No video driver selected.\n");
-			return 1;
-		}
-	}
-	else
-		driverType = video::EDT_OPENGL;
+        }
+        
+        
+        printf("└────────────────────────────────────────────────────────────┘\n");
+        
+    }
+    
+    
+    
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    print_key_summary();
+    
+    
+    video::E_DRIVER_TYPE driverType;
+    
+    if (ask_video_driver)
+    {
+        driverType = driverChoiceConsole();
+        if (driverType == video::EDT_COUNT)
+        {
+            printf("No video driver selected.\n");
+            return 1;
+        }
+    }
+    else
+        driverType = video::EDT_OPENGL;
 
-	MyEventReceiver event_receiver;
-	IrrlichtDevice *device = createDevice(driverType, dimension2d<u32>(640, 480), 16, false, false, false, &event_receiver);
+    MyEventReceiver event_receiver;
+    IrrlichtDevice *device = createDevice(driverType, dimension2d<u32>(640, 480), 16, false, false, false, &event_receiver);
 
     if (!device)
         return 1;
@@ -597,9 +597,9 @@ int main(int argc, char *argv[])
     
     smgr->setAmbientLight(video::SColorf(0.2,0.2,0.2,1));
     
-	IGUIEditBox* text_camera = guienv->addEditBox(L"Camera position: N/A",	rect<s32>(10,10,200,40), false);
-	text_camera->setMultiLine(true);
-	
+    IGUIEditBox* text_camera = guienv->addEditBox(L"Camera position: N/A",  rect<s32>(10,10,200,40), false);
+    text_camera->setMultiLine(true);
+    
     
     IAnimatedMesh* axis_x_mesh = smgr->addArrowMesh("x-axis", 0xFFAF6767, 0xFFAF6767,  10, 20, 10.0, 8.0, 0.3, 1.0);
     IAnimatedMesh* axis_y_mesh = smgr->addArrowMesh("y-axis", 0xFF67AF67, 0xFF67AF67,  10, 20, 10.0, 8.0, 0.3, 1.0);
@@ -617,10 +617,10 @@ int main(int argc, char *argv[])
     axis_z_node->setMaterialFlag(video::EMF_LIGHTING, true);
     
     //axis_x_node->getMaterial(0).Shininess = 20.0f;
-	//axis_x_node->getMaterial(0).SpecularColor.set(80,80,80,80);
-	//axis_x_node->getMaterial(0).AmbientColor.set(10,10,10,10);
-	//axis_x_node->getMaterial(0).DiffuseColor.set(20,20,20,20);
-	//axis_x_node->getMaterial(0).EmissiveColor.set(0,0,0,0); 
+    //axis_x_node->getMaterial(0).SpecularColor.set(80,80,80,80);
+    //axis_x_node->getMaterial(0).AmbientColor.set(10,10,10,10);
+    //axis_x_node->getMaterial(0).DiffuseColor.set(20,20,20,20);
+    //axis_x_node->getMaterial(0).EmissiveColor.set(0,0,0,0); 
 
     
     float    border_radius = 40;
@@ -637,110 +637,117 @@ int main(int argc, char *argv[])
     vector3df border_start_position_yz = vector3df(0, border_radius, 0);
     
     for (unsigned int s = 0; s < border_sides; s++)
-	{
-		IMesh* cyl_mesh = smgr->getGeometryCreator()->createCylinderMesh(0.1, border_side, 20, border_color, false, 0.f);
-		
-		vector3df border_position_xy= border_start_position_xy;
-		vector3df border_position_xz= border_start_position_xz;
-		vector3df border_position_yz= border_start_position_yz;
-		
-		border_position_xy.rotateXYBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
-		border_position_xz.rotateXZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
-		border_position_yz.rotateYZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
-		
-		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xy, vector3df(0, 0, 360.f * s / border_sides ));
-		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xz, vector3df(-360.f * s / border_sides, 0	, 90));
-		smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_yz, vector3df(90+360.f * s / border_sides, 0, 0));
-	}
+    {
+        IMesh* cyl_mesh = smgr->getGeometryCreator()->createCylinderMesh(0.1, border_side, 20, border_color, false, 0.f);
+        
+        vector3df border_position_xy= border_start_position_xy;
+        vector3df border_position_xz= border_start_position_xz;
+        vector3df border_position_yz= border_start_position_yz;
+        
+        border_position_xy.rotateXYBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
+        border_position_xz.rotateXZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
+        border_position_yz.rotateYZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
+        
+        smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xy, vector3df(0, 0, 360.f * s / border_sides ));
+        smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xz, vector3df(-360.f * s / border_sides, 0  , 90));
+        smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_yz, vector3df(90+360.f * s / border_sides, 0, 0));
+    }
     
     // Particle
     
     //ITexture * particle_texture = driver->addRenderTargetTexture(dimension2d<u32>(128, 128));
-	//driver->setRenderTarget(particle_texture);
-	//driver->draw2DRectangle(SColor(0xFF, 0x53, 0xA1, 0x62), rect<s32>(position2d<s32>(0,0),position2d<s32>(128,128)));
+    //driver->setRenderTarget(particle_texture);
+    //driver->draw2DRectangle(SColor(0xFF, 0x53, 0xA1, 0x62), rect<s32>(position2d<s32>(0,0),position2d<s32>(128,128)));
     
     IAnimatedMesh*  particle_mesh = smgr->addSphereMesh ("particle", 0.30f);
     IMeshSceneNode* particle_node = smgr->addMeshSceneNode(particle_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
-	particle_node->setMaterialFlag(video::EMF_LIGHTING, true); 
-	//particle_node->getMaterial(0).Shininess = 20.0f;
-	
-	
-	unsigned int m_vertices_size = selected_render_cfg.na * selected_render_cfg.nb;
-	unsigned int m_indexes_size  = (selected_render_cfg.na - 1) * (selected_render_cfg.nb - 1) * 4;
-	
-	S3DVertex*   m_vertices = new S3DVertex[m_vertices_size]; 
-	unsigned int* m_indexes = new unsigned int[m_indexes_size]; 
-	
-	
-	// Initing the field render triangle list
-	for (unsigned int i = 0; i < m_vertices_size; i++)
-	{
-		unsigned int a = i / selected_render_cfg.nb;
-		unsigned int b = i % selected_render_cfg.nb;
-		
-		double pos_x;
-		double pos_y;
-		double pos_z;
-		
-		double norm_x = 0.d;
-		double norm_y = 0.d;
-		double norm_z = 0.d;
-		
-		switch (selected_render_cfg.plane)
-		{
-			case XY:
-				pos_x = (-selected_render_cfg.space_size_x / 2 + a * selected_render_cfg.space_size_x / selected_render_cfg.na) * length_au_to_pixels_ratio;
-				pos_y = (-selected_render_cfg.space_size_y / 2 + b * selected_render_cfg.space_size_y / selected_render_cfg.nb) * length_au_to_pixels_ratio;
-				pos_z = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
-				
-				norm_z = 1.d;
-			break;
-			case XZ:
-				pos_x = (-selected_render_cfg.space_size_x / 2 + a * selected_render_cfg.space_size_x / selected_render_cfg.na) * length_au_to_pixels_ratio;
-				pos_y = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
-				pos_z = (-selected_render_cfg.space_size_z / 2 + b * selected_render_cfg.space_size_z / selected_render_cfg.nb) * length_au_to_pixels_ratio;
-				
-				norm_y = 1.d;
-			break;
-			case YZ:
-				pos_x = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
-				pos_y = (-selected_render_cfg.space_size_y / 2 + a * selected_render_cfg.space_size_y / selected_render_cfg.na) * length_au_to_pixels_ratio;
-				pos_z = (-selected_render_cfg.space_size_z / 2 + b * selected_render_cfg.space_size_z / selected_render_cfg.nb) * length_au_to_pixels_ratio;
-				
-				norm_x = 1.d;
-			break;
-		}
-		
-		
-		m_vertices[i] = S3DVertex(pos_x, pos_y, pos_z, norm_x, norm_y, norm_z, SColor(255,120,200,120), a, b);
-	}
-	
-	unsigned int d = 0;
-	for (unsigned int i = 0; i < m_vertices_size; i++)
-	{
-		unsigned int a = i / selected_render_cfg.nb;
-		unsigned int b = i % selected_render_cfg.nb;
-		
-		//if (d % 2 == 0)
-		//	m_vertices[i].Color = SColor(255, 255, 0, 0);
-		//else
-		//	m_vertices[i].Color = SColor(255, 255, 255, 0);
-		
-		if ((a < selected_render_cfg.na - 1) && (b < selected_render_cfg.nb - 1))
-		{
-			m_indexes[d++] = (a + 0) * selected_render_cfg.nb + (b + 0); 
-			m_indexes[d++] = (a + 1) * selected_render_cfg.nb + (b + 0); 
-			m_indexes[d++] = (a + 0) * selected_render_cfg.nb + (b + 1); 
-			m_indexes[d++] = (a + 1) * selected_render_cfg.nb + (b + 1);
-		}
-	}
-	
-	if (m_indexes_size != d)
-	{
-		printf("Internal error: m_indexes_size != d : %u != %u", m_indexes_size, d);
-		exit(-1);
-	}
-	
+    particle_node->setMaterialFlag(video::EMF_LIGHTING, true); 
+    //particle_node->getMaterial(0).Shininess = 20.0f;
+
+
+    unsigned int m_vertices_size = 0;
+    unsigned int m_indexes_size  = 0;
+    S3DVertex*   m_vertices = NULL;
+    unsigned int* m_indexes = NULL;
+    
+    if (has_field_movie)
+    {
+        m_vertices_size = selected_render_cfg.na * selected_render_cfg.nb;
+        m_indexes_size  = (selected_render_cfg.na - 1) * (selected_render_cfg.nb - 1) * 4;
+        
+        m_vertices = new S3DVertex[m_vertices_size]; 
+        m_indexes = new unsigned int[m_indexes_size]; 
+        
+        
+        // Initing the field render triangle list
+        for (unsigned int i = 0; i < m_vertices_size; i++)
+        {
+            unsigned int a = i / selected_render_cfg.nb;
+            unsigned int b = i % selected_render_cfg.nb;
+            
+            double pos_x = 0.d;
+            double pos_y = 0.d;
+            double pos_z = 0.d;
+            
+            double norm_x = 0.d;
+            double norm_y = 0.d;
+            double norm_z = 0.d;
+            
+            switch (selected_render_cfg.plane)
+            {
+                case XY:
+                    pos_x = (-selected_render_cfg.space_size_x / 2 + a * selected_render_cfg.space_size_x / selected_render_cfg.na) * length_au_to_pixels_ratio;
+                    pos_y = (-selected_render_cfg.space_size_y / 2 + b * selected_render_cfg.space_size_y / selected_render_cfg.nb) * length_au_to_pixels_ratio;
+                    pos_z = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
+                    
+                    norm_z = 1.d;
+                break;
+                case XZ:
+                    pos_x = (-selected_render_cfg.space_size_x / 2 + a * selected_render_cfg.space_size_x / selected_render_cfg.na) * length_au_to_pixels_ratio;
+                    pos_y = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
+                    pos_z = (-selected_render_cfg.space_size_z / 2 + b * selected_render_cfg.space_size_z / selected_render_cfg.nb) * length_au_to_pixels_ratio;
+                    
+                    norm_y = 1.d;
+                break;
+                case YZ:
+                    pos_x = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
+                    pos_y = (-selected_render_cfg.space_size_y / 2 + a * selected_render_cfg.space_size_y / selected_render_cfg.na) * length_au_to_pixels_ratio;
+                    pos_z = (-selected_render_cfg.space_size_z / 2 + b * selected_render_cfg.space_size_z / selected_render_cfg.nb) * length_au_to_pixels_ratio;
+                    
+                    norm_x = 1.d;
+                break;
+            }
+            
+            
+            m_vertices[i] = S3DVertex(pos_x, pos_y, pos_z, norm_x, norm_y, norm_z, SColor(255,120,200,120), a, b);
+        }
+        
+        unsigned int d = 0;
+        for (unsigned int i = 0; i < m_vertices_size; i++)
+        {
+            unsigned int a = i / selected_render_cfg.nb;
+            unsigned int b = i % selected_render_cfg.nb;
+            
+            //if (d % 2 == 0)
+            //  m_vertices[i].Color = SColor(255, 255, 0, 0);
+            //else
+            //  m_vertices[i].Color = SColor(255, 255, 255, 0);
+            
+            if ((a < selected_render_cfg.na - 1) && (b < selected_render_cfg.nb - 1))
+            {
+				m_indexes[d++] = (a + 0) * selected_render_cfg.nb + (b + 0);
+				m_indexes[d++] = (a + 0) * selected_render_cfg.nb + (b + 1);
+                m_indexes[d++] = (a + 1) * selected_render_cfg.nb + (b + 1);
+                m_indexes[d++] = (a + 1) * selected_render_cfg.nb + (b + 0);
+            }
+        }
+        
+        if (m_indexes_size != d)
+        {
+            printf("Internal error: m_indexes_size != d : %u != %u", m_indexes_size, d);
+            exit(-1);
+        }
+    }
     
     // The ration between the time in speed in real (AU) and the speed we see at screen.
     // It is a dimensionless value. A value of 10 means that the value is slowed down 10 times.
@@ -748,19 +755,19 @@ int main(int argc, char *argv[])
     
     bool   movie_running    = true;
     bool   movie_direction  = true; // True -> Forward, False -> Backward
-    double movie_start		= records[0].time;
-    double movie_end		= records[records_loaded-1].time;
+    double movie_start      = records[0].time;
+    double movie_end        = records[records_loaded-1].time;
     double movie_duration   = movie_end - movie_start;
-    double movie_speed     	= 1.d / ((60.d / AU_TIME) / movie_duration);
+    double movie_speed      = 1.d / ((60.d / AU_TIME) / movie_duration);
     
 
-	bool key_add_previous_status = false;
-	bool key_sub_previous_status = false;
-	bool key_mul_previous_status = false;
-	bool key_div_previous_status = false;
-	bool key_period_previous_status = false;
-	bool key_comma_previous_status  = false;
-	bool key_space_previous_status  = false;
+    bool key_add_previous_status = false;
+    bool key_sub_previous_status = false;
+    bool key_mul_previous_status = false;
+    bool key_div_previous_status = false;
+    bool key_period_previous_status = false;
+    bool key_comma_previous_status  = false;
+    bool key_space_previous_status  = false;
     
     
     
@@ -771,313 +778,319 @@ int main(int argc, char *argv[])
 
     then  = device->getTimer()->getTime();;
     
-    double       movie_current_time 	= movie_start;
-    unsigned int movie_current_record 	= 0;
+    double       movie_current_time     = movie_start;
+    unsigned int movie_current_record   = 0;
     
     while(device->run())
     {
-		const unsigned int now = device->getTimer()->getTime();
-		const double delta_time = ((now - then) / 1000.f) / AU_TIME;
-		then = now;
-		
-		if (movie_running)
-		{
-			if (movie_direction)
-			{
-				movie_current_time += delta_time * movie_speed;
-				while (movie_current_time > movie_end)
-					movie_current_time -= movie_duration;
-			}
-			else
-			{
-				movie_current_time -= delta_time * movie_speed;
-				while (movie_current_time < movie_start)
-					movie_current_time += movie_duration;
-			}
-		}
-		
-		
-		if(event_receiver.isKeyDown(KEY_LEFT))
+        const unsigned int now = device->getTimer()->getTime();
+        const double delta_time = ((now - then) / 1000.f) / AU_TIME;
+        then = now;
+        
+        if (movie_running)
+        {
+            if (movie_direction)
+            {
+                movie_current_time += delta_time * movie_speed;
+                while (movie_current_time > movie_end)
+                    movie_current_time -= movie_duration;
+            }
+            else
+            {
+                movie_current_time -= delta_time * movie_speed;
+                while (movie_current_time < movie_start)
+                    movie_current_time += movie_duration;
+            }
+        }
+        
+        
+        if(event_receiver.isKeyDown(KEY_LEFT))
             camera_position.rotateXYBy(speed_angular * delta_time, vector3df(0, 0, 0));
-		if(event_receiver.isKeyDown(KEY_RIGHT))
+        if(event_receiver.isKeyDown(KEY_RIGHT))
             camera_position.rotateXYBy(-speed_angular * delta_time, vector3df(0, 0, 0));
             
         if(event_receiver.isKeyDown(KEY_NEXT))
         {
-			float cl = camera_position.getLength();
-			
-			if (cl - 0.2 >= 1.0)
-				camera_position.setLength(camera_position.getLength() - speed_linear * delta_time);
-			else
-				camera_position.setLength(1.0);
-		}	
-		
-		if(event_receiver.isKeyDown(KEY_PRIOR))
+            float cl = camera_position.getLength();
+            
+            if (cl - 0.2 >= 1.0)
+                camera_position.setLength(camera_position.getLength() - speed_linear * delta_time);
+            else
+                camera_position.setLength(1.0);
+        }   
+        
+        if(event_receiver.isKeyDown(KEY_PRIOR))
             camera_position.setLength(camera_position.getLength() + speed_linear * delta_time);
-		
-		if(event_receiver.isKeyDown(KEY_UP) || event_receiver.isKeyDown(KEY_DOWN))
-		{
-			
-			float rho = camera_position.getLength();
-			float theta = acos(camera_position.Z / rho);
-			float phi   = atan2(camera_position.Y, camera_position.X);
-			
-			float step = speed_angular * delta_time / 180.f * M_PI;
-			
-			if (event_receiver.isKeyDown(KEY_UP))
-			{
-				if (theta - step > 0)
-					theta -= step;
-			}
-			else
-			{
-				if (theta + step < M_PI)
-					theta += step;
-			}
-			
-			camera_position.X = rho * sin(theta) * cos(phi);
-			camera_position.Y = rho * sin(theta) * sin(phi);
-			camera_position.Z = rho * cos(theta);
-			
-		}
-		
-
-		
-		if(event_receiver.isKeyDown(KEY_ADD))
-		{
-			if (!key_add_previous_status)
+        
+        if(event_receiver.isKeyDown(KEY_UP) || event_receiver.isKeyDown(KEY_DOWN))
+        {
+            
+            float rho = camera_position.getLength();
+            float theta = acos(camera_position.Z / rho);
+            float phi   = atan2(camera_position.Y, camera_position.X);
+            
+            float step = speed_angular * delta_time / 180.f * M_PI;
+            
+            if (event_receiver.isKeyDown(KEY_UP))
             {
-				movie_speed *= 1.1;
-			}
-			key_add_previous_status = true;
+                if (theta - step > 0)
+                    theta -= step;
+            }
+            else
+            {
+                if (theta + step < M_PI)
+                    theta += step;
+            }
+            
+            camera_position.X = rho * sin(theta) * cos(phi);
+            camera_position.Y = rho * sin(theta) * sin(phi);
+            camera_position.Z = rho * cos(theta);
+            
+        }
+        
+
+        
+        if(event_receiver.isKeyDown(KEY_ADD))
+        {
+            if (!key_add_previous_status)
+            {
+                movie_speed *= 1.1;
+            }
+            key_add_previous_status = true;
         }
         else
-			key_add_previous_status = false;
-			
-		if(event_receiver.isKeyDown(KEY_SUBTRACT ))
-		{
-			if (!key_sub_previous_status)
+            key_add_previous_status = false;
+            
+        if(event_receiver.isKeyDown(KEY_SUBTRACT ))
+        {
+            if (!key_sub_previous_status)
             {
-				movie_speed *= 0.9;
-			}
-			key_sub_previous_status = true;
-		}
-		else
-			key_sub_previous_status = false;
-			
+                movie_speed *= 0.9;
+            }
+            key_sub_previous_status = true;
+        }
+        else
+            key_sub_previous_status = false;
+            
         if(event_receiver.isKeyDown(KEY_MULTIPLY))
         {
-			if (!key_mul_previous_status)
+            if (!key_mul_previous_status)
             {
-				movie_speed *= 10.0;
-			}
-			key_mul_previous_status = true;
-		}
-		else
-			key_mul_previous_status = false;
-			
-		if(event_receiver.isKeyDown(KEY_DIVIDE ))
-		{
-			if (!key_div_previous_status)
+                movie_speed *= 10.0;
+            }
+            key_mul_previous_status = true;
+        }
+        else
+            key_mul_previous_status = false;
+            
+        if(event_receiver.isKeyDown(KEY_DIVIDE ))
+        {
+            if (!key_div_previous_status)
             {
-				movie_speed *=  0.1;   
-			}
-			key_div_previous_status = true;
-		}
-		else
-			key_div_previous_status = false;
-		 
-		 
-		if(event_receiver.isKeyDown(KEY_PERIOD))
-		{
-			if (!key_period_previous_status)
+                movie_speed *=  0.1;   
+            }
+            key_div_previous_status = true;
+        }
+        else
+            key_div_previous_status = false;
+         
+         
+        if(event_receiver.isKeyDown(KEY_PERIOD))
+        {
+            if (!key_period_previous_status)
             {
-				movie_direction = true;  
-				if (!movie_running) movie_running = true;
-			}
-			key_period_previous_status = true;
-		}
-		else
-			key_period_previous_status = false;
-		
-		if(event_receiver.isKeyDown(KEY_COMMA))
-		{
-			if (!key_comma_previous_status)
+                movie_direction = true;  
+                if (!movie_running) movie_running = true;
+            }
+            key_period_previous_status = true;
+        }
+        else
+            key_period_previous_status = false;
+        
+        if(event_receiver.isKeyDown(KEY_COMMA))
+        {
+            if (!key_comma_previous_status)
             {
-				movie_direction = false;  
-				if (!movie_running) movie_running = true;
-			}
-			key_comma_previous_status = true;
-		}
-		else
-			key_comma_previous_status = false;
-			
-		if(event_receiver.isKeyDown(KEY_SPACE))
-		{
-			if (!key_space_previous_status)
+                movie_direction = false;  
+                if (!movie_running) movie_running = true;
+            }
+            key_comma_previous_status = true;
+        }
+        else
+            key_comma_previous_status = false;
+            
+        if(event_receiver.isKeyDown(KEY_SPACE))
+        {
+            if (!key_space_previous_status)
             {
-				movie_running = !movie_running;
-			}
-			key_space_previous_status = true;
-		}
-		else
-			key_space_previous_status = false;
-		 
-		 
-		
-		
-		
-		camera_node->setPosition(camera_position);
-		camera_node->setTarget(axis_x_node->getAbsolutePosition());
-		camera_node->setUpVector(vector3df(0, 0, 1));
-		
-		ILightSceneNode* light_node = smgr->addLightSceneNode(0, vector3df(2.* border_radius, 2.* border_radius, 2.* border_radius), video::SColorf(0.60f, 0.60f, 0.60f), 1.0 * border_radius);
-		
-		update_camera_position(text_camera, camera_position, light_node);
-		
-		// drawing particle
-		if (movie_running)
-		{
-			bool found = false;
-			
-			if (movie_direction)
-			{
-				// Searching particle record
-				for (unsigned int i = movie_current_record; i < records_loaded; i++)
-				{
-					if (records[i].time <=  movie_current_time)
-					{
-						if (i < records_loaded - 1)
-						{
-							if (records[i+1].time > movie_current_time)
-							{
-								movie_current_record = i;
-								found = true;
-								break;
-							}
-						}
-						else
-						{
-							movie_current_record = i;
-							found = true;
-							break;
-						}
-					}
-					else
-					{
-						found = false;
-						break;
-					}
-					
-				}
-				
-				if (!found)
-				{
-					// Starting from the beginning
-					for (unsigned int i = 0; i < movie_current_record; i++)
-					{
-						if (records[i].time <=  movie_current_time)
-						{
-							if (records[i+1].time > movie_current_time)
-							{
-								movie_current_record = i;
-								found = true;
-								break;
-							}
-						}
-						else
-						{
-							found = false;
-							break;
-						}
-					}
-				}
-			}
-			else
-			{
-				// Searching particle record
-				for (unsigned int i = movie_current_record; i >= 0; i--)
-				{
-					if (records[i].time >=  movie_current_time)
-					{
-						if (i > 0)
-						{
-							if (records[i-1].time < movie_current_time)
-							{
-								movie_current_record = i;
-								found = true;
-								break;
-							}
-						}
-						else
-						{
-							movie_current_record = i;
-							found = true;
-							break;
-						}
-					}
-					else
-					{
-						found = false;
-						break;
-					}
-					
-				}
-				
-				if (!found)
-				{
-					// Starting from the end
-					for (unsigned int i = records_loaded - 1; i > movie_current_record; i--)
-					{
-						if (records[i].time >=  movie_current_time)
-						{
-							if (records[i-1].time < movie_current_time)
-							{
-								movie_current_record = i;
-								found = true;
-								break;
-							}
-						}
-						else
-						{
-							found = false;
-							break;
-						}
-					}
-				}
-				
-			}
-			
-			
-			
-			if (!found)
-			{
-				//TODO: Prepare a better error message
-				printf("Unable to find the right frame sequence. [TODO: Prepare a better error message].\n");
-				exit(-1);
-			}
-		}
-		
-		
-		
-		ParticleRecord& current_record = records[movie_current_record];
-		particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio, current_record.relative_position_y * length_au_to_pixels_ratio, current_record.relative_position_z * length_au_to_pixels_ratio));
-		
-		driver->beginScene(true, true, SColor(255,100,101,140));
+                movie_running = !movie_running;
+            }
+            key_space_previous_status = true;
+        }
+        else
+            key_space_previous_status = false;
+         
+         
+        
+        
+        
+        camera_node->setPosition(camera_position);
+        camera_node->setTarget(axis_x_node->getAbsolutePosition());
+        camera_node->setUpVector(vector3df(0, 0, 1));
+        
+        ILightSceneNode* light_node = smgr->addLightSceneNode(0, vector3df(2.* border_radius, 2.* border_radius, 2.* border_radius), video::SColorf(0.60f, 0.60f, 0.60f), 1.0 * border_radius);
+        
+        update_camera_position(text_camera, camera_position, light_node);
+        
+        // drawing particle
+        if (movie_running)
+        {
+            bool found = false;
+            
+            if (movie_direction)
+            {
+                // Searching particle record
+                for (unsigned int i = movie_current_record; i < records_loaded; i++)
+                {
+                    if (records[i].time <=  movie_current_time)
+                    {
+                        if (i < records_loaded - 1)
+                        {
+                            if (records[i+1].time > movie_current_time)
+                            {
+                                movie_current_record = i;
+                                found = true;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            movie_current_record = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        found = false;
+                        break;
+                    }
+                    
+                }
+                
+                if (!found)
+                {
+                    // Starting from the beginning
+                    for (unsigned int i = 0; i < movie_current_record; i++)
+                    {
+                        if (records[i].time <=  movie_current_time)
+                        {
+                            if (records[i+1].time > movie_current_time)
+                            {
+                                movie_current_record = i;
+                                found = true;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            found = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Searching particle record
+                for (unsigned int i = movie_current_record; i >= 0; i--)
+                {
+                    if (records[i].time >=  movie_current_time)
+                    {
+                        if (i > 0)
+                        {
+                            if (records[i-1].time < movie_current_time)
+                            {
+                                movie_current_record = i;
+                                found = true;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            movie_current_record = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        found = false;
+                        break;
+                    }
+                    
+                }
+                
+                if (!found)
+                {
+                    // Starting from the end
+                    for (unsigned int i = records_loaded - 1; i > movie_current_record; i--)
+                    {
+                        if (records[i].time >=  movie_current_time)
+                        {
+                            if (records[i-1].time < movie_current_time)
+                            {
+                                movie_current_record = i;
+                                found = true;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            found = false;
+                            break;
+                        }
+                    }
+                }
+                
+            }
+            
+            
+            
+            if (!found)
+            {
+                //TODO: Prepare a better error message
+                printf("Unable to find the right frame sequence. [TODO: Prepare a better error message].\n");
+                exit(-1);
+            }
+        }
+        
+        
+        
+        ParticleRecord& current_record = records[movie_current_record];
+        particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio, current_record.relative_position_y * length_au_to_pixels_ratio, current_record.relative_position_z * length_au_to_pixels_ratio));
+        
+        
+        // Setting vertex color
+        
+        
+        
+        
+        driver->beginScene(true, true, SColor(255,100,101,140));
         smgr->drawAll();
         
-        //drawIndexedTriangleList 	( 	const S3DVertex2TCoords *  	vertices, u32  	vertexCount,	const u16 *  	indexList, u32  	triangleCount);
-		if (has_field_movie)
-			driver->drawVertexPrimitiveList(m_vertices, m_vertices_size, m_indexes, m_indexes_size / 4, EVT_STANDARD, EPT_QUADS, EIT_32BIT);
-		 	
+        //drawIndexedTriangleList   (   const S3DVertex2TCoords *   vertices, u32   vertexCount,    const u16 *     indexList, u32      triangleCount);
+        if (has_field_movie)
+            driver->drawVertexPrimitiveList(m_vertices, m_vertices_size, m_indexes, m_indexes_size / 4, EVT_STANDARD, EPT_QUADS, EIT_32BIT);
+            
         guienv->drawAll();
         driver->endScene();
         
        
         
-	}
-	
-	free(records);
-	device->drop();
+    }
+    
+    free(records);
+    device->drop();
     return 0;
 }
