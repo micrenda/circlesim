@@ -458,6 +458,8 @@ int main(int argc, char *argv[])
 	
 	bool has_field_movie = false;
 	FieldMovie field_movie;
+	FieldMovieConfig selected_render_cfg;
+	
 	unsigned int* field_movie_palette = new unsigned int[UCHAR_MAX + 1];
 	
 	
@@ -470,7 +472,7 @@ int main(int argc, char *argv[])
 			std::string       render   = what[1];
 			unsigned int subrender = stoi(what[2]);
 			
-			FieldMovieConfig selected_render_cfg;
+			
 			bool found = false;
 			
 			for (FieldMovieConfig render_cfg: render_cfgs)
@@ -591,6 +593,7 @@ int main(int argc, char *argv[])
     ISceneManager* smgr = device->getSceneManager();
     IGUIEnvironment* guienv = device->getGUIEnvironment();
     
+    //driver->setTransform(video::ETS_WORLD, ISceneNode::AbsoluteTransformation);
     
     smgr->setAmbientLight(video::SColorf(0.2,0.2,0.2,1));
     
@@ -662,8 +665,81 @@ int main(int argc, char *argv[])
 	//particle_node->getMaterial(0).Shininess = 20.0f;
 	
 	
+	unsigned int m_vertices_size = selected_render_cfg.na * selected_render_cfg.nb;
+	unsigned int m_indexes_size  = (selected_render_cfg.na - 1) * (selected_render_cfg.nb - 1) * 4;
+	
+	S3DVertex*   m_vertices = new S3DVertex[m_vertices_size]; 
+	unsigned int* m_indexes = new unsigned int[m_indexes_size]; 
 	
 	
+	// Initing the field render triangle list
+	for (unsigned int i = 0; i < m_vertices_size; i++)
+	{
+		unsigned int a = i / selected_render_cfg.nb;
+		unsigned int b = i % selected_render_cfg.nb;
+		
+		double pos_x;
+		double pos_y;
+		double pos_z;
+		
+		double norm_x = 0.d;
+		double norm_y = 0.d;
+		double norm_z = 0.d;
+		
+		switch (selected_render_cfg.plane)
+		{
+			case XY:
+				pos_x = (-selected_render_cfg.space_size_x / 2 + a * selected_render_cfg.space_size_x / selected_render_cfg.na) * length_au_to_pixels_ratio;
+				pos_y = (-selected_render_cfg.space_size_y / 2 + b * selected_render_cfg.space_size_y / selected_render_cfg.nb) * length_au_to_pixels_ratio;
+				pos_z = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
+				
+				norm_z = 1.d;
+			break;
+			case XZ:
+				pos_x = (-selected_render_cfg.space_size_x / 2 + a * selected_render_cfg.space_size_x / selected_render_cfg.na) * length_au_to_pixels_ratio;
+				pos_y = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
+				pos_z = (-selected_render_cfg.space_size_z / 2 + b * selected_render_cfg.space_size_z / selected_render_cfg.nb) * length_au_to_pixels_ratio;
+				
+				norm_y = 1.d;
+			break;
+			case YZ:
+				pos_x = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
+				pos_y = (-selected_render_cfg.space_size_y / 2 + a * selected_render_cfg.space_size_y / selected_render_cfg.na) * length_au_to_pixels_ratio;
+				pos_z = (-selected_render_cfg.space_size_z / 2 + b * selected_render_cfg.space_size_z / selected_render_cfg.nb) * length_au_to_pixels_ratio;
+				
+				norm_x = 1.d;
+			break;
+		}
+		
+		
+		m_vertices[i] = S3DVertex(pos_x, pos_y, pos_z, norm_x, norm_y, norm_z, SColor(255,255,255,255), 0, 0);
+	}
+	
+	unsigned int d = 0;
+	for (unsigned int i = 0; i < m_vertices_size; i++)
+	{
+		unsigned int a = i / selected_render_cfg.nb;
+		unsigned int b = i % selected_render_cfg.nb;
+		
+		//if (d % 2 == 0)
+		//	m_vertices[i].Color = SColor(255, 255, 0, 0);
+		//else
+		//	m_vertices[i].Color = SColor(255, 255, 255, 0);
+		
+		if ((a < selected_render_cfg.na - 1) && (b < selected_render_cfg.nb - 1))
+		{
+			m_indexes[d++] = (a + 0) * selected_render_cfg.nb + (b + 0); 
+			m_indexes[d++] = (a + 1) * selected_render_cfg.nb + (b + 0); 
+			m_indexes[d++] = (a + 0) * selected_render_cfg.nb + (b + 1); 
+			m_indexes[d++] = (a + 1) * selected_render_cfg.nb + (b + 1);
+		}
+	}
+	
+	if (m_indexes_size != d)
+	{
+		printf("Internal error: m_indexes_size != d : %u != %u", m_indexes_size, d);
+		exit(-1);
+	}
 	
     
     // The ration between the time in speed in real (AU) and the speed we see at screen.
@@ -989,6 +1065,11 @@ int main(int argc, char *argv[])
 		
 		driver->beginScene(true, true, SColor(255,100,101,140));
         smgr->drawAll();
+        
+        //drawIndexedTriangleList 	( 	const S3DVertex2TCoords *  	vertices, u32  	vertexCount,	const u16 *  	indexList, u32  	triangleCount);
+		if (has_field_movie)
+			driver->drawVertexPrimitiveList(m_vertices, m_vertices_size, m_indexes, m_indexes_size / 4, EVT_STANDARD, EPT_QUADS, EIT_32BIT);
+		 	
         guienv->drawAll();
         driver->endScene();
         

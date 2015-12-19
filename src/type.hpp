@@ -412,7 +412,7 @@ typedef struct FieldMovieConfig
 {
 	string name;
 	
-	string plane;
+	Plane plane;
 	Anchor anchor;
 	double axis_cut;
 

@@ -827,7 +827,7 @@ void read_config_render_movie(fs::path& cfg_file, FieldMovieConfig& movie_config
 		movie_config.space_size_z 	= ((double)common["space_size_z"]) 		/ AU_LENGTH;
 			
 		movie_config.time_start 		= ((double)common["time_start"]) 		/ AU_TIME;
-		movie_config.time_end 		= ((double)common["time_end"]) 			/ AU_TIME;
+		movie_config.time_end 		    = ((double)common["time_end"]) 			/ AU_TIME;
 		movie_config.time_resolution 	= ((double)common["time_resolution"]) 	/ AU_TIME;
 		
 		
