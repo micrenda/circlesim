@@ -124,12 +124,10 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
     
     double lowest  = gradient.get_lowest_value();
     double highest = gradient.get_highest_value();
-    printf("lowest: %E, highest: %E\n", lowest, highest);
     // Initializing palette color
     for (unsigned int i = 0; i < UCHAR_MAX; i++)
     {
         palette[i] = gradient.get_color(lowest + (highest - lowest) / (UCHAR_MAX+1) * i);
-		printf("palette %u: #%08x\n", i, palette[i]);
     }
     
     
@@ -170,7 +168,7 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
     
     file.close();
     
-    printf("Loaded %s: %u frames of %u x %u pixels (memory usage: %.2f Mb)\n",  cfg.name.c_str(), cfg.nt, cfg.na, cfg.nb, sizeof(unsigned char) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
+    printf("Loaded %s.%u (%s): %u frames of %u x %u pixels (memory usage: %.2f Mb)\n",  cfg.name.c_str(), subrender_id, subrender.title.c_str(), cfg.nt, cfg.na, cfg.nb, sizeof(unsigned char) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
 }
 
 
@@ -215,7 +213,11 @@ void load_field_texture(FieldMovieConfig& cfg, FieldMovieFrame& frame, unsigned 
 			{
 				unsigned char& palette_id = frame.values[a * cfg.nb + b];
 				//printf("[%u,%u] palette %u: #%08x\n", a, b, palette_id, palette[palette_id]);
-				SColor(palette[palette_id]).getData((unsigned int*)((char*)bitmap + (a * pitch) + (b * bytes)), ECF_A8R8G8B8);
+				unsigned int base_color = palette[palette_id];
+				 
+				base_color &= 0x00ffffff;
+				base_color |= alpha_mask;
+				SColor(base_color).getData((unsigned int*)((char*)bitmap + (a * pitch) + (b * bytes)), ECF_A8R8G8B8);
 			}
 		}
 
@@ -807,7 +809,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		else
-			load_field_texture(selected_render_cfg, field_movie.frames[499], field_movie_palette, 120, render_plane_texture);
+			load_field_texture(selected_render_cfg, field_movie.frames[499], field_movie_palette, 50, render_plane_texture);
     }
     
 

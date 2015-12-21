@@ -7,7 +7,7 @@
 
 using namespace bo;
 
-Gradient::Gradient(std::string& s, double value_min, double value_max, double value_min_abs, double value_max_abs, bool debug = false)
+Gradient::Gradient(std::string& s, double value_min, double value_max, double value_min_abs, double value_max_abs, bool debug/* = false*/)
 {
 	
 	static const bo::regex regex_color("^\\#([0-9a-f]{1,6})(\\(([\\+\\-])?([\\_a-z]+)\\))?$");
@@ -117,7 +117,7 @@ Gradient::Gradient(std::string& s, double value_min, double value_max, double va
 			{
 				if (!items[j].has_value)
 				{
-					items[j].value = items[last_i].value + (items[i].value - items[last_i].value) / (i - last_i) * j;
+					items[j].value = items[last_i].value + (items[i].value - items[last_i].value) * (j - last_i) / (i - last_i);
 					items[j].has_value = true;
 				}
 			}
@@ -159,11 +159,46 @@ Gradient::Gradient(std::string& s, double value_min, double value_max, double va
 	}
 	
 	
+	// Checking if the gradient is healty
+	unsigned int errors = 0;
+	for (unsigned int i = 0; i < items.size(); i++)
+	{
+		if (!items[i].has_value)
+		{
+			printf("Internal error: In gradient definition the element %u has no value.\n", i);
+			errors++;	
+		}
+		if (!items[i].has_color)
+		{
+			printf("Internal error: In gradient definition the element %u has no color.\n", i);
+			errors++;	
+		}
+		
+		if (i > 0 && items[i-1].value > items[i].value)
+		{
+			printf("Internal error: In gradient definition the element %u has a value bigger than element %u.\n", i, i + 1);
+			errors++;
+		}
+	}
 	
-	printf("Gradient composed by %u elements:\n", items.size());
-	for (GradientItem& item: items)
-	{	
-		printf("Element %E: #%06x\n", items.size());
+	if (errors > 0)
+		exit(-1);
+	
+	if (debug)
+	{
+		printf("Gradient composed by %u elements:\n", (unsigned int)items.size());
+		for (GradientItem& item: items)
+		{	
+			if (item.has_value && item.has_color)
+				printf("Element %E: #%06x\n", item.value, item.color);
+			else if (item.has_value && !item.has_color)
+				printf("Element %E: (no-color)\n", item.value);
+			else if (!item.has_value && item.has_color)
+				printf("Element (no-value): #%06x\n", item.color);
+			else if (!item.has_value && !item.has_color)
+				printf("Element (no-value): (no-color)\n");
+			
+		}
 	}
 }
 
@@ -184,7 +219,6 @@ unsigned int Gradient::interpolate_color(double value_from, double value_to, dou
 	unsigned char current_g = from_g + (to_g - from_g) * delta;
 	unsigned char current_b = from_b + (to_b - from_b) * delta;
 				
-	printf("interpolate %E: %E - %E: %08x - %08x : %08x\n", value_current, value_from, value_to, color_from, color_to, (current_r << 16) |  (current_g <<  8) | (current_b <<  0));
 	return (current_r << 16) |  (current_g <<  8) | (current_b <<  0);
 	
 }
@@ -204,7 +238,6 @@ unsigned int Gradient::get_color(double value)
 		
 		
 	}
-	printf("ahi\n");
 	return 0;
 }
 
