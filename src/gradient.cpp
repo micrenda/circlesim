@@ -7,7 +7,7 @@
 
 using namespace bo;
 
-Gradient::Gradient(std::string& s, double value_min, double value_max, double value_min_abs, double value_max_abs)
+Gradient::Gradient(std::string& s, double value_min, double value_max, double value_min_abs, double value_max_abs, bool debug = false)
 {
 	
 	static const bo::regex regex_color("^\\#([0-9a-f]{1,6})(\\(([\\+\\-])?([\\_a-z]+)\\))?$");
@@ -31,14 +31,10 @@ Gradient::Gradient(std::string& s, double value_min, double value_max, double va
 		else if (regex_match(token, what, regex_color))
 		{
 			item.has_color = true;
-			item.color = stoul("0x"+what[1]);
+			item.color = stoul(what[1], 0, 16);
 			
 			if (!string(what[2]).empty())
 			{
-				item.has_value = true;
-				
-				
-				
 				
 				string value_str = what[4];
 				double value;
@@ -101,10 +97,10 @@ Gradient::Gradient(std::string& s, double value_min, double value_max, double va
 		items[0].value = value_min;
 	}
 	
-	if (!items[items.size()].has_value)
+	if (!items[items.size()-1].has_value)
 	{
-		items[items.size()].has_value = true;
-		items[items.size()].value = value_max;
+		items[items.size()-1].has_value = true;
+		items[items.size()-1].value = value_max;
 	}
 	
 	unsigned int last_i;
@@ -116,10 +112,14 @@ Gradient::Gradient(std::string& s, double value_min, double value_max, double va
 	{
 		if (items[i].has_value)
 		{
+			
 			for (unsigned int j = last_i + 1; j < i; j++)
 			{
-				items[j].value = items[last_i].value + (items[i].value - items[last_i].value) / (i - last_i) * j;
-				items[j].has_value = true;
+				if (!items[j].has_value)
+				{
+					items[j].value = items[last_i].value + (items[i].value - items[last_i].value) / (i - last_i) * j;
+					items[j].has_value = true;
+				}
 			}
 			
 			last_i = i;
@@ -136,27 +136,35 @@ Gradient::Gradient(std::string& s, double value_min, double value_max, double va
 		{
 			for (unsigned int j = last_i + 1; j < i; j++)
 			{
-				unsigned char from_r 	= (items[last_i].color & 0xff0000) >> 16;
-				unsigned char from_g 	= (items[last_i].color & 0x00ff00) >>  8;
-				unsigned char from_b 	= (items[last_i].color & 0x0000ff) >>  0;
-				unsigned char to_r	 	= (items[     i].color & 0xff0000) >> 16;
-				unsigned char to_g	 	= (items[     i].color & 0x00ff00) >>  8;
-				unsigned char to_b	 	= (items[     i].color & 0x0000ff) >>  0;
-				
-				unsigned char current_r = from_r + (to_r - from_r) * (j - last_i) / (i - last_i);
-				unsigned char current_g = from_g + (to_g - from_g) * (j - last_i) / (i - last_i);
-				unsigned char current_b = from_b + (to_b - from_b) * (j - last_i) / (i - last_i);
-				
-				items[j].color = (current_r << 16) |  (current_g <<  8) | (current_b <<  0);
-				items[j].has_color = true;
+				if (!items[j].has_color)
+				{
+					unsigned char from_r 	= (items[last_i].color & 0xff0000) >> 16;
+					unsigned char from_g 	= (items[last_i].color & 0x00ff00) >>  8;
+					unsigned char from_b 	= (items[last_i].color & 0x0000ff) >>  0;
+					unsigned char to_r	 	= (items[     i].color & 0xff0000) >> 16;
+					unsigned char to_g	 	= (items[     i].color & 0x00ff00) >>  8;
+					unsigned char to_b	 	= (items[     i].color & 0x0000ff) >>  0;
+					
+					unsigned char current_r = from_r + (to_r - from_r) * (j - last_i) / (i - last_i);
+					unsigned char current_g = from_g + (to_g - from_g) * (j - last_i) / (i - last_i);
+					unsigned char current_b = from_b + (to_b - from_b) * (j - last_i) / (i - last_i);
+					
+					items[j].color = (current_r << 16) |  (current_g <<  8) | (current_b <<  0);
+					items[j].has_color = true;
+				}
 			}
-			
 			last_i = i;
 		}
 		
 	}
 	
 	
+	
+	printf("Gradient composed by %u elements:\n", items.size());
+	for (GradientItem& item: items)
+	{	
+		printf("Element %E: #%06x\n", items.size());
+	}
 }
 
 
@@ -176,6 +184,7 @@ unsigned int Gradient::interpolate_color(double value_from, double value_to, dou
 	unsigned char current_g = from_g + (to_g - from_g) * delta;
 	unsigned char current_b = from_b + (to_b - from_b) * delta;
 				
+	printf("interpolate %E: %E - %E: %08x - %08x : %08x\n", value_current, value_from, value_to, color_from, color_to, (current_r << 16) |  (current_g <<  8) | (current_b <<  0));
 	return (current_r << 16) |  (current_g <<  8) | (current_b <<  0);
 	
 }
@@ -190,12 +199,12 @@ unsigned int Gradient::get_color(double value)
 			return items[i].color;
 		if (i == s - 1 && items[i].value <= value)
 			return items[s].color;
-		else if (items[i].value <= value && items[i+i].value > value)
-			return interpolate_color(items[i].value, items[i+i].value, value, items[i].color, items[i+i].color);
+		else if (items[i].value <= value && items[i+1].value > value)
+			return interpolate_color(items[i].value, items[i+1].value, value, items[i].color, items[i+1].color);
 		
 		
 	}
-	
+	printf("ahi\n");
 	return 0;
 }
 

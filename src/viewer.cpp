@@ -110,7 +110,7 @@ const float speed_angular = 15.f/ (1 / AU_TIME) ;
 double length_au_to_pixels_ratio;
 
 
-void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie, unsigned int subrender_id, unsigned int* palette)
+void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie, unsigned int subrender_id, unsigned int* palette, bool debug = false)
 {
     ifstream file(dat_file.string(), ios::in | ios::binary);
     
@@ -120,13 +120,19 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
     
     
     FieldMovieSubConfig& subrender = cfg.subrenders[subrender_id];
-    Gradient gradient = Gradient(subrender.color, subrender.value_min, subrender.value_max, subrender.value_min_abs, subrender.value_max_abs);
+    Gradient gradient = Gradient(subrender.color, subrender.value_min, subrender.value_max, subrender.value_min_abs, subrender.value_max_abs, debug);
     
     double lowest  = gradient.get_lowest_value();
     double highest = gradient.get_highest_value();
+    printf("lowest: %E, highest: %E\n", lowest, highest);
     // Initializing palette color
-    for (unsigned int i = 0; i <= UCHAR_MAX; i++)
+    for (unsigned int i = 0; i < UCHAR_MAX; i++)
+    {
         palette[i] = gradient.get_color(lowest + (highest - lowest) / (UCHAR_MAX+1) * i);
+		printf("palette %u: #%08x\n", i, palette[i]);
+    }
+    
+    
     
     
     
@@ -192,6 +198,30 @@ void update_camera_position(IGUIEditBox* text_camera,  vector3df camera_position
     % (phi   / M_PI * 180.f)).str().c_str());
 }
 
+void load_field_texture(FieldMovieConfig& cfg, FieldMovieFrame& frame, unsigned int* palette, unsigned char alpha, ITexture* texture)
+{
+	void* bitmap = texture->lock();
+	if (bitmap)
+	{		
+		unsigned int pitch 		= texture->getPitch();
+		ECOLOR_FORMAT format 	= texture->getColorFormat();
+		unsigned int bytes 		= IImage::getBitsPerPixelFromFormat(format) / 8;
+		
+		unsigned int alpha_mask = alpha << 24;
+		
+		for (unsigned int a = 0; a < cfg.na; a++)
+		{
+			for (unsigned int b = 0; b < cfg.nb; b++)
+			{
+				unsigned char& palette_id = frame.values[a * cfg.nb + b];
+				//printf("[%u,%u] palette %u: #%08x\n", a, b, palette_id, palette[palette_id]);
+				SColor(palette[palette_id]).getData((unsigned int*)((char*)bitmap + (a * pitch) + (b * bytes)), ECF_A8R8G8B8);
+			}
+		}
+
+		texture->unlock();
+	}
+}
 
 
 
@@ -206,18 +236,21 @@ int main(int argc, char *argv[])
     
     int current_interaction = -1;
     int current_node        = -1;
+    
+    bool debug = false;
 
     int flag;
     static struct option long_options[] = {
         {"help",        0, 0, 'h'},
         {"interaction", 1, 0, 'i'},
-        {"ask-video-driver",    0, 0, 'd'},
+        {"ask-video-driver",    0, 0, 'w'},
         {"field",   1, 0, 'f'},
+        {"debug",   0, 0, 'd'},
         {NULL, 0, NULL, 0}
     };
     
     int option_index = 0;
-    while ((flag = getopt_long(argc, argv, "hi:f:", long_options, &option_index)) != -1)
+    while ((flag = getopt_long(argc, argv, "hi:f:d", long_options, &option_index)) != -1)
     {
         switch (flag)
         {
@@ -229,6 +262,9 @@ int main(int argc, char *argv[])
             exit(0);
             break;
         case 'd':
+			debug = true;
+			break;
+        case 'w':
             ask_video_driver = true;
             break;
         case 'f':
@@ -490,7 +526,7 @@ int main(int argc, char *argv[])
                 if (subrender >= 0 and subrender <= selected_render_cfg.subrenders.size() - 1)
                 {
                     std::string dat_filename = (bo::format("field_render_%s_r%u.dat") % selected_render_cfg.name % subrender).str();
-                    load_field(selected_render_cfg, base_dir / interaction_subdir / fs::path(dat_filename), field_movie, subrender, field_movie_palette);
+                    load_field(selected_render_cfg, base_dir / interaction_subdir / fs::path(dat_filename), field_movie, subrender, field_movie_palette, debug);
                     has_field_movie = true;
                 }
                 else
@@ -606,11 +642,16 @@ int main(int argc, char *argv[])
     IAnimatedMesh* axis_z_mesh = smgr->addArrowMesh("z-axis", 0xFF6767AF, 0xFF6767AF,  10, 20, 10.0, 8.0, 0.3, 1.0);
      
 
+	vector3df rotation_to_x = vector3df(  0,  0,  0);
+	vector3df rotation_to_y = vector3df(  0,  0,-90);
+	vector3df rotation_to_z = vector3df(+90,  0,  0);
    
     
-    IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0,  0));
-    IMeshSceneNode* axis_y_node =  smgr->addMeshSceneNode(axis_y_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0,-90));
-    IMeshSceneNode* axis_z_node =  smgr->addMeshSceneNode(axis_z_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 90, 0,  0));
+    IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), rotation_to_x);
+    IMeshSceneNode* axis_y_node =  smgr->addMeshSceneNode(axis_y_mesh, 0, -1, vector3df(0, 0, 0), rotation_to_y);
+    IMeshSceneNode* axis_z_node =  smgr->addMeshSceneNode(axis_z_mesh, 0, -1, vector3df(0, 0, 0), rotation_to_z);
+    
+    
     
     axis_x_node->setMaterialFlag(video::EMF_LIGHTING, true);
     axis_y_node->setMaterialFlag(video::EMF_LIGHTING, true);
@@ -663,12 +704,6 @@ int main(int argc, char *argv[])
     IMeshSceneNode* particle_node = smgr->addMeshSceneNode(particle_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
     particle_node->setMaterialFlag(video::EMF_LIGHTING, true); 
     //particle_node->getMaterial(0).Shininess = 20.0f;
-
-
-    unsigned int m_vertices_size = 0;
-    unsigned int m_indexes_size  = 0;
-    S3DVertex*   m_vertices = NULL;
-    unsigned int* m_indexes = NULL;
     
     
     ITexture* 			render_plane_texture = NULL;
@@ -682,111 +717,97 @@ int main(int argc, char *argv[])
 		
 		render_plane_texture = driver->addTexture(dimension2d<u32>(selected_render_cfg.na, selected_render_cfg.nb), "render", ECF_A8R8G8B8);
 		
-		double w1 = selected_render_cfg.space_size_x * length_au_to_pixels_ratio;
-		double w2 = selected_render_cfg.space_size_y * length_au_to_pixels_ratio;
+		double w1, w2;
+		vector3df plane_rotation;
+		
+		
+		switch (selected_render_cfg.plane)
+        {
+			case XY:
+				w1 = selected_render_cfg.space_size_x * length_au_to_pixels_ratio;
+				w2 = selected_render_cfg.space_size_y * length_au_to_pixels_ratio;
+				plane_rotation = vector3df(0.f, 0.f, 0.f);
+			break;
+			case XZ:
+				w1 = selected_render_cfg.space_size_x * length_au_to_pixels_ratio;
+				w2 = selected_render_cfg.space_size_z * length_au_to_pixels_ratio;
+				plane_rotation = vector3df(0.f, -90.f, 0.f);
+			break;
+			case YZ:
+				w1 = selected_render_cfg.space_size_y * length_au_to_pixels_ratio;
+				w2 = selected_render_cfg.space_size_z * length_au_to_pixels_ratio;
+				plane_rotation = vector3df(+90.f, 0.f, 0.f);
+			break;
+		}
 		
 		render_plane_mesh = smgr->getGeometryCreator()->createCubeMesh(vector3df(w1, w2, 0.01f));
 		
-		render_plane_node = smgr->addMeshSceneNode(render_plane_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
+		render_plane_node = smgr->addMeshSceneNode(render_plane_mesh, 0, -1, vector3df(0,0,0), plane_rotation);
 		render_plane_node->setMaterialTexture( 0, render_plane_texture);
 		
-		void* bitmap = render_plane_texture->lock();
-
-
-        if (bitmap)
-        {		
-			unsigned int pitch 		= render_plane_texture->getPitch();
-			ECOLOR_FORMAT format 	= render_plane_texture->getColorFormat();
-			unsigned int bytes 		= IImage::getBitsPerPixelFromFormat(format) / 8;
-			
-			for (unsigned int a = 0; a < selected_render_cfg.na; a++)
+		IMeshBuffer* render_plane_mesh_buffer = render_plane_mesh->getMeshBuffer(0);
+		
+		render_plane_mesh_buffer->getTCoords(0).set(0.f, 0.f);
+		render_plane_mesh_buffer->getTCoords(1).set(1.f, 0.f);
+		render_plane_mesh_buffer->getTCoords(2).set(1.f, 1.f);
+		render_plane_mesh_buffer->getTCoords(3).set(0.f, 1.f);
+		
+		
+		render_plane_mesh_buffer->getTCoords(4).set(1.f, 0.f);
+		render_plane_mesh_buffer->getTCoords(5).set(1.f, 1.f);
+		render_plane_mesh_buffer->getTCoords(6).set(0.f, 1.f);
+		render_plane_mesh_buffer->getTCoords(7).set(0.f, 0.f);	
+		
+		
+		if (debug)
+		{
+			for (unsigned int i = 0; i < 8; i++)
 			{
-				for (unsigned int b = 0; b < selected_render_cfg.nb; b++)
-				{
-					SColor( (unsigned int) (((a * 0xff / selected_render_cfg.na) << 16) & ((b * 0xff / selected_render_cfg.nb)<< 8))).getData((unsigned int*)(bitmap + (b * pitch) + (a * bytes)), ECF_A8R8G8B8);
-				}
+				vector3df& pos = render_plane_mesh_buffer->getPosition(i);
+				vector2df& uv  = render_plane_mesh_buffer->getTCoords(i);
+				printf("Created render plane %s with these vertex indexes:\n",selected_render_cfg.name.c_str());
+				printf("%u: %f, %f, %f (%f,%f)\n", i, pos.X, pos.Y, pos.Z, uv.X, uv.Y );	
+				
 			}
- 
-			render_plane_texture->unlock();
-        }
-		
-		
-		
-        m_vertices_size = selected_render_cfg.na * selected_render_cfg.nb;
-        m_indexes_size  = (selected_render_cfg.na - 1) * (selected_render_cfg.nb - 1) * 4;
-        
-        m_vertices = new S3DVertex[m_vertices_size]; 
-        m_indexes = new unsigned int[m_indexes_size]; 
-        
-        
-        // Initing the field render triangle list
-        for (unsigned int i = 0; i < m_vertices_size; i++)
-        {
-            unsigned int a = i / selected_render_cfg.nb;
-            unsigned int b = i % selected_render_cfg.nb;
-            
-            double pos_x = 0.d;
-            double pos_y = 0.d;
-            double pos_z = 0.d;
-            
-            double norm_x = 0.d;
-            double norm_y = 0.d;
-            double norm_z = 0.d;
-            
-            switch (selected_render_cfg.plane)
+			
+			unsigned char color_shift_a, color_shift_b;
+			
+			switch (selected_render_cfg.plane)
             {
                 case XY:
-                    pos_x = (-selected_render_cfg.space_size_x / 2 + a * selected_render_cfg.space_size_x / selected_render_cfg.na) * length_au_to_pixels_ratio;
-                    pos_y = (-selected_render_cfg.space_size_y / 2 + b * selected_render_cfg.space_size_y / selected_render_cfg.nb) * length_au_to_pixels_ratio;
-                    pos_z = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
-                    
-                    norm_z = 1.d;
+					color_shift_a = 16;
+					color_shift_b =  8;
                 break;
                 case XZ:
-                    pos_x = (-selected_render_cfg.space_size_x / 2 + a * selected_render_cfg.space_size_x / selected_render_cfg.na) * length_au_to_pixels_ratio;
-                    pos_y = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
-                    pos_z = (-selected_render_cfg.space_size_z / 2 + b * selected_render_cfg.space_size_z / selected_render_cfg.nb) * length_au_to_pixels_ratio;
-                    
-                    norm_y = 1.d;
+					color_shift_a = 16;
+					color_shift_b =  0;
                 break;
                 case YZ:
-                    pos_x = selected_render_cfg.axis_cut * length_au_to_pixels_ratio;
-                    pos_y = (-selected_render_cfg.space_size_y / 2 + a * selected_render_cfg.space_size_y / selected_render_cfg.na) * length_au_to_pixels_ratio;
-                    pos_z = (-selected_render_cfg.space_size_z / 2 + b * selected_render_cfg.space_size_z / selected_render_cfg.nb) * length_au_to_pixels_ratio;
-                    
-                    norm_x = 1.d;
+					color_shift_a =  8;
+					color_shift_b =  0;
                 break;
             }
-            
-            
-            m_vertices[i] = S3DVertex(pos_x, pos_y, pos_z, norm_x, norm_y, norm_z, SColor(255,120,200,120), a, b);
-        }
-        
-        unsigned int d = 0;
-        for (unsigned int i = 0; i < m_vertices_size; i++)
-        {
-            unsigned int a = i / selected_render_cfg.nb;
-            unsigned int b = i % selected_render_cfg.nb;
-            
-            //if (d % 2 == 0)
-            //  m_vertices[i].Color = SColor(255, 255, 0, 0);
-            //else
-            //  m_vertices[i].Color = SColor(255, 255, 255, 0);
-            
-            if ((a < selected_render_cfg.na - 1) && (b < selected_render_cfg.nb - 1))
-            {
-				m_indexes[d++] = (a + 0) * selected_render_cfg.nb + (b + 0);
-				m_indexes[d++] = (a + 0) * selected_render_cfg.nb + (b + 1);
-                m_indexes[d++] = (a + 1) * selected_render_cfg.nb + (b + 1);
-                m_indexes[d++] = (a + 1) * selected_render_cfg.nb + (b + 0);
-            }
-        }
-        
-        if (m_indexes_size != d)
-        {
-            printf("Internal error: m_indexes_size != d : %u != %u", m_indexes_size, d);
-            exit(-1);
-        }
+			
+			void* bitmap = render_plane_texture->lock();
+			if (bitmap)
+			{		
+				unsigned int pitch 		= render_plane_texture->getPitch();
+				ECOLOR_FORMAT format 	= render_plane_texture->getColorFormat();
+				unsigned int bytes 		= IImage::getBitsPerPixelFromFormat(format) / 8;
+				
+				for (unsigned int a = 0; a < selected_render_cfg.na; a++)
+				{
+					for (unsigned int b = 0; b < selected_render_cfg.nb; b++)
+					{
+						SColor( (unsigned int) (((a * 0xff / selected_render_cfg.na) << color_shift_a) + ((b * 0xff / selected_render_cfg.nb)<< color_shift_b))).getData((unsigned int*)((char*)bitmap + (a * pitch) + (b * bytes)), ECF_A8R8G8B8);
+					}
+				}
+	 
+				render_plane_texture->unlock();
+			}
+		}
+		else
+			load_field_texture(selected_render_cfg, field_movie.frames[499], field_movie_palette, 120, render_plane_texture);
     }
     
 
