@@ -608,8 +608,8 @@ int main(int argc, char *argv[])
 
    
     
-    IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0, -90));
-    IMeshSceneNode* axis_y_node =  smgr->addMeshSceneNode(axis_y_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0,  0));
+    IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0,  0));
+    IMeshSceneNode* axis_y_node =  smgr->addMeshSceneNode(axis_y_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 0,  0,-90));
     IMeshSceneNode* axis_z_node =  smgr->addMeshSceneNode(axis_z_mesh, 0, -1, vector3df(0, 0, 0), vector3df( 90, 0,  0));
     
     axis_x_node->setMaterialFlag(video::EMF_LIGHTING, true);
@@ -670,8 +670,48 @@ int main(int argc, char *argv[])
     S3DVertex*   m_vertices = NULL;
     unsigned int* m_indexes = NULL;
     
+    
+    ITexture* 			render_plane_texture = NULL;
+    IMesh* 				render_plane_mesh = NULL;
+    IMeshSceneNode* 	render_plane_node = NULL;
+    
+    
+     
     if (has_field_movie)
     {
+		
+		render_plane_texture = driver->addTexture(dimension2d<u32>(selected_render_cfg.na, selected_render_cfg.nb), "render", ECF_A8R8G8B8);
+		
+		double w1 = selected_render_cfg.space_size_x * length_au_to_pixels_ratio;
+		double w2 = selected_render_cfg.space_size_y * length_au_to_pixels_ratio;
+		
+		render_plane_mesh = smgr->getGeometryCreator()->createCubeMesh(vector3df(w1, w2, 0.01f));
+		
+		render_plane_node = smgr->addMeshSceneNode(render_plane_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
+		render_plane_node->setMaterialTexture( 0, render_plane_texture);
+		
+		void* bitmap = render_plane_texture->lock();
+
+
+        if (bitmap)
+        {		
+			unsigned int pitch 		= render_plane_texture->getPitch();
+			ECOLOR_FORMAT format 	= render_plane_texture->getColorFormat();
+			unsigned int bytes 		= IImage::getBitsPerPixelFromFormat(format) / 8;
+			
+			for (unsigned int a = 0; a < selected_render_cfg.na; a++)
+			{
+				for (unsigned int b = 0; b < selected_render_cfg.nb; b++)
+				{
+					SColor( (unsigned int) (((a * 0xff / selected_render_cfg.na) << 16) & ((b * 0xff / selected_render_cfg.nb)<< 8))).getData((unsigned int*)(bitmap + (b * pitch) + (a * bytes)), ECF_A8R8G8B8);
+				}
+			}
+ 
+			render_plane_texture->unlock();
+        }
+		
+		
+		
         m_vertices_size = selected_render_cfg.na * selected_render_cfg.nb;
         m_indexes_size  = (selected_render_cfg.na - 1) * (selected_render_cfg.nb - 1) * 4;
         
@@ -748,6 +788,12 @@ int main(int argc, char *argv[])
             exit(-1);
         }
     }
+    
+
+    
+    
+    
+
     
     // The ration between the time in speed in real (AU) and the speed we see at screen.
     // It is a dimensionless value. A value of 10 means that the value is slowed down 10 times.
@@ -940,6 +986,9 @@ int main(int argc, char *argv[])
         
         ILightSceneNode* light_node = smgr->addLightSceneNode(0, vector3df(2.* border_radius, 2.* border_radius, 2.* border_radius), video::SColorf(0.60f, 0.60f, 0.60f), 1.0 * border_radius);
         
+        
+        
+        
         update_camera_position(text_camera, camera_position, light_node);
         
         // drawing particle
@@ -1080,8 +1129,8 @@ int main(int argc, char *argv[])
         smgr->drawAll();
         
         //drawIndexedTriangleList   (   const S3DVertex2TCoords *   vertices, u32   vertexCount,    const u16 *     indexList, u32      triangleCount);
-        if (has_field_movie)
-            driver->drawVertexPrimitiveList(m_vertices, m_vertices_size, m_indexes, m_indexes_size / 4, EVT_STANDARD, EPT_QUADS, EIT_32BIT);
+       // if (has_field_movie)
+		//	driver->draw2DImage(render_texture, core::position2d<s32>(-50,-50));
             
         guienv->drawAll();
         driver->endScene();
