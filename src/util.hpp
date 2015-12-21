@@ -22,7 +22,8 @@ void state_local_to_global(ParticleStateGlobal& state_global, ParticleStateLocal
 
 void scale_image(unsigned int& w, unsigned int& h, unsigned int max_w, unsigned int max_h);
 
-
+unsigned int blend_color(unsigned int unblended, unsigned int background);
+unsigned int unblend_color(unsigned int blended, unsigned int background);
 
 
 template <typename T> T vector_module(T x1, T x2, T x3)

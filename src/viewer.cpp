@@ -50,6 +50,8 @@ void print_key_summary()
     printf("│ .                  Play movie forward                      │\n");
     printf("│ ,                  Play movie backward                     │\n");
     printf("│ Space              Stop / Play movie                       │\n");
+    printf("│ [ ]                Increase / decrease field opacity       │\n");
+    printf("│ P                  Toggle field white background           │\n");
     printf("└────────────────────────────────────────────────────────────┘\n");
 }
 
@@ -196,7 +198,15 @@ void update_camera_position(IGUIEditBox* text_camera,  vector3df camera_position
     % (phi   / M_PI * 180.f)).str().c_str());
 }
 
-void load_field_texture(FieldMovieConfig& cfg, FieldMovieFrame& frame, unsigned int* palette, unsigned char alpha, ITexture* texture)
+void load_field_texture(
+	FieldMovieConfig& cfg,
+	FieldMovieFrame&  frame,
+	unsigned int* 	  palette,
+	
+	unsigned char render_opacity,
+    bool render_unblend,
+    
+	ITexture* texture)
 {
 	void* bitmap = texture->lock();
 	if (bitmap)
@@ -205,7 +215,7 @@ void load_field_texture(FieldMovieConfig& cfg, FieldMovieFrame& frame, unsigned 
 		ECOLOR_FORMAT format 	= texture->getColorFormat();
 		unsigned int bytes 		= IImage::getBitsPerPixelFromFormat(format) / 8;
 		
-		unsigned int alpha_mask = alpha << 24;
+		unsigned int alpha_mask = render_opacity << 24;
 		
 		for (unsigned int a = 0; a < cfg.na; a++)
 		{
@@ -214,9 +224,14 @@ void load_field_texture(FieldMovieConfig& cfg, FieldMovieFrame& frame, unsigned 
 				unsigned char& palette_id = frame.values[a * cfg.nb + b];
 				//printf("[%u,%u] palette %u: #%08x\n", a, b, palette_id, palette[palette_id]);
 				unsigned int base_color = palette[palette_id];
-				 
-				base_color &= 0x00ffffff;
-				base_color |= alpha_mask;
+				
+				if (render_unblend)
+					base_color = unblend_color(base_color, 0x00ffffff);
+				else
+				{
+					base_color = (base_color & 0x00ffffff) | alpha_mask;
+				}
+				
 				SColor(base_color).getData((unsigned int*)((char*)bitmap + (a * pitch) + (b * bytes)), ECF_A8R8G8B8);
 			}
 		}
@@ -552,11 +567,7 @@ int main(int argc, char *argv[])
     
     
     
-    if (has_field_movie)
-    {
-        
-    }
-    
+
     
     if (!render_cfgs.empty())
     {
@@ -713,7 +724,10 @@ int main(int argc, char *argv[])
     IMeshSceneNode* 	render_plane_node = NULL;
     
     
-     
+    
+    unsigned char render_opacity = 255;
+    bool          render_unblend = false;
+    
     if (has_field_movie)
     {
 		
@@ -745,6 +759,7 @@ int main(int argc, char *argv[])
 		render_plane_mesh = smgr->getGeometryCreator()->createCubeMesh(vector3df(w1, w2, 0.01f));
 		
 		render_plane_node = smgr->addMeshSceneNode(render_plane_mesh, 0, -1, vector3df(0,0,0), plane_rotation);
+		render_plane_node->setMaterialType(EMT_TRANSPARENT_ALPHA_CHANNEL);
 		render_plane_node->setMaterialTexture( 0, render_plane_texture);
 		
 		IMeshBuffer* render_plane_mesh_buffer = render_plane_mesh->getMeshBuffer(0);
@@ -763,11 +778,11 @@ int main(int argc, char *argv[])
 		
 		if (debug)
 		{
+			printf("Created render plane %s with these vertex indexes:\n",selected_render_cfg.name.c_str());
 			for (unsigned int i = 0; i < 8; i++)
 			{
 				vector3df& pos = render_plane_mesh_buffer->getPosition(i);
 				vector2df& uv  = render_plane_mesh_buffer->getTCoords(i);
-				printf("Created render plane %s with these vertex indexes:\n",selected_render_cfg.name.c_str());
 				printf("%u: %f, %f, %f (%f,%f)\n", i, pos.X, pos.Y, pos.Z, uv.X, uv.Y );	
 				
 			}
@@ -808,8 +823,6 @@ int main(int argc, char *argv[])
 				render_plane_texture->unlock();
 			}
 		}
-		else
-			load_field_texture(selected_render_cfg, field_movie.frames[499], field_movie_palette, 50, render_plane_texture);
     }
     
 
@@ -837,6 +850,8 @@ int main(int argc, char *argv[])
     bool key_period_previous_status = false;
     bool key_comma_previous_status  = false;
     bool key_space_previous_status  = false;
+    
+    bool key_p_previous_status  = false;
     
     
     
@@ -917,6 +932,19 @@ int main(int argc, char *argv[])
             
         }
         
+        
+        if(event_receiver.isKeyDown(KEY_OEM_4))
+        {
+			if (render_opacity > 0)
+				render_opacity--;
+		}
+            
+        
+        if(event_receiver.isKeyDown(KEY_OEM_6))
+        {
+			if (render_opacity < 255)
+				render_opacity++;
+		}
 
         
         if(event_receiver.isKeyDown(KEY_ADD))
@@ -999,7 +1027,17 @@ int main(int argc, char *argv[])
         else
             key_space_previous_status = false;
          
-         
+
+        if(event_receiver.isKeyDown(KEY_KEY_P))
+        {
+            if (!key_p_previous_status)
+            {
+                render_unblend = !render_unblend;
+            }
+            key_p_previous_status = true;
+        }
+        else
+            key_p_previous_status = false;         
         
         
         
@@ -1010,9 +1048,15 @@ int main(int argc, char *argv[])
         ILightSceneNode* light_node = smgr->addLightSceneNode(0, vector3df(2.* border_radius, 2.* border_radius, 2.* border_radius), video::SColorf(0.60f, 0.60f, 0.60f), 1.0 * border_radius);
         
         
-        
-        
         update_camera_position(text_camera, camera_position, light_node);
+        
+        
+        if (has_field_movie)
+        {
+			if (!debug)
+				load_field_texture(selected_render_cfg, field_movie.frames[499], field_movie_palette, render_opacity, render_unblend, render_plane_texture);
+	
+		}
         
         // drawing particle
         if (movie_running)

@@ -255,3 +255,124 @@ double get_conversion_si_value(string object, string attribute)
 	error_attribute_unknown(object, attribute);
 	return 0.d;	
 }
+
+
+
+
+ /*
+  * This description is taken from Unblend v1.0 plugin by Legorol
+  *
+  * Convention: colors are in the range 0 to 255 inclusive,
+  * alpha is in the range 0 to 1.
+  * 
+  * Formula for blending together a color X and background C
+  * with alpha A to give blended result B:
+  *   B = A*X + (1-A)*C
+  * Reversing this to find X:
+  *   X = (B - (1-A)*C)/A
+  * or to find A:
+  *   A = (B-C)/(X-C)
+  * Given only B and C, we wish to find X and A. This problem
+  * is not uniquely defined.
+  * 
+  * We choose to minimise A (which removes as much of C as possible).
+  * We have these constraints:
+  *   0<=A<=1 and 0<=X<=255
+  * Minimum value of A subject to these constraints is given by
+  *   if B > C:  A = (B-C)/(255-C)
+  *   if B < C:  A = (C-B)/C
+  *   if B = C:  A = 0          (X is undefined)
+  * (These results can be rigorously derived.)
+  * 
+  * However, we have not one, but three colors to worry about.
+  * We calculate value of A for each, and use the maximum of
+  * the three values. This ensures that all three colors will
+  * obey the constraint 0<=X<=255 (can be rigorously derived).
+  * 
+  * Once we have the value of A, it's just a matter of substituting
+  * it back into the formula above for X to get the value of each color.
+  */
+  
+unsigned int blend_color(unsigned int unblended, unsigned int background)
+{
+	unsigned char alpha		= (unblended & 0xff000000) >> 24;
+
+	unsigned char unblended_r	= (unblended & 0x00ff0000) >> 16;
+	unsigned char unblended_g	= (unblended & 0x0000ff00) >>  8;
+	unsigned char unblended_b	= (unblended & 0x000000ff) >>  0;
+
+	unsigned char background_r	= (background & 0x00ff0000) >> 16;
+	unsigned char background_g	= (background & 0x0000ff00) >>  8;
+	unsigned char background_b	= (background & 0x000000ff) >>  0;
+
+	unsigned char blended_r = alpha * unblended_r / 256 + (256 - alpha) * background_r / 256;
+	unsigned char blended_g = alpha * unblended_g / 256 + (256 - alpha) * background_g / 256;
+	unsigned char blended_b = alpha * unblended_b / 256 + (256 - alpha) * background_b / 256;
+
+	return (blended_r << 16) | (blended_g <<  8) | (blended_b <<  0);
+}
+
+unsigned int unblend_color(unsigned int blended, unsigned int background)
+{
+	unsigned char blended_r	= (blended & 0x00ff0000) >> 16;
+	unsigned char blended_g	= (blended & 0x0000ff00) >>  8;
+	unsigned char blended_b	= (blended & 0x000000ff) >>  0;
+
+	unsigned char background_r	= (background & 0x00ff0000) >> 16;
+	unsigned char background_g	= (background & 0x0000ff00) >>  8;
+	unsigned char background_b	= (background & 0x000000ff) >>  0;
+
+
+	unsigned char alpha_r;
+	unsigned char alpha_g;
+	unsigned char alpha_b;
+
+	if (blended_r > background_r)
+		alpha_r = (blended_r - background_r) * 256 / (256 - background_r);
+	else if (blended_r < background_r)
+		alpha_r = (background_r - blended_r) * 256 / background_r;
+	else
+		alpha_r = 0;
+		
+	if (blended_g > background_g)
+		alpha_g = (blended_g - background_g) * 256 / (256 - background_g);
+	else if (blended_g < background_g)
+		alpha_g = (background_g - blended_g) * 256 / background_g;
+	else
+		alpha_g = 0;
+		
+	if (blended_b > background_b)
+		alpha_b = (blended_b - background_b) * 256 / (256 - background_b);
+	else if (blended_b < background_b)
+		alpha_b = (background_b - blended_b) * 256 / background_b;
+	else
+		alpha_b = 0;
+		
+	unsigned char alpha;
+		
+	if (alpha_r > alpha_g)
+	{
+		if (alpha_r > alpha_b)
+			alpha = alpha_r;
+		else
+			alpha = alpha_b;
+	}
+	else
+	{
+		if (alpha_g > alpha_b)
+			alpha = alpha_g;
+		else
+			alpha = alpha_b;
+	}
+	
+	if (alpha == 0)
+		return blended;
+	else
+	{
+		unsigned char unblended_r = (blended_r - (256 - alpha) * background_r / 256) * 256 / alpha;
+		unsigned char unblended_g = (blended_g - (256 - alpha) * background_g / 256) * 256 / alpha;
+		unsigned char unblended_b = (blended_b - (256 - alpha) * background_b / 256) * 256 / alpha;
+		
+		return (alpha << 24) | (unblended_r << 16) | (unblended_g <<  8) | (unblended_b <<  0);
+	}
+}
