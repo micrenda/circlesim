@@ -215,9 +215,6 @@ template <class T> T&	TimeControllerBase<T>::get_frame()
 
 	
 // No need to call this TemporaryFunction() function, it's just to avoid link error.
-void temporary_function ()
-{
-	ParticleRecord* partice_record = NULL;
-    TimeControllerBase<ParticleRecord> TempObj = TempObj(partice_record, 0u);
-}
 
+
+template class TimeControllerBase<ParticleRecord>;

@@ -24,7 +24,7 @@ class ParticleRecord
 class TimeControllerInteraction: public TimeControllerBase<ParticleRecord>
 {		
 	public:
-		TimeControllerInteraction(ParticleRecord* items, unsigned int items_size): TimeControllerBase(items, items_size)  {}
+		TimeControllerInteraction(ParticleRecord* items, unsigned int items_size): TimeControllerBase<ParticleRecord>(items, items_size)  {}
 };
 
 #endif
