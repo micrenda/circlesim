@@ -437,6 +437,7 @@ typedef struct FieldMovieConfig
 
 typedef struct FieldMovieFrame
 {
+	double         time;
 	unsigned char* values;
 } FieldMovieFrame;
 

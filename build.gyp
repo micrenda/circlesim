@@ -58,7 +58,9 @@
                                 'src/config.cpp',
                                 'src/viewer.cpp',
                                 'src/util.cpp',
-								'src/gradient.cpp'
+								'src/gradient.cpp',
+								'src/time_controller_interaction.cpp',
+								'src/time_controller_base.cpp'
                         ],
 
                         'libraries':    ['-lpthread', '-lIrrlicht', '-lboost_filesystem', '-lboost_system', '-lboost_regex', '-lconfig++', '-larmadillo'],

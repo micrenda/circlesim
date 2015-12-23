@@ -12,6 +12,8 @@
 #include "csv.h"
 #include "util.hpp"
 #include "gradient.hpp"
+#include "time_controller_base.hpp"
+#include "time_controller_interaction.hpp"
 
 
 using namespace irr;
@@ -54,23 +56,6 @@ void print_key_summary()
     printf("│ P                  Toggle field white background           │\n");
     printf("└────────────────────────────────────────────────────────────┘\n");
 }
-
-typedef struct ParticleRecord
-{
-    double time;
-    double relative_position_x;
-    double relative_position_y;
-    double relative_position_z;
-    double relative_momentum_x;
-    double relative_momentum_y;
-    double relative_momentum_z;
-    double field_e_x;
-    double field_e_y;
-    double field_e_z;
-    double field_b_x;
-    double field_b_y;
-    double field_b_z;
-} ParticleRecord;
 
 class MyEventReceiver : public IEventReceiver
 {
@@ -148,6 +133,7 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
         
         file.read((char*)values, sizeof(double) * len);
         
+        frame.time   = cfg.time_start + (cfg.time_end - cfg.time_start) / cfg.nt;
         frame.values = new unsigned char[len];
         
         for (unsigned int i = 0; i < len; i++)
@@ -835,13 +821,6 @@ int main(int argc, char *argv[])
     // It is a dimensionless value. A value of 10 means that the value is slowed down 10 times.
     // It is initialized in a way that, at the beginning, the full movie will be played in one minute
     
-    bool   movie_running    = true;
-    bool   movie_direction  = true; // True -> Forward, False -> Backward
-    double movie_start      = records[0].time;
-    double movie_end        = records[records_loaded-1].time;
-    double movie_duration   = movie_end - movie_start;
-    double movie_speed      = 1.d / ((60.d / AU_TIME) / movie_duration);
-    
 
     bool key_add_previous_status = false;
     bool key_sub_previous_status = false;
@@ -862,8 +841,12 @@ int main(int argc, char *argv[])
 
     then  = device->getTimer()->getTime();;
     
-    double       movie_current_time     = movie_start;
-    unsigned int movie_current_record   = 0;
+    
+    TimeControllerInteraction& time_controller_interaction = *new TimeControllerInteraction(records, records_loaded);
+    
+    // Setting a propper movie speed
+    double movie_speed = 1.d / ((60.d / AU_TIME) / time_controller_interaction.get_duration());
+    time_controller_interaction.set_speed(movie_speed);
     
     while(device->run())
     {
@@ -871,21 +854,7 @@ int main(int argc, char *argv[])
         const double delta_time = ((now - then) / 1000.f) / AU_TIME;
         then = now;
         
-        if (movie_running)
-        {
-            if (movie_direction)
-            {
-                movie_current_time += delta_time * movie_speed;
-                while (movie_current_time > movie_end)
-                    movie_current_time -= movie_duration;
-            }
-            else
-            {
-                movie_current_time -= delta_time * movie_speed;
-                while (movie_current_time < movie_start)
-                    movie_current_time += movie_duration;
-            }
-        }
+		time_controller_interaction.progress(delta_time);
         
         
         if(event_receiver.isKeyDown(KEY_LEFT))
@@ -951,7 +920,7 @@ int main(int argc, char *argv[])
         {
             if (!key_add_previous_status)
             {
-                movie_speed *= 1.1;
+				time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 1.1);
             }
             key_add_previous_status = true;
         }
@@ -962,7 +931,7 @@ int main(int argc, char *argv[])
         {
             if (!key_sub_previous_status)
             {
-                movie_speed *= 0.9;
+				time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 0.9);
             }
             key_sub_previous_status = true;
         }
@@ -973,7 +942,7 @@ int main(int argc, char *argv[])
         {
             if (!key_mul_previous_status)
             {
-                movie_speed *= 10.0;
+                time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 10.0);
             }
             key_mul_previous_status = true;
         }
@@ -984,7 +953,7 @@ int main(int argc, char *argv[])
         {
             if (!key_div_previous_status)
             {
-                movie_speed *=  0.1;   
+                time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 0.1);  
             }
             key_div_previous_status = true;
         }
@@ -996,8 +965,8 @@ int main(int argc, char *argv[])
         {
             if (!key_period_previous_status)
             {
-                movie_direction = true;  
-                if (!movie_running) movie_running = true;
+				time_controller_interaction.set_play_forward();
+                time_controller_interaction.play();  
             }
             key_period_previous_status = true;
         }
@@ -1008,8 +977,8 @@ int main(int argc, char *argv[])
         {
             if (!key_comma_previous_status)
             {
-                movie_direction = false;  
-                if (!movie_running) movie_running = true;
+                time_controller_interaction.set_play_backward();
+                time_controller_interaction.play();  
             }
             key_comma_previous_status = true;
         }
@@ -1020,7 +989,10 @@ int main(int argc, char *argv[])
         {
             if (!key_space_previous_status)
             {
-                movie_running = !movie_running;
+				if (time_controller_interaction.is_playing())
+					time_controller_interaction.pause();
+				else
+					time_controller_interaction.play();
             }
             key_space_previous_status = true;
         }
@@ -1058,132 +1030,7 @@ int main(int argc, char *argv[])
 	
 		}
         
-        // drawing particle
-        if (movie_running)
-        {
-            bool found = false;
-            
-            if (movie_direction)
-            {
-                // Searching particle record
-                for (unsigned int i = movie_current_record; i < records_loaded; i++)
-                {
-                    if (records[i].time <=  movie_current_time)
-                    {
-                        if (i < records_loaded - 1)
-                        {
-                            if (records[i+1].time > movie_current_time)
-                            {
-                                movie_current_record = i;
-                                found = true;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            movie_current_record = i;
-                            found = true;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        found = false;
-                        break;
-                    }
-                    
-                }
-                
-                if (!found)
-                {
-                    // Starting from the beginning
-                    for (unsigned int i = 0; i < movie_current_record; i++)
-                    {
-                        if (records[i].time <=  movie_current_time)
-                        {
-                            if (records[i+1].time > movie_current_time)
-                            {
-                                movie_current_record = i;
-                                found = true;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            found = false;
-                            break;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Searching particle record
-                for (unsigned int i = movie_current_record; i >= 0; i--)
-                {
-                    if (records[i].time >=  movie_current_time)
-                    {
-                        if (i > 0)
-                        {
-                            if (records[i-1].time < movie_current_time)
-                            {
-                                movie_current_record = i;
-                                found = true;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            movie_current_record = i;
-                            found = true;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        found = false;
-                        break;
-                    }
-                    
-                }
-                
-                if (!found)
-                {
-                    // Starting from the end
-                    for (unsigned int i = records_loaded - 1; i > movie_current_record; i--)
-                    {
-                        if (records[i].time >=  movie_current_time)
-                        {
-                            if (records[i-1].time < movie_current_time)
-                            {
-                                movie_current_record = i;
-                                found = true;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            found = false;
-                            break;
-                        }
-                    }
-                }
-                
-            }
-            
-            
-            
-            if (!found)
-            {
-                //TODO: Prepare a better error message
-                printf("Unable to find the right frame sequence. [TODO: Prepare a better error message].\n");
-                exit(-1);
-            }
-        }
-        
-        
-        
-        ParticleRecord& current_record = records[movie_current_record];
+        ParticleRecord& current_record = time_controller_interaction.get_frame();
         particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio, current_record.relative_position_y * length_au_to_pixels_ratio, current_record.relative_position_z * length_au_to_pixels_ratio));
         
         
