@@ -14,6 +14,7 @@
 #include "gradient.hpp"
 #include "time_controller_base.hpp"
 #include "time_controller_interaction.hpp"
+#include "time_controller_field.hpp"
 
 
 using namespace irr;
@@ -133,7 +134,7 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
         
         file.read((char*)values, sizeof(double) * len);
         
-        frame.time   = cfg.time_start + (cfg.time_end - cfg.time_start) / cfg.nt;
+        frame.time   = (cfg.time_start + (cfg.time_end - cfg.time_start) / cfg.nt) / AU_TIME;
         frame.values = new unsigned char[len];
         
         for (unsigned int i = 0; i < len; i++)
@@ -576,28 +577,6 @@ int main(int argc, char *argv[])
     
     
     
-        
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     print_key_summary();
     
     
@@ -842,11 +821,13 @@ int main(int argc, char *argv[])
     then  = device->getTimer()->getTime();;
     
     
-    TimeControllerInteraction& time_controller_interaction = *new TimeControllerInteraction(records, records_loaded);
+    TimeControllerInteraction&	time_controller_interaction = *new TimeControllerInteraction(records, records_loaded);
+    TimeControllerField& 		time_controller_field       = *new TimeControllerField(field_movie.frames, selected_render_cfg.nt);
     
     // Setting a propper movie speed
     double movie_speed = 1.d / ((60.d / AU_TIME) / time_controller_interaction.get_duration());
     time_controller_interaction.set_speed(movie_speed);
+    time_controller_field.set_speed(movie_speed);
     
     while(device->run())
     {
@@ -855,6 +836,7 @@ int main(int argc, char *argv[])
         then = now;
         
 		time_controller_interaction.progress(delta_time);
+		time_controller_field.progress(delta_time);
         
         
         if(event_receiver.isKeyDown(KEY_LEFT))
@@ -921,6 +903,7 @@ int main(int argc, char *argv[])
             if (!key_add_previous_status)
             {
 				time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 1.1);
+				time_controller_field.set_speed(time_controller_field.get_speed() * 1.1);
             }
             key_add_previous_status = true;
         }
@@ -932,6 +915,7 @@ int main(int argc, char *argv[])
             if (!key_sub_previous_status)
             {
 				time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 0.9);
+				time_controller_field.set_speed(time_controller_field.get_speed() * 0.9);
             }
             key_sub_previous_status = true;
         }
@@ -943,6 +927,7 @@ int main(int argc, char *argv[])
             if (!key_mul_previous_status)
             {
                 time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 10.0);
+                time_controller_field.set_speed(time_controller_field.get_speed() * 10.0);
             }
             key_mul_previous_status = true;
         }
@@ -954,6 +939,7 @@ int main(int argc, char *argv[])
             if (!key_div_previous_status)
             {
                 time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 0.1);  
+                time_controller_field.set_speed(time_controller_field.get_speed() * 0.1);  
             }
             key_div_previous_status = true;
         }
@@ -967,6 +953,8 @@ int main(int argc, char *argv[])
             {
 				time_controller_interaction.set_play_forward();
                 time_controller_interaction.play();  
+				time_controller_field.set_play_forward();
+                time_controller_field.play();  
             }
             key_period_previous_status = true;
         }
@@ -979,6 +967,8 @@ int main(int argc, char *argv[])
             {
                 time_controller_interaction.set_play_backward();
                 time_controller_interaction.play();  
+                time_controller_field.set_play_backward();
+                time_controller_field.play();  
             }
             key_comma_previous_status = true;
         }
@@ -993,6 +983,11 @@ int main(int argc, char *argv[])
 					time_controller_interaction.pause();
 				else
 					time_controller_interaction.play();
+					
+				if (time_controller_field.is_playing())
+					time_controller_field.pause();
+				else
+					time_controller_field.play();
             }
             key_space_previous_status = true;
         }
@@ -1033,6 +1028,14 @@ int main(int argc, char *argv[])
         ParticleRecord& current_record = time_controller_interaction.get_frame();
         particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio, current_record.relative_position_y * length_au_to_pixels_ratio, current_record.relative_position_z * length_au_to_pixels_ratio));
         
+       
+        if (has_field_movie)
+        {
+			FieldMovieFrame& current_frame = time_controller_field.get_frame();
+			if (!debug)
+				load_field_texture(selected_render_cfg, current_frame, field_movie_palette, render_opacity, render_unblend, render_plane_texture);
+	
+		}
         
         // Setting vertex color
         

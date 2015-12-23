@@ -2,6 +2,7 @@
 #include <cstdio>
 #include "time_controller_base.hpp"
 #include "time_controller_interaction.hpp"
+#include "type.hpp"
 
 template <class T> TimeControllerBase<T>::TimeControllerBase(T* arg_items, unsigned int   arg_items_size)
 {
@@ -215,6 +216,5 @@ template <class T> T&	TimeControllerBase<T>::get_frame()
 
 	
 // No need to call this TemporaryFunction() function, it's just to avoid link error.
-
-
 template class TimeControllerBase<ParticleRecord>;
+template class TimeControllerBase<FieldMovieFrame>;
