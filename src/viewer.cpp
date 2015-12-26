@@ -12,9 +12,9 @@
 #include "csv.h"
 #include "util.hpp"
 #include "gradient.hpp"
-#include "time_controller_base.hpp"
-#include "time_controller_interaction.hpp"
-#include "time_controller_field.hpp"
+#include "time_controller.hpp"
+#include "frame_controller_interaction.hpp"
+#include "frame_controller_field.hpp"
 
 
 using namespace irr;
@@ -134,7 +134,7 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
         
         file.read((char*)values, sizeof(double) * len);
         
-        frame.time   = (cfg.time_start + (cfg.time_end - cfg.time_start) / cfg.nt) / AU_TIME;
+        frame.time   = (cfg.time_start + (cfg.time_end - cfg.time_start) / cfg.nt);
         frame.values = new unsigned char[len];
         
         for (unsigned int i = 0; i < len; i++)
@@ -818,16 +818,11 @@ int main(int argc, char *argv[])
     
     ICameraSceneNode* camera_node = smgr->addCameraSceneNode(0, camera_position, axis_x_node->getAbsolutePosition());
 
-    then  = device->getTimer()->getTime();;
+    then  = device->getTimer()->getTime();
     
-    
-    TimeControllerInteraction&	time_controller_interaction = *new TimeControllerInteraction(records, records_loaded);
-    TimeControllerField& 		time_controller_field       = *new TimeControllerField(field_movie.frames, selected_render_cfg.nt);
-    
-    // Setting a propper movie speed
-    double movie_speed = 1.d / ((60.d / AU_TIME) / time_controller_interaction.get_duration());
-    time_controller_interaction.set_speed(movie_speed);
-    time_controller_field.set_speed(movie_speed);
+    TimeController& time_controller = *new TimeController(records[0].time, records[records_loaded-1].time);
+    FrameControllerInteraction&	frame_controller_interaction = *new FrameControllerInteraction(records, records_loaded, time_controller);
+    FrameControllerField& 		frame_controller_field       = *new FrameControllerField(field_movie.frames, selected_render_cfg.nt, time_controller);
     
     while(device->run())
     {
@@ -835,8 +830,7 @@ int main(int argc, char *argv[])
         const double delta_time = ((now - then) / 1000.f) / AU_TIME;
         then = now;
         
-		time_controller_interaction.progress(delta_time);
-		time_controller_field.progress(delta_time);
+		time_controller.progress(delta_time);
         
         
         if(event_receiver.isKeyDown(KEY_LEFT))
@@ -902,8 +896,7 @@ int main(int argc, char *argv[])
         {
             if (!key_add_previous_status)
             {
-				time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 1.1);
-				time_controller_field.set_speed(time_controller_field.get_speed() * 1.1);
+				time_controller.set_speed(time_controller.get_speed() * 1.1);
             }
             key_add_previous_status = true;
         }
@@ -914,8 +907,7 @@ int main(int argc, char *argv[])
         {
             if (!key_sub_previous_status)
             {
-				time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 0.9);
-				time_controller_field.set_speed(time_controller_field.get_speed() * 0.9);
+				time_controller.set_speed(time_controller.get_speed() * 0.9);
             }
             key_sub_previous_status = true;
         }
@@ -926,8 +918,7 @@ int main(int argc, char *argv[])
         {
             if (!key_mul_previous_status)
             {
-                time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 10.0);
-                time_controller_field.set_speed(time_controller_field.get_speed() * 10.0);
+                time_controller.set_speed(time_controller.get_speed() * 10.0);
             }
             key_mul_previous_status = true;
         }
@@ -938,8 +929,7 @@ int main(int argc, char *argv[])
         {
             if (!key_div_previous_status)
             {
-                time_controller_interaction.set_speed(time_controller_interaction.get_speed() * 0.1);  
-                time_controller_field.set_speed(time_controller_field.get_speed() * 0.1);  
+                time_controller.set_speed(time_controller.get_speed() * 0.1);  
             }
             key_div_previous_status = true;
         }
@@ -951,10 +941,8 @@ int main(int argc, char *argv[])
         {
             if (!key_period_previous_status)
             {
-				time_controller_interaction.set_play_forward();
-                time_controller_interaction.play();  
-				time_controller_field.set_play_forward();
-                time_controller_field.play();  
+				time_controller.set_play_forward();
+                time_controller.play();
             }
             key_period_previous_status = true;
         }
@@ -965,10 +953,8 @@ int main(int argc, char *argv[])
         {
             if (!key_comma_previous_status)
             {
-                time_controller_interaction.set_play_backward();
-                time_controller_interaction.play();  
-                time_controller_field.set_play_backward();
-                time_controller_field.play();  
+                time_controller.set_play_backward();
+                time_controller.play();  
             }
             key_comma_previous_status = true;
         }
@@ -979,15 +965,10 @@ int main(int argc, char *argv[])
         {
             if (!key_space_previous_status)
             {
-				if (time_controller_interaction.is_playing())
-					time_controller_interaction.pause();
+				if (time_controller.is_playing())
+					time_controller.pause();
 				else
-					time_controller_interaction.play();
-					
-				if (time_controller_field.is_playing())
-					time_controller_field.pause();
-				else
-					time_controller_field.play();
+					time_controller.play();
             }
             key_space_previous_status = true;
         }
@@ -1025,16 +1006,31 @@ int main(int argc, char *argv[])
 	
 		}
         
-        ParticleRecord& current_record = time_controller_interaction.get_frame();
-        particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio, current_record.relative_position_y * length_au_to_pixels_ratio, current_record.relative_position_z * length_au_to_pixels_ratio));
+        ParticleRecord* current_record_ptr = frame_controller_interaction.get_frame(); 
         
+        if (current_record_ptr != NULL)
+        {
+			particle_node->setVisible(true);
+			ParticleRecord& current_record = *current_record_ptr;
+			particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio, current_record.relative_position_y * length_au_to_pixels_ratio, current_record.relative_position_z * length_au_to_pixels_ratio));
+		}
+		else
+			particle_node->setVisible(false);
+       
        
         if (has_field_movie)
         {
-			FieldMovieFrame& current_frame = time_controller_field.get_frame();
-			if (!debug)
-				load_field_texture(selected_render_cfg, current_frame, field_movie_palette, render_opacity, render_unblend, render_plane_texture);
-	
+			FieldMovieFrame* current_frame_ptr = frame_controller_field.get_frame();
+			
+			if (current_frame_ptr != NULL)
+			{
+				render_plane_node->setVisible(true);
+				FieldMovieFrame& current_frame = *current_frame_ptr;
+				if (!debug)
+					load_field_texture(selected_render_cfg, current_frame, field_movie_palette, render_opacity, render_unblend, render_plane_texture);
+			}
+			else
+				render_plane_node->setVisible(false);
 		}
         
         // Setting vertex color

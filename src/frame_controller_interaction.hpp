@@ -1,4 +1,4 @@
-#include "time_controller_base.hpp"
+#include "frame_controller_base.hpp"
 
 #ifndef TIME_CONTROLLER_INTERACTION_H
 #define TIME_CONTROLLER_INTERACTION_H
@@ -21,10 +21,10 @@ class ParticleRecord
     double field_b_z;
 };
 
-class TimeControllerInteraction: public TimeControllerBase<ParticleRecord>
+class FrameControllerInteraction: public FrameControllerBase<ParticleRecord>
 {		
 	public:
-		TimeControllerInteraction(ParticleRecord* items, unsigned int items_size): TimeControllerBase<ParticleRecord>(items, items_size)  {}
+		FrameControllerInteraction(ParticleRecord* items, unsigned int items_size, TimeController& time_controller): FrameControllerBase<ParticleRecord>(items, items_size, time_controller)  {}
 };
 
 #endif
