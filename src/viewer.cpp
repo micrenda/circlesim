@@ -57,6 +57,7 @@ void print_key_summary()
     printf("│ Space              Stop / Play movie                       │\n");
     printf("│ [ ]                Increase / decrease field opacity       │\n");
     printf("│ P                  Toggle field white background           │\n");
+    printf("│ Q                  Quit                                    │\n");
     printf("└────────────────────────────────────────────────────────────┘\n");
 }
 
@@ -780,7 +781,6 @@ int main(int argc, char *argv[])
         render_plane_mesh = smgr->getGeometryCreator()->createCubeMesh(vector3df(w1, w2, 0.01f));
         
         render_plane_node = smgr->addMeshSceneNode(render_plane_mesh, 0, -1, vector3df(0,0,0), plane_rotation);
-        render_plane_node->setMaterialType(EMT_TRANSPARENT_ALPHA_CHANNEL);
         render_plane_node->setMaterialTexture( 0, render_plane_texture);
         
         IMeshBuffer* render_plane_mesh_buffer = render_plane_mesh->getMeshBuffer(0);
@@ -838,6 +838,7 @@ int main(int argc, char *argv[])
     bool key_space_previous_status  = false;
     
     bool key_p_previous_status  = false;
+    bool key_q_previous_status  = false;
     
     
     
@@ -1018,7 +1019,18 @@ int main(int argc, char *argv[])
             key_p_previous_status = true;
         }
         else
-            key_p_previous_status = false;         
+            key_p_previous_status = false;    
+                 
+        if(event_receiver.isKeyDown(KEY_KEY_Q))
+        {
+            if (!key_q_previous_status)
+            {
+				device->closeDevice();
+            }
+            key_q_previous_status = true;
+        }
+        else
+            key_q_previous_status = false;         
         
         
         
@@ -1052,6 +1064,13 @@ int main(int argc, char *argv[])
             if (current_frame_ptr != NULL)
             {
                 render_plane_nodes[i]->setVisible(true);
+                
+                if (render_unblend || render_opacity < 230)
+					render_plane_nodes[i]->setMaterialType(EMT_TRANSPARENT_ALPHA_CHANNEL);
+				else
+					render_plane_nodes[i]->setMaterialType(EMT_SOLID);
+				
+                
                 FieldMovieFrame& current_frame = *current_frame_ptr;
                 if (!debug)
                     load_field_texture(field_cfgs[i], current_frame, field_movies[i].palette, render_opacity, render_unblend, render_plane_textures[i]);
