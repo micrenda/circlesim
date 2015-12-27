@@ -444,6 +444,7 @@ typedef struct FieldMovieFrame
 
 typedef struct FieldMovie
 {
+	unsigned int*    palette;
 	FieldMovieFrame* frames;
 	
 } FieldMovie;

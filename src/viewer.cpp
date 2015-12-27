@@ -32,12 +32,14 @@ void print_help()
     std::string exe_name = "viewer";
     
     printf("Usage:\n\n");
-    printf("  %s <base_directory> -i <n>\n", exe_name.c_str());
+    printf("  %s <base_directory> -i <n> [-f <name>.<n>]\n", exe_name.c_str());
     printf("  %s -h\n", exe_name.c_str());
     printf("\n");
-    printf("  -h  --help            Print this help menu\n");
-    printf("  -i  --interaction     Specify which interaction to render\n");
-    printf("  -f  --field           Specify if a field must be rendered\n");
+    printf("  -h  --help               Print this help menu\n");
+    printf("  -i  --interaction        Specify which interaction to render\n");
+    printf("  -f  --field <name>.<r>   Specify a field to be rendered\n");
+    printf("                           (It is possible to specify different fields but \n");
+    printf("                            only if they refer to different planes        )\n");
     printf("\n");
 }
 
@@ -98,7 +100,7 @@ const float speed_angular = 15.f/ (1 / AU_TIME) ;
 double length_au_to_pixels_ratio;
 
 
-void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie, unsigned int subrender_id, unsigned int* palette, bool debug = false)
+void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie, unsigned int subrender_id, bool debug = false)
 {
     ifstream file(dat_file.string(), ios::in | ios::binary);
     
@@ -115,7 +117,7 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
     // Initializing palette color
     for (unsigned int i = 0; i < UCHAR_MAX; i++)
     {
-        palette[i] = gradient.get_color(lowest + (highest - lowest) / (UCHAR_MAX+1) * i);
+        field_movie.palette[i] = gradient.get_color(lowest + (highest - lowest) / (UCHAR_MAX+1) * i);
     }
     
     
@@ -124,7 +126,7 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
     
     double* values = new double[len];
     
-    printf("Loading file %s ", dat_file.filename().c_str());
+    printf("Selected %s.%u (%s) %u frames of %u x %u pixels (memory usage: %.2f Mb): loading file %s ",  cfg.name.c_str(), subrender_id, subrender.title.c_str(), cfg.nt, cfg.na, cfg.nb, sizeof(unsigned char) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f, dat_file.filename().c_str()); 
     cout<<flush;
     
     for (unsigned int t = 0; t < cfg.nt; t++)
@@ -134,7 +136,7 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
         
         file.read((char*)values, sizeof(double) * len);
         
-        frame.time   = (cfg.time_start + (cfg.time_end - cfg.time_start) / cfg.nt);
+        frame.time   = (cfg.time_start + (cfg.time_end - cfg.time_start) / cfg.nt * t);
         frame.values = new unsigned char[len];
         
         for (unsigned int i = 0; i < len; i++)
@@ -157,8 +159,7 @@ void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie
     
     file.close();
     
-    printf("Loaded %s.%u (%s): %u frames of %u x %u pixels (memory usage: %.2f Mb)\n",  cfg.name.c_str(), subrender_id, subrender.title.c_str(), cfg.nt, cfg.na, cfg.nb, sizeof(unsigned char) * cfg.na * cfg.nb * cfg.nt / 1024.f / 1024.f); 
-}
+    }
 
 
 
@@ -186,40 +187,81 @@ void update_camera_position(IGUIEditBox* text_camera,  vector3df camera_position
 }
 
 void load_field_texture(
-	FieldMovieConfig& cfg,
-	FieldMovieFrame&  frame,
-	unsigned int* 	  palette,
-	
-	unsigned char render_opacity,
+    FieldMovieConfig& cfg,
+    FieldMovieFrame&  frame,
+    unsigned int*     palette,
+    
+    unsigned char render_opacity,
     bool render_unblend,
     
-	ITexture* texture)
+    ITexture* texture)
 {
+    void* bitmap = texture->lock();
+    if (bitmap)
+    {       
+        unsigned int pitch      = texture->getPitch();
+        ECOLOR_FORMAT format    = texture->getColorFormat();
+        unsigned int bytes      = IImage::getBitsPerPixelFromFormat(format) / 8;
+        
+        unsigned int alpha_mask = render_opacity << 24;
+        
+        for (unsigned int a = 0; a < cfg.na; a++)
+        {
+            for (unsigned int b = 0; b < cfg.nb; b++)
+            {
+                unsigned char& palette_id = frame.values[a * cfg.nb + b];
+                //printf("[%u,%u] palette %u: #%08x\n", a, b, palette_id, palette[palette_id]);
+                unsigned int base_color = palette[palette_id];
+                
+                if (render_unblend)
+                    base_color = unblend_color(base_color, 0x00ffffff);
+                else
+                {
+                    base_color = (base_color & 0x00ffffff) | alpha_mask;
+                }
+                
+                SColor(base_color).getData((unsigned int*)((char*)bitmap + (a * pitch) + (b * bytes)), ECF_A8R8G8B8);
+            }
+        }
+
+        texture->unlock();
+    }
+}
+
+
+void load_debug_texture(FieldMovieConfig& cfg, ITexture* texture)
+{
+  
+	unsigned char color_shift_a, color_shift_b;
+
+	switch (cfg.plane)
+	{
+		case XY:
+			color_shift_a = 16;
+			color_shift_b =  8;
+		break;
+		case XZ:
+			color_shift_a = 16;
+			color_shift_b =  0;
+		break;
+		case YZ:
+			color_shift_a =  8;
+			color_shift_b =  0;
+		break;
+	}
+
 	void* bitmap = texture->lock();
 	if (bitmap)
-	{		
-		unsigned int pitch 		= texture->getPitch();
-		ECOLOR_FORMAT format 	= texture->getColorFormat();
-		unsigned int bytes 		= IImage::getBitsPerPixelFromFormat(format) / 8;
-		
-		unsigned int alpha_mask = render_opacity << 24;
+	{       
+		unsigned int pitch      = texture->getPitch();
+		ECOLOR_FORMAT format    = texture->getColorFormat();
+		unsigned int bytes      = IImage::getBitsPerPixelFromFormat(format) / 8;
 		
 		for (unsigned int a = 0; a < cfg.na; a++)
 		{
 			for (unsigned int b = 0; b < cfg.nb; b++)
 			{
-				unsigned char& palette_id = frame.values[a * cfg.nb + b];
-				//printf("[%u,%u] palette %u: #%08x\n", a, b, palette_id, palette[palette_id]);
-				unsigned int base_color = palette[palette_id];
-				
-				if (render_unblend)
-					base_color = unblend_color(base_color, 0x00ffffff);
-				else
-				{
-					base_color = (base_color & 0x00ffffff) | alpha_mask;
-				}
-				
-				SColor(base_color).getData((unsigned int*)((char*)bitmap + (a * pitch) + (b * bytes)), ECF_A8R8G8B8);
+				SColor( (unsigned int) (((a * 0xff /cfg.na) << color_shift_a) + ((b * 0xff / cfg.nb)<< color_shift_b))).getData((unsigned int*)((char*)bitmap + (a * pitch) + (b * bytes)), ECF_A8R8G8B8);
 			}
 		}
 
@@ -236,7 +278,7 @@ int main(int argc, char *argv[])
     
     bool ask_video_driver = false;
     
-    std::string selected_field_render;
+    vector<std::string> flag_selected_fields;
     
     int current_interaction = -1;
     int current_node        = -1;
@@ -266,13 +308,13 @@ int main(int argc, char *argv[])
             exit(0);
             break;
         case 'd':
-			debug = true;
-			break;
+            debug = true;
+            break;
         case 'w':
             ask_video_driver = true;
             break;
         case 'f':
-            selected_field_render = std::string(optarg);
+			flag_selected_fields.push_back(std::string(optarg));
             break;
         case '?':
             print_help();
@@ -474,7 +516,7 @@ int main(int argc, char *argv[])
     // Detecting if there was some field render files that could be used
     static const bo::regex regex_render("^field_render_([[:print:]]+)\\.cfg$");
     
-    vector<FieldMovieConfig> render_cfgs;
+    vector<FieldMovieConfig> existing_render_cfgs;
     
 
     for( fs::directory_iterator file_iter(base_dir/interaction_subdir) ; file_iter != end_iter ; ++file_iter)
@@ -491,51 +533,57 @@ int main(int argc, char *argv[])
                 
                 fs::path file =  *file_iter;
                 read_config_render_movie(file, render_cfg);
-                render_cfgs.push_back(render_cfg);
+                existing_render_cfgs.push_back(render_cfg);
             }
         }
     }
     
-    bool has_field_movie = false;
-    FieldMovie field_movie;
-    FieldMovieConfig selected_render_cfg;
+    vector<FieldMovie> 			field_movies;
+    vector<FieldMovieConfig> 	field_cfgs;
     
-    unsigned int* field_movie_palette = new unsigned int[UCHAR_MAX + 1];
-    
-    
-    if (!selected_field_render.empty())
+    for (std::string flag_selected_field: flag_selected_fields)
     {
+		FieldMovie 		 field_movie;
+		FieldMovieConfig field_cfg;
+		
+		field_movie.palette = new unsigned int[UCHAR_MAX + 1];
+		
         static const bo::regex regex_render_flag("^([[:print:]]+)\\.([\\d]+)$");
         bo::match_results<std::string::const_iterator> what;
-        if (bo::regex_match(selected_field_render, what, regex_render_flag))
+        if (bo::regex_match(flag_selected_field, what, regex_render_flag))
         {
-            std::string       render   = what[1];
-            unsigned int subrender = stoi(what[2]);
+            std::string  render        = what[1];
+            unsigned int subrender     = stoi(what[2]);
             
             
             bool found = false;
             
-            for (FieldMovieConfig render_cfg: render_cfgs)
+            for (FieldMovieConfig existing_render_cfg: existing_render_cfgs)
             {
-                if (render_cfg.name == render)
+                if (existing_render_cfg.name == render)
                 {
-                    selected_render_cfg = render_cfg;
+                    field_cfg = existing_render_cfg;
                     found = true;
                     break;
                 }
             }
             
+            // TODO: Check if another field render was loaded for the same plane
+            
             if (found)
             {
-                if (subrender >= 0 and subrender <= selected_render_cfg.subrenders.size() - 1)
+                if (subrender >= 0 and subrender <= field_cfg.subrenders.size() - 1)
                 {
-                    std::string dat_filename = (bo::format("field_render_%s_r%u.dat") % selected_render_cfg.name % subrender).str();
-                    load_field(selected_render_cfg, base_dir / interaction_subdir / fs::path(dat_filename), field_movie, subrender, field_movie_palette, debug);
-                    has_field_movie = true;
+                    std::string dat_filename = (bo::format("field_render_%s_r%u.dat") % field_cfg.name % subrender).str();
+                    load_field(field_cfg, base_dir / interaction_subdir / fs::path(dat_filename), field_movie, subrender, debug);
+                   
+                    field_cfgs.push_back(field_cfg);
+                    field_movies.push_back(field_movie);
+                    
                 }
                 else
                 {
-                    printf("Unable to find the subrender %u. Please specify a subrender between %u and %u.\n", subrender, 0, (unsigned int) selected_render_cfg.subrenders.size() - 1);
+                    printf("Unable to find the subrender %u. Please specify a subrender between %u and %u.\n", subrender, 0, (unsigned int) field_cfg.subrenders.size() - 1);
                     exit(-1);
                 }
             }
@@ -547,7 +595,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            printf("Unable to understand the field flag: %s\n", selected_field_render.c_str());
+            printf("Unable to understand the field flag: %s\n", flag_selected_field.c_str());
             exit(-1);
         }
     }
@@ -556,17 +604,17 @@ int main(int argc, char *argv[])
     
 
     
-    if (!render_cfgs.empty())
+    if (!existing_render_cfgs.empty())
     {
         
         printf("┌────────────────────────────────────────────────────────────┐\n");
         printf("│ Field renders available  ( use --field <render>.<n> )      │\n");
         printf("├────────────────────────────────────────────────────────────┤\n");
         
-        for (FieldMovieConfig render_cfg: render_cfgs)
+        for (FieldMovieConfig existing_render_cfg: existing_render_cfgs)
         {
             
-            printf("│ %-49s %2u .. %-2u │\n", render_cfg.name.c_str(), 0, (unsigned int) render_cfg.subrenders.size() - 1);
+            printf("│ %-49s %2u .. %-2u │\n", existing_render_cfg.name.c_str(), 0, (unsigned int) existing_render_cfg.subrenders.size() - 1);
 
         }
         
@@ -620,9 +668,9 @@ int main(int argc, char *argv[])
     IAnimatedMesh* axis_z_mesh = smgr->addArrowMesh("z-axis", 0xFF6767AF, 0xFF6767AF,  10, 20, 10.0, 8.0, 0.3, 1.0);
      
 
-	vector3df rotation_to_x = vector3df(  0,  0,  0);
-	vector3df rotation_to_y = vector3df(  0,  0,-90);
-	vector3df rotation_to_z = vector3df(+90,  0,  0);
+    vector3df rotation_to_x = vector3df(  0,  0,  0);
+    vector3df rotation_to_y = vector3df(  0,  0,-90);
+    vector3df rotation_to_z = vector3df(+90,  0,  0);
    
     
     IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), rotation_to_x);
@@ -684,110 +732,90 @@ int main(int argc, char *argv[])
     //particle_node->getMaterial(0).Shininess = 20.0f;
     
     
-    ITexture* 			render_plane_texture = NULL;
-    IMesh* 				render_plane_mesh = NULL;
-    IMeshSceneNode* 	render_plane_node = NULL;
+    
+    vector<ITexture*>           render_plane_textures;
+    vector<IMesh*>              render_plane_meshes;
+    vector<IMeshSceneNode*>     render_plane_nodes;
     
     
     
     unsigned char render_opacity = 255;
     bool          render_unblend = false;
     
-    if (has_field_movie)
+    for (unsigned int i = 0; i < field_cfgs.size(); i++)
     {
 		
-		render_plane_texture = driver->addTexture(dimension2d<u32>(selected_render_cfg.na, selected_render_cfg.nb), "render", ECF_A8R8G8B8);
+        ITexture*           render_plane_texture = NULL;
+		IMesh*              render_plane_mesh = NULL;
+		IMeshSceneNode*     render_plane_node = NULL;
+    
+		FieldMovieConfig& field_cfg = field_cfgs[i];
 		
-		double w1, w2;
-		vector3df plane_rotation;
-		
-		
-		switch (selected_render_cfg.plane)
+		std::string plane_id = (bo::format("field_%s") % field_cfg.name).str();
+        render_plane_texture = driver->addTexture(dimension2d<u32>(field_cfg.na, field_cfg.nb), plane_id.c_str(), ECF_A8R8G8B8);
+        
+        double w1, w2;
+        vector3df plane_rotation;
+        
+        
+        switch (field_cfg.plane)
         {
-			case XY:
-				w1 = selected_render_cfg.space_size_x * length_au_to_pixels_ratio;
-				w2 = selected_render_cfg.space_size_y * length_au_to_pixels_ratio;
-				plane_rotation = vector3df(0.f, 0.f, 0.f);
-			break;
-			case XZ:
-				w1 = selected_render_cfg.space_size_x * length_au_to_pixels_ratio;
-				w2 = selected_render_cfg.space_size_z * length_au_to_pixels_ratio;
-				plane_rotation = vector3df(0.f, -90.f, 0.f);
-			break;
-			case YZ:
-				w1 = selected_render_cfg.space_size_y * length_au_to_pixels_ratio;
-				w2 = selected_render_cfg.space_size_z * length_au_to_pixels_ratio;
-				plane_rotation = vector3df(+90.f, 0.f, 0.f);
-			break;
-		}
-		
-		render_plane_mesh = smgr->getGeometryCreator()->createCubeMesh(vector3df(w1, w2, 0.01f));
-		
-		render_plane_node = smgr->addMeshSceneNode(render_plane_mesh, 0, -1, vector3df(0,0,0), plane_rotation);
-		render_plane_node->setMaterialType(EMT_TRANSPARENT_ALPHA_CHANNEL);
-		render_plane_node->setMaterialTexture( 0, render_plane_texture);
-		
-		IMeshBuffer* render_plane_mesh_buffer = render_plane_mesh->getMeshBuffer(0);
-		
-		render_plane_mesh_buffer->getTCoords(0).set(0.f, 0.f);
-		render_plane_mesh_buffer->getTCoords(1).set(1.f, 0.f);
-		render_plane_mesh_buffer->getTCoords(2).set(1.f, 1.f);
-		render_plane_mesh_buffer->getTCoords(3).set(0.f, 1.f);
-		
-		
-		render_plane_mesh_buffer->getTCoords(4).set(1.f, 0.f);
-		render_plane_mesh_buffer->getTCoords(5).set(1.f, 1.f);
-		render_plane_mesh_buffer->getTCoords(6).set(0.f, 1.f);
-		render_plane_mesh_buffer->getTCoords(7).set(0.f, 0.f);	
-		
-		
-		if (debug)
-		{
-			printf("Created render plane %s with these vertex indexes:\n",selected_render_cfg.name.c_str());
-			for (unsigned int i = 0; i < 8; i++)
-			{
-				vector3df& pos = render_plane_mesh_buffer->getPosition(i);
-				vector2df& uv  = render_plane_mesh_buffer->getTCoords(i);
-				printf("%u: %f, %f, %f (%f,%f)\n", i, pos.X, pos.Y, pos.Z, uv.X, uv.Y );	
-				
-			}
-			
-			unsigned char color_shift_a, color_shift_b;
-			
-			switch (selected_render_cfg.plane)
+            case XY:
+                w1 = field_cfg.space_size_x * length_au_to_pixels_ratio;
+                w2 = field_cfg.space_size_y * length_au_to_pixels_ratio;
+                plane_rotation = vector3df(0.f, 0.f, 0.f);
+            break;
+            case XZ:
+                w1 = field_cfg.space_size_x * length_au_to_pixels_ratio;
+                w2 = field_cfg.space_size_z * length_au_to_pixels_ratio;
+                plane_rotation = vector3df(0.f, -90.f, 0.f);
+            break;
+            case YZ:
+                w1 = field_cfg.space_size_y * length_au_to_pixels_ratio;
+                w2 = field_cfg.space_size_z * length_au_to_pixels_ratio;
+                plane_rotation = vector3df(+90.f, 0.f, 0.f);
+            break;
+        }
+        
+        render_plane_mesh = smgr->getGeometryCreator()->createCubeMesh(vector3df(w1, w2, 0.01f));
+        
+        render_plane_node = smgr->addMeshSceneNode(render_plane_mesh, 0, -1, vector3df(0,0,0), plane_rotation);
+        render_plane_node->setMaterialType(EMT_TRANSPARENT_ALPHA_CHANNEL);
+        render_plane_node->setMaterialTexture( 0, render_plane_texture);
+        
+        IMeshBuffer* render_plane_mesh_buffer = render_plane_mesh->getMeshBuffer(0);
+        
+        render_plane_mesh_buffer->getTCoords(0).set(0.f, 0.f);
+        render_plane_mesh_buffer->getTCoords(1).set(1.f, 0.f);
+        render_plane_mesh_buffer->getTCoords(2).set(1.f, 1.f);
+        render_plane_mesh_buffer->getTCoords(3).set(0.f, 1.f);
+        
+        
+        render_plane_mesh_buffer->getTCoords(4).set(1.f, 0.f);
+        render_plane_mesh_buffer->getTCoords(5).set(1.f, 1.f);
+        render_plane_mesh_buffer->getTCoords(6).set(0.f, 1.f);
+        render_plane_mesh_buffer->getTCoords(7).set(0.f, 0.f);  
+       
+    
+        
+        
+        if (debug)
+        {
+            printf("Created render plane %s with these vertex indexes:\n",field_cfg.name.c_str());
+            for (unsigned int i = 0; i < 8; i++)
             {
-                case XY:
-					color_shift_a = 16;
-					color_shift_b =  8;
-                break;
-                case XZ:
-					color_shift_a = 16;
-					color_shift_b =  0;
-                break;
-                case YZ:
-					color_shift_a =  8;
-					color_shift_b =  0;
-                break;
+                vector3df& pos = render_plane_mesh_buffer->getPosition(i);
+                vector2df& uv  = render_plane_mesh_buffer->getTCoords(i);
+                printf("%u: %f, %f, %f (%f,%f)\n", i, pos.X, pos.Y, pos.Z, uv.X, uv.Y );    
+                
             }
-			
-			void* bitmap = render_plane_texture->lock();
-			if (bitmap)
-			{		
-				unsigned int pitch 		= render_plane_texture->getPitch();
-				ECOLOR_FORMAT format 	= render_plane_texture->getColorFormat();
-				unsigned int bytes 		= IImage::getBitsPerPixelFromFormat(format) / 8;
-				
-				for (unsigned int a = 0; a < selected_render_cfg.na; a++)
-				{
-					for (unsigned int b = 0; b < selected_render_cfg.nb; b++)
-					{
-						SColor( (unsigned int) (((a * 0xff / selected_render_cfg.na) << color_shift_a) + ((b * 0xff / selected_render_cfg.nb)<< color_shift_b))).getData((unsigned int*)((char*)bitmap + (a * pitch) + (b * bytes)), ECF_A8R8G8B8);
-					}
-				}
-	 
-				render_plane_texture->unlock();
-			}
-		}
+            
+        }
+         
+                
+        render_plane_textures.push_back(render_plane_texture);
+		render_plane_meshes.push_back(render_plane_mesh);
+		render_plane_nodes.push_back(render_plane_node);
     }
     
 
@@ -821,16 +849,21 @@ int main(int argc, char *argv[])
     then  = device->getTimer()->getTime();
     
     TimeController& time_controller = *new TimeController(records[0].time, records[records_loaded-1].time);
-    FrameControllerInteraction&	frame_controller_interaction = *new FrameControllerInteraction(records, records_loaded, time_controller);
-    FrameControllerField& 		frame_controller_field       = *new FrameControllerField(field_movie.frames, selected_render_cfg.nt, time_controller);
+    FrameControllerInteraction& frame_controller_interaction = *new FrameControllerInteraction(records, records_loaded, time_controller);
+    vector<FrameControllerField*> frame_controllers_field;
     
+    for (unsigned int i = 0; i < field_cfgs.size(); i++)
+    {
+		frame_controllers_field.push_back(new FrameControllerField(field_movies[i].frames, field_cfgs[i].nt, time_controller));
+	}
+	
     while(device->run())
     {
         const unsigned int now = device->getTimer()->getTime();
         const double delta_time = ((now - then) / 1000.f) / AU_TIME;
         then = now;
         
-		time_controller.progress(delta_time);
+        time_controller.progress(delta_time);
         
         
         if(event_receiver.isKeyDown(KEY_LEFT))
@@ -880,23 +913,23 @@ int main(int argc, char *argv[])
         
         if(event_receiver.isKeyDown(KEY_OEM_4))
         {
-			if (render_opacity > 0)
-				render_opacity--;
-		}
+            if (render_opacity > 0)
+                render_opacity--;
+        }
             
         
         if(event_receiver.isKeyDown(KEY_OEM_6))
         {
-			if (render_opacity < 255)
-				render_opacity++;
-		}
+            if (render_opacity < 255)
+                render_opacity++;
+        }
 
         
         if(event_receiver.isKeyDown(KEY_ADD))
         {
             if (!key_add_previous_status)
             {
-				time_controller.set_speed(time_controller.get_speed() * 1.1);
+                time_controller.set_speed(time_controller.get_speed() * 1.1);
             }
             key_add_previous_status = true;
         }
@@ -907,7 +940,7 @@ int main(int argc, char *argv[])
         {
             if (!key_sub_previous_status)
             {
-				time_controller.set_speed(time_controller.get_speed() * 0.9);
+                time_controller.set_speed(time_controller.get_speed() * 0.9);
             }
             key_sub_previous_status = true;
         }
@@ -941,7 +974,7 @@ int main(int argc, char *argv[])
         {
             if (!key_period_previous_status)
             {
-				time_controller.set_play_forward();
+                time_controller.set_play_forward();
                 time_controller.play();
             }
             key_period_previous_status = true;
@@ -965,10 +998,10 @@ int main(int argc, char *argv[])
         {
             if (!key_space_previous_status)
             {
-				if (time_controller.is_playing())
-					time_controller.pause();
-				else
-					time_controller.play();
+                if (time_controller.is_playing())
+                    time_controller.pause();
+                else
+                    time_controller.play();
             }
             key_space_previous_status = true;
         }
@@ -998,52 +1031,42 @@ int main(int argc, char *argv[])
         
         update_camera_position(text_camera, camera_position, light_node);
         
-        
-        if (has_field_movie)
-        {
-			if (!debug)
-				load_field_texture(selected_render_cfg, field_movie.frames[499], field_movie_palette, render_opacity, render_unblend, render_plane_texture);
-	
-		}
+       
         
         ParticleRecord* current_record_ptr = frame_controller_interaction.get_frame(); 
         
         if (current_record_ptr != NULL)
         {
-			particle_node->setVisible(true);
-			ParticleRecord& current_record = *current_record_ptr;
-			particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio, current_record.relative_position_y * length_au_to_pixels_ratio, current_record.relative_position_z * length_au_to_pixels_ratio));
-		}
-		else
-			particle_node->setVisible(false);
+            particle_node->setVisible(true);
+            ParticleRecord& current_record = *current_record_ptr;
+            particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio, current_record.relative_position_y * length_au_to_pixels_ratio, current_record.relative_position_z * length_au_to_pixels_ratio));
+        }
+        else
+            particle_node->setVisible(false);
        
        
-        if (has_field_movie)
+        for (unsigned int i = 0; i < field_cfgs.size(); i++)
         {
-			FieldMovieFrame* current_frame_ptr = frame_controller_field.get_frame();
-			
-			if (current_frame_ptr != NULL)
-			{
-				render_plane_node->setVisible(true);
-				FieldMovieFrame& current_frame = *current_frame_ptr;
-				if (!debug)
-					load_field_texture(selected_render_cfg, current_frame, field_movie_palette, render_opacity, render_unblend, render_plane_texture);
-			}
-			else
-				render_plane_node->setVisible(false);
-		}
-        
-        // Setting vertex color
-        
+            FieldMovieFrame* current_frame_ptr = frame_controllers_field[i]->get_frame();
+            
+            if (current_frame_ptr != NULL)
+            {
+                render_plane_nodes[i]->setVisible(true);
+                FieldMovieFrame& current_frame = *current_frame_ptr;
+                if (!debug)
+                    load_field_texture(field_cfgs[i], current_frame, field_movies[i].palette, render_opacity, render_unblend, render_plane_textures[i]);
+                else
+					load_debug_texture(field_cfgs[i], render_plane_textures[i]);
+            }
+            else
+                render_plane_nodes[i]->setVisible(false);
+        }
         
         
         
         driver->beginScene(true, true, SColor(255,100,101,140));
         smgr->drawAll();
         
-        //drawIndexedTriangleList   (   const S3DVertex2TCoords *   vertices, u32   vertexCount,    const u16 *     indexList, u32      triangleCount);
-       // if (has_field_movie)
-		//	driver->draw2DImage(render_texture, core::position2d<s32>(-50,-50));
             
         guienv->drawAll();
         driver->endScene();
