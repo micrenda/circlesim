@@ -26,6 +26,9 @@ using namespace io;
 using namespace gui;
 
 
+#define VECT_X  1
+#define VECT_Y  1
+#define VECT_Z -1
 
 void print_help()
 {
@@ -101,6 +104,8 @@ const float speed_angular = 15.f/ (1 / AU_TIME) ;
 double length_au_to_pixels_ratio;
 
 
+
+
 void load_field(FieldMovieConfig cfg, fs::path dat_file, FieldMovie& field_movie, unsigned int subrender_id, bool debug = false)
 {
     ifstream file(dat_file.string(), ios::in | ios::binary);
@@ -168,20 +173,20 @@ void update_camera_position(IGUIEditBox* text_camera,  vector3df camera_position
 {
     float rho, theta, phi;
     
-    cartesian_to_spherical(camera_position.X, camera_position.Y, camera_position.Z, theta, phi);
+    cartesian_to_spherical(camera_position.X / VECT_X, camera_position.Y / VECT_Y, camera_position.Z / VECT_Z, theta, phi);
     
-    rho = vector_module(camera_position.X, camera_position.Y, camera_position.Z);
+    rho = vector_module(camera_position.X / VECT_X, camera_position.Y / VECT_Y, camera_position.Z / VECT_Z);
     
     float light_x, light_y, light_z;
     spherical_to_cartesian(200.f, theta, phi, light_x, light_y, light_z);
     
-    light_node->setPosition(vector3df(light_x, light_y, light_z));
+    light_node->setPosition(vector3df(light_x * VECT_X, light_y * VECT_Y, light_z * VECT_Z));
 
 
     text_camera->setText( (bo::wformat(L"Camera\nx=%1$+.3Em, y=%2$+.3Em, z=%3$+.3Em\nrho=%4$+.3Em, theta=%5$+.0f, phi=%6$+.0f\n")
-    % (camera_position.X / length_au_to_pixels_ratio * AU_LENGTH)
-    % (camera_position.Y / length_au_to_pixels_ratio * AU_LENGTH)
-    % (camera_position.Z / length_au_to_pixels_ratio * AU_LENGTH)
+    % (camera_position.X / VECT_X / length_au_to_pixels_ratio * AU_LENGTH)
+    % (camera_position.Y / VECT_Y / length_au_to_pixels_ratio * AU_LENGTH)
+    % (camera_position.Z / VECT_Z / length_au_to_pixels_ratio * AU_LENGTH)
     % (rho / length_au_to_pixels_ratio * AU_LENGTH)
     % (theta / M_PI * 180.f)
     % (phi   / M_PI * 180.f)).str().c_str());
@@ -500,8 +505,8 @@ int main(int argc, char *argv[])
         record.field_e_z = field_e_z / AU_ELECTRIC_FIELD;
         
         record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
-        record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
-        record.field_b_x = field_b_x / AU_MAGNETIC_FIELD;
+        record.field_b_y = field_b_y / AU_MAGNETIC_FIELD;
+        record.field_b_z = field_b_z / AU_MAGNETIC_FIELD;
     }
     
     
@@ -652,6 +657,8 @@ int main(int argc, char *argv[])
     device->setWindowCaption(L"Circlesim viewer");
     
     
+    vector3df origin = vector3df(  0 * VECT_X,  0 * VECT_Y,  0 * VECT_Z);
+    
     IVideoDriver* driver = device->getVideoDriver();
     ISceneManager* smgr = device->getSceneManager();
     IGUIEnvironment* guienv = device->getGUIEnvironment();
@@ -669,14 +676,14 @@ int main(int argc, char *argv[])
     IAnimatedMesh* axis_z_mesh = smgr->addArrowMesh("z-axis", 0xFF6767AF, 0xFF6767AF,  10, 20, 10.0, 8.0, 0.3, 1.0);
      
 
-    vector3df rotation_to_x = vector3df(  0,  0,  0);
-    vector3df rotation_to_y = vector3df(  0,  0,-90);
-    vector3df rotation_to_z = vector3df(+90,  0,  0);
+    vector3df rotation_to_x = vector3df(  0,  0,-90);
+    vector3df rotation_to_y = vector3df(  0,  0,  0);
+    vector3df rotation_to_z = vector3df(-90,  0,  0);
    
     
-    IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, vector3df(0, 0, 0), rotation_to_x);
-    IMeshSceneNode* axis_y_node =  smgr->addMeshSceneNode(axis_y_mesh, 0, -1, vector3df(0, 0, 0), rotation_to_y);
-    IMeshSceneNode* axis_z_node =  smgr->addMeshSceneNode(axis_z_mesh, 0, -1, vector3df(0, 0, 0), rotation_to_z);
+    IMeshSceneNode* axis_x_node =  smgr->addMeshSceneNode(axis_x_mesh, 0, -1, origin, rotation_to_x);
+    IMeshSceneNode* axis_y_node =  smgr->addMeshSceneNode(axis_y_mesh, 0, -1, origin, rotation_to_y);
+    IMeshSceneNode* axis_z_node =  smgr->addMeshSceneNode(axis_z_mesh, 0, -1, origin, rotation_to_z);
     
     
     
@@ -712,9 +719,9 @@ int main(int argc, char *argv[])
         vector3df border_position_xz= border_start_position_xz;
         vector3df border_position_yz= border_start_position_yz;
         
-        border_position_xy.rotateXYBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
-        border_position_xz.rotateXZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
-        border_position_yz.rotateYZBy(360.f / border_sides * (s-0.5f), vector3df(0, 0, 0));
+        border_position_xy.rotateXYBy(360.f / border_sides * (s-0.5f), origin);
+        border_position_xz.rotateXZBy(360.f / border_sides * (s-0.5f), origin);
+        border_position_yz.rotateYZBy(360.f / border_sides * (s-0.5f), origin);
         
         smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xy, vector3df(0, 0, 360.f * s / border_sides ));
         smgr->addMeshSceneNode(cyl_mesh, 0, -1, border_position_xz, vector3df(-360.f * s / border_sides, 0  , 90));
@@ -728,7 +735,7 @@ int main(int argc, char *argv[])
     //driver->draw2DRectangle(SColor(0xFF, 0x53, 0xA1, 0x62), rect<s32>(position2d<s32>(0,0),position2d<s32>(128,128)));
     
     IAnimatedMesh*  particle_mesh = smgr->addSphereMesh ("particle", 0.30f);
-    IMeshSceneNode* particle_node = smgr->addMeshSceneNode(particle_mesh, 0, -1, vector3df(0,0,0), vector3df(0,0,0));
+    IMeshSceneNode* particle_node = smgr->addMeshSceneNode(particle_mesh, 0, -1, origin, origin);
     particle_node->setMaterialFlag(video::EMF_LIGHTING, true); 
     //particle_node->getMaterial(0).Shininess = 20.0f;
     
@@ -764,23 +771,23 @@ int main(int argc, char *argv[])
             case XY:
                 w1 = field_cfg.space_size_x * length_au_to_pixels_ratio;
                 w2 = field_cfg.space_size_y * length_au_to_pixels_ratio;
-                plane_rotation = vector3df(0.f, 0.f, 0.f);
+                plane_rotation = vector3df(0.f, 180.f, -90.f);
             break;
             case XZ:
                 w1 = field_cfg.space_size_x * length_au_to_pixels_ratio;
                 w2 = field_cfg.space_size_z * length_au_to_pixels_ratio;
-                plane_rotation = vector3df(0.f, -90.f, 0.f);
+                plane_rotation = vector3df(-90.f, 90.f, 180.f);
             break;
             case YZ:
                 w1 = field_cfg.space_size_y * length_au_to_pixels_ratio;
                 w2 = field_cfg.space_size_z * length_au_to_pixels_ratio;
-                plane_rotation = vector3df(+90.f, 0.f, 0.f);
+                plane_rotation = vector3df(+90.f, 90.f, 90.f);
             break;
         }
         
         render_plane_mesh = smgr->getGeometryCreator()->createCubeMesh(vector3df(w1, w2, 0.01f));
         
-        render_plane_node = smgr->addMeshSceneNode(render_plane_mesh, 0, -1, vector3df(0,0,0), plane_rotation);
+        render_plane_node = smgr->addMeshSceneNode(render_plane_mesh, 0, -1, origin, plane_rotation);
         render_plane_node->setMaterialTexture( 0, render_plane_texture);
         
         IMeshBuffer* render_plane_mesh_buffer = render_plane_mesh->getMeshBuffer(0);
@@ -806,7 +813,7 @@ int main(int argc, char *argv[])
             {
                 vector3df& pos = render_plane_mesh_buffer->getPosition(i);
                 vector2df& uv  = render_plane_mesh_buffer->getTCoords(i);
-                printf("%u: %f, %f, %f (%f,%f)\n", i, pos.X, pos.Y, pos.Z, uv.X, uv.Y );    
+                printf("%u: %f, %f, %f (%f,%f)\n", i, pos.X / VECT_X, pos.Y / VECT_Y, pos.Z / VECT_Z, uv.X, uv.Y );    
                 
             }
             
@@ -843,9 +850,21 @@ int main(int argc, char *argv[])
     
     
     
-    vector3df camera_position = vector3df(border_radius, border_radius, border_radius);
+    vector3df camera_position = vector3df(border_radius * VECT_X, border_radius * VECT_Y, border_radius * VECT_Z);
+	ICameraSceneNode* camera_node = smgr->addCameraSceneNode(0, camera_position, origin);
     
-    ICameraSceneNode* camera_node = smgr->addCameraSceneNode(0, camera_position, axis_x_node->getAbsolutePosition());
+    
+    
+    ILightSceneNode* light_node = smgr->addLightSceneNode(0, vector3df(2.* border_radius * VECT_X, 2 * border_radius * VECT_Y, 2.* border_radius * VECT_Z), video::SColorf(1.f, 1.f, 1.f), 5.0 * border_radius);
+    
+    
+    //// This code force Irrlicht to use right hand projection system
+    //matrix4 matproj = camera_node->getProjectionMatrix();
+	//matproj(0,0) *= -1;
+	//camera_node->setProjectionMatrix(matproj);
+    
+    
+       
 
     then  = device->getTimer()->getTime();
     
@@ -868,9 +887,9 @@ int main(int argc, char *argv[])
         
         
         if(event_receiver.isKeyDown(KEY_LEFT))
-            camera_position.rotateXYBy(speed_angular * delta_time, vector3df(0, 0, 0));
+            camera_position.rotateXYBy(speed_angular * delta_time, origin);
         if(event_receiver.isKeyDown(KEY_RIGHT))
-            camera_position.rotateXYBy(-speed_angular * delta_time, vector3df(0, 0, 0));
+            camera_position.rotateXYBy(-speed_angular * delta_time, origin);
             
         if(event_receiver.isKeyDown(KEY_NEXT))
         {
@@ -889,8 +908,8 @@ int main(int argc, char *argv[])
         {
             
             float rho = camera_position.getLength();
-            float theta = acos(camera_position.Z / rho);
-            float phi   = atan2(camera_position.Y, camera_position.X);
+            float theta = acos(camera_position.Z / VECT_Z / rho);
+            float phi   = atan2(camera_position.Y  / VECT_Y, camera_position.X  / VECT_X);
             
             float step = speed_angular * delta_time / 180.f * M_PI;
             
@@ -905,9 +924,9 @@ int main(int argc, char *argv[])
                     theta += step;
             }
             
-            camera_position.X = rho * sin(theta) * cos(phi);
-            camera_position.Y = rho * sin(theta) * sin(phi);
-            camera_position.Z = rho * cos(theta);
+            camera_position.X = rho * sin(theta) * cos(phi) * VECT_X;
+            camera_position.Y = rho * sin(theta) * sin(phi) * VECT_Y;
+            camera_position.Z = rho * cos(theta)  * VECT_Z;
             
         }
         
@@ -1035,10 +1054,8 @@ int main(int argc, char *argv[])
         
         
         camera_node->setPosition(camera_position);
-        camera_node->setTarget(axis_x_node->getAbsolutePosition());
-        camera_node->setUpVector(vector3df(0, 0, 1));
-        
-        ILightSceneNode* light_node = smgr->addLightSceneNode(0, vector3df(2.* border_radius, 2.* border_radius, 2.* border_radius), video::SColorf(0.60f, 0.60f, 0.60f), 1.0 * border_radius);
+        camera_node->setTarget(origin);
+        camera_node->setUpVector(vector3df(0.f * VECT_X, 0.f * VECT_Y, 1.f * VECT_Z));
         
         
         update_camera_position(text_camera, camera_position, light_node);
@@ -1051,10 +1068,11 @@ int main(int argc, char *argv[])
         {
             particle_node->setVisible(true);
             ParticleRecord& current_record = *current_record_ptr;
-            particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio, current_record.relative_position_y * length_au_to_pixels_ratio, current_record.relative_position_z * length_au_to_pixels_ratio));
+            particle_node->setPosition(vector3df(current_record.relative_position_x * length_au_to_pixels_ratio * VECT_X, current_record.relative_position_y * length_au_to_pixels_ratio * VECT_Y, current_record.relative_position_z * length_au_to_pixels_ratio * VECT_Z));
         }
         else
             particle_node->setVisible(false);
+       
        
        
         for (unsigned int i = 0; i < field_cfgs.size(); i++)
