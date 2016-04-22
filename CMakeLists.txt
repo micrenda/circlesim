@@ -1,6 +1,10 @@
 cmake_minimum_required (VERSION 3.0)
 project (circlesim)
 
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set (CMAKE_INSTALL_PREFIX "/opt/circlesim" CACHE PATH "default install path" FORCE )
+endif()
+
 # The version number.
 set (CIRCLESIM_VERSION_MAJOR 1)
 set (CIRCLESIM_VERSION_MINOR 0)
@@ -102,5 +106,6 @@ use_cxx11()
 install(TARGETS circlesim 			RUNTIME DESTINATION bin)
 install(TARGETS circlesim-viewer 	RUNTIME DESTINATION bin)
 
+install(DIRECTORY util 				DESTINATION .)
 
 

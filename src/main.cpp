@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	// Reading executable exe location
 	char exe_fullpath[PATH_MAX];
 	readlink("/proc/self/exe", exe_fullpath, sizeof(exe_fullpath)-1);
-	exe_path = string(dirname(exe_fullpath));
+	exe_path = fs::path(string(dirname(exe_fullpath))).parent_path().string();
 	exe_name = string(basename(exe_fullpath));
 	
 	
